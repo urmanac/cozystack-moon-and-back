@@ -1,20 +1,26 @@
-name: Build Custom Talos Images
+name: Build Custom Talos Images (CozyStack + ARM64)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'talos/**'
+      - 'patches/**'
+      - 'scripts/build-cozystack-images.sh'
       - '.github/workflows/build-talos-images.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'talos/**'
+      - 'patches/**' 
+      - 'scripts/build-cozystack-images.sh'
       - '.github/workflows/build-talos-images.yml'
   workflow_dispatch:
     inputs:
-      tag_suffix:
-        description: 'Additional tag suffix (optional)'
+      cozystack_ref:
+        description: 'CozyStack git ref (branch/tag/commit)'
+        required: false
+        default: 'main'
+      talos_version:
+        description: 'Override Talos version (optional)'
         required: false
         default: ''
 
@@ -23,27 +29,59 @@ env:
   IMAGE_NAME: urmanac/talos-cozystack-demo
 
 jobs:
-  build-custom-talos-arm64:
+  build-cozystack-talos-arm64:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     
     outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      image-tags: ${{ steps.meta.outputs.tags }}
+      kernel-digest: ${{ steps.assets.outputs.kernel-digest }}
+      initramfs-digest: ${{ steps.assets.outputs.initramfs-digest }}
+      talos-version: ${{ steps.build.outputs.talos-version }}
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU for ARM64 emulation
+      - name: Install build dependencies
+        run: |
+          # Install CozyStack build dependencies
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          
+          # Install mikefarah/yq (required by CozyStack)
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          
+          # Verify versions
+          docker --version
+          skopeo --version  
+          jq --version
+          yq --version
+
+      - name: Clone CozyStack repository
+        run: |
+          git clone https://github.com/cozystack/cozystack.git cozystack-upstream
+          cd cozystack-upstream
+          git checkout ${{ github.event.inputs.cozystack_ref || 'main' }}
+          echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Apply ARM64 patches
+        run: |
+          cd cozystack-upstream
+          # Apply patches for ARM64 + Spin + Tailscale
+          for patch in ../patches/*.patch; do
+            if [ -f "$patch" ]; then
+              echo "Applying $patch"
+              git apply "$patch"
+            fi
+          done
+
+      - name: Set up QEMU for ARM64
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -52,48 +90,100 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Build Talos images with CozyStack
+        id: build
+        run: |
+          cd cozystack-upstream/packages/core/installer
+          
+          # Generate ARM64 profiles (patched version)
+          ./hack/gen-profiles.sh ${{ github.event.inputs.talos_version }}
+          
+          # Build the assets we need
+          make talos-metal talos-kernel talos-initramfs
+          
+          # Get Talos version that was built
+          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
+          echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
+          echo "Built Talos version: $TALOS_VERSION"
+
+      - name: Extract and package assets
+        id: assets
+        run: |
+          cd cozystack-upstream
+          
+          # Create output directory structure
+          mkdir -p assets/talos/arm64
+          
+          # Copy built assets
+          cp _out/assets/kernel-arm64 assets/talos/arm64/vmlinuz
+          cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/initramfs.xz
+          
+          # Create checksums
+          cd assets/talos/arm64
+          sha256sum vmlinuz > vmlinuz.sha256
+          sha256sum initramfs.xz > initramfs.xz.sha256
+          
+          # Output digests for tracking
+          KERNEL_DIGEST=$(sha256sum vmlinuz | cut -d' ' -f1)
+          INITRAMFS_DIGEST=$(sha256sum initramfs.xz | cut -d' ' -f1)
+          
+          echo "kernel-digest=sha256:$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          echo "initramfs-digest=sha256:$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Create asset container
+        run: |
+          cd cozystack-upstream
+          
+          # Create Dockerfile for asset container
+          cat > Dockerfile.assets << 'EOF'
+          FROM scratch
+          COPY assets/ /assets/
+          COPY scripts/extract-boot-assets.sh /extract-boot-assets
+          ENTRYPOINT ["/extract-boot-assets"]
+          EOF
+          
+          # Create extraction script
+          mkdir -p scripts
+          cat > scripts/extract-boot-assets.sh << 'EOF'
+          #!/bin/sh
+          set -e
+          OUTPUT_DIR=${1:-/output}
+          mkdir -p "$OUTPUT_DIR"
+          cp -r /assets/* "$OUTPUT_DIR/"
+          echo "Assets extracted to $OUTPUT_DIR"
+          ls -la "$OUTPUT_DIR"
+          EOF
+          chmod +x scripts/extract-boot-assets.sh
+
+      - name: Extract metadata and build container
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Branch-based tags
-            type=ref,event=branch
-            type=ref,event=pr
+            # Talos version tag
+            type=raw,value=${{ steps.build.outputs.talos-version }}-arm64-spin-tailscale
             
-            # Semantic versioning
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            
-            # Date-based tags for reproducibility
-            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}
+            # Date-based tag for reproducibility  
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-arm64
             
             # Demo stable tag (only on main branch)
             type=raw,value=demo-stable,enable={{is_default_branch}}
             
             # Latest tag (only on main branch)
             type=raw,value=latest,enable={{is_default_branch}}
-            
-            # Custom suffix if provided
-            type=raw,value=v1.9.0-spin-tailscale${{ github.event.inputs.tag_suffix || '' }},enable={{is_default_branch}}
 
-      - name: Build and push custom Talos image
-        id: build
+      - name: Build and push asset container
         uses: docker/build-push-action@v5
         with:
-          context: ./talos
-          file: ./talos/Dockerfile.custom-extensions
-          platforms: linux/arm64
+          context: ./cozystack-upstream
+          file: ./cozystack-upstream/Dockerfile.assets
+          platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            TALOS_VERSION=v1.9.0
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
 
       - name: Generate build summary
         run: |
@@ -120,40 +210,30 @@ jobs:
 
   test-image-smoke:
     runs-on: ubuntu-latest
-    needs: build-custom-talos-arm64
+    needs: build-cozystack-talos-arm64
     steps:
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Test image pull
+      - name: Test asset container extraction
         run: |
-          # Test that image can be pulled without authentication (public)
+          # Test that container can be pulled and assets extracted
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
-
-      - name: Basic smoke test
-        run: |
-          # Test that image has expected labels and structure
-          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
           
-          # Check for expected labels (build metadata)
-          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \
-            --format='{{index .Config.Labels "org.opencontainers.image.source"}}'
+          # Test asset extraction
+          mkdir -p /tmp/test-assets
+          docker run --rm -v /tmp/test-assets:/output ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
           
-          # Verify it's ARM64 architecture
-          ARCH=$(docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \
-            --format='{{.Architecture}}')
-          if [ "$ARCH" != "arm64" ]; then
-            echo "❌ Expected arm64, got $ARCH"
-            exit 1
-          fi
+          # Verify ARM64 assets exist
+          test -f /tmp/test-assets/talos/arm64/vmlinuz
+          test -f /tmp/test-assets/talos/arm64/initramfs.xz
+          test -f /tmp/test-assets/talos/arm64/vmlinuz.sha256
+          test -f /tmp/test-assets/talos/arm64/initramfs.xz.sha256
           
-          echo "✅ Image smoke tests passed"
+          echo "✅ CozyStack ARM64 asset tests passed"
+          echo "Assets verified:"
+          ls -la /tmp/test-assets/talos/arm64/
 
   update-docs:
     runs-on: ubuntu-latest
-    needs: [build-custom-talos-arm64, test-image-smoke]
+    needs: [build-cozystack-talos-arm64, test-image-smoke]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository
@@ -161,34 +241,36 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update image references in docs
+      - name: Update build documentation
         run: |
-          # Update docs/CUSTOM-TALOS-IMAGES.md with latest digest
-          DIGEST="${{ needs.build-custom-talos-arm64.outputs.image-digest }}"
+          # Update docs with latest build info
+          TALOS_VERSION="${{ needs.build-cozystack-talos-arm64.outputs.talos-version }}"
+          KERNEL_DIGEST="${{ needs.build-cozystack-talos-arm64.outputs.kernel-digest }}"
+          INITRAMFS_DIGEST="${{ needs.build-cozystack-talos-arm64.outputs.initramfs-digest }}"
           DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
-          # Create/update build info in docs
           cat > docs/LATEST-BUILD.md << EOF
-          # Latest Custom Talos Image Build
+          # Latest CozyStack ARM64 Talos Build
           
           **Built:** $DATE  
-          **Digest:** \`$DIGEST\`  
-          **Tags:** 
-          \`\`\`
-          ${{ needs.build-custom-talos-arm64.outputs.image-tags }}
-          \`\`\`
+          **Talos Version:** \`$TALOS_VERSION\`  
+          **CozyStack Commit:** \`$COZYSTACK_COMMIT\`  
           
-          **Pull command for demo:**
+          **Asset Digests:**
+          - **Kernel:** \`$KERNEL_DIGEST\`
+          - **Initramfs:** \`$INITRAMFS_DIGEST\`
+          
+          **Container Image:**
           \`\`\`bash
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
           \`\`\`
           
-          **For AWS bastion:**
+          **For AWS Bastion Matchbox Setup:**
           \`\`\`bash
-          # Extract boot assets for matchbox server
+          # Extract boot assets
           docker run --rm -v /opt/matchbox/assets:/output \\
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\
-            extract-boot-assets /output/talos/custom/
+            /output/talos/arm64/
           \`\`\`
           EOF
 
@@ -197,5 +279,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docs/LATEST-BUILD.md
-          git commit -m "Update latest build info: ${{ needs.build-custom-talos-arm64.outputs.image-digest }}" || exit 0
+          git commit -m "Update CozyStack ARM64 build: ${{ needs.build-cozystack-talos-arm64.outputs.talos-version }}" || exit 0
           git push
