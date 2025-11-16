@@ -1,19 +1,20 @@
 From: Hephy Builder <hephy@urmanac.com>
 Date: Sat, 16 Nov 2025 00:00:00 +0000
-Subject: [PATCH 1/3] Add ARM64 architecture support to Talos profile generator
+Subject: [PATCH 1/4] Add ARM64 architecture support to proven CozyStack build
 
-This patch modifies the hack/gen-profiles.sh script to generate ARM64 profiles
-instead of AMD64, making the build compatible with t4g instances and
-Raspberry Pi CM3 modules.
+Based on kingdonb/cozystack:merged-branches (c112ec63 → c21b1a86)
+This patch converts the proven x86_64 Spin+Tailscale build to ARM64 for AWS t4g instances.
 
 Changes:
-- Update arch field to arm64
+- Update arch field from amd64 to arm64 in profile generation
 - Change paths from /usr/install/amd64/ to /usr/install/arm64/
-- Update output filenames to include arm64 suffix
+- Update output filenames and Makefile targets for ARM64
+- Keep proven extension versions and build pattern
 
 ---
- packages/core/installer/hack/gen-profiles.sh | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ packages/core/installer/hack/gen-profiles.sh | 6 +++---
+ packages/core/installer/Makefile            | 8 ++++----
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/packages/core/installer/hack/gen-profiles.sh b/packages/core/installer/hack/gen-profiles.sh
 index 1234567..abcdefg 100755
@@ -42,6 +43,20 @@ index 1234567..abcdefg 100755
    outFormat: ${out_format}
  EOT
  done
-+
-+# Update Makefile targets to use arm64 suffixes
-+sed -i 's/amd64/arm64/g' ../Makefile
+
+diff --git a/packages/core/installer/Makefile b/packages/core/installer/Makefile
+index abcdef1..1234567 100644
+--- a/packages/core/installer/Makefile
++++ b/packages/core/installer/Makefile
+@@ -45,10 +45,10 @@ image-talos:
+ 
+ image-matchbox:
+-	test -f ../../../_out/assets/kernel-amd64 || make talos-kernel
+-	test -f ../../../_out/assets/initramfs-metal-amd64.xz || make talos-initramfs
++	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
++	test -f ../../../_out/assets/initramfs-metal-arm64.xz || make talos-initramfs
+ 	docker buildx build -f images/matchbox/Dockerfile ../../.. \
+ 		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
+ 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
+ 		--cache-from type=registry,ref=$(REGISTRY)/matchbox:latest \
+ 		--cache-to type=inline \

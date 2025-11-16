@@ -5,24 +5,31 @@ on:
     branches: [ main ]
     paths:
       - 'patches/**'
-      - 'scripts/build-cozystack-images.sh'
       - '.github/workflows/build-talos-images.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'patches/**' 
-      - 'scripts/build-cozystack-images.sh'
       - '.github/workflows/build-talos-images.yml'
   workflow_dispatch:
     inputs:
       cozystack_ref:
         description: 'CozyStack git ref (branch/tag/commit)'
         required: false
-        default: 'main'
-      talos_version:
-        description: 'Override Talos version (optional)'
+        default: 'merged-branches'  # Use proven working branch
+      base_commit:
+        description: 'Base commit from kingdonb fork'
         required: false
-        default: ''
+        default: 'c21b1a86'  # Latest working commit
+      build_variant:
+        description: 'Build variant'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - 'both'
+          - 'spin-only'
+          - 'spin-tailscale'
 
 env:
   REGISTRY: ghcr.io
@@ -60,51 +67,99 @@ jobs:
           jq --version
           yq --version
 
-      - name: Clone CozyStack repository
+      - name: Clone and setup CozyStack (proven branch)
         run: |
-          git clone https://github.com/cozystack/cozystack.git cozystack-upstream
+          # Clone kingdonb fork at proven working commit
+          git clone https://github.com/kingdonb/cozystack.git cozystack-upstream
           cd cozystack-upstream
-          git checkout ${{ github.event.inputs.cozystack_ref || 'main' }}
+          git checkout ${{ github.event.inputs.cozystack_ref || 'merged-branches' }}
+          
+          # Reset to specific base commit if provided
+          if [[ -n "${{ github.event.inputs.base_commit }}" ]]; then
+            git reset --hard ${{ github.event.inputs.base_commit }}
+          fi
+          
           echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "Building from proven commit: $(git log -1 --oneline)"
 
-      - name: Apply ARM64 patches
+      - name: Apply ARM64 conversion patches
         run: |
           cd cozystack-upstream
-          # Apply patches for ARM64 + Spin + Tailscale
+          
+          # Apply our patches to convert x86_64 → ARM64
+          echo "Applying patches to convert proven x86_64 build to ARM64..."
           for patch in ../patches/*.patch; do
             if [ -f "$patch" ]; then
-              echo "Applying $patch"
-              git apply "$patch"
+              echo "Applying $(basename "$patch")"
+              git apply "$patch" || {
+                echo "Failed to apply $patch"
+                git status
+                exit 1
+              }
             fi
           done
+          
+          # Verify patch application
+          echo "Patches applied successfully:"
+          git status --porcelain
 
-      - name: Set up QEMU for ARM64
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Talos images with CozyStack
+      - name: Build Talos images following proven pattern
         id: build
         run: |
           cd cozystack-upstream/packages/core/installer
           
-          # Generate ARM64 profiles (patched version)
-          ./hack/gen-profiles.sh ${{ github.event.inputs.talos_version }}
+          # Build variants based on proven pattern
+          VARIANT="${{ github.event.inputs.build_variant || 'both' }}"
           
-          # Build the assets we need
-          make talos-metal talos-kernel talos-initramfs
+          case "$VARIANT" in
+            "spin-only")
+              echo "Building Spin-only variant"
+              export TAILSCALE_ENABLED=false
+              ./hack/gen-profiles.sh
+              make talos-metal talos-kernel talos-initramfs
+              TAGS="spin-only"
+              ;;
+            "spin-tailscale")
+              echo "Building Spin+Tailscale variant"  
+              export TAILSCALE_ENABLED=true
+              ./hack/gen-profiles.sh
+              make talos-metal talos-kernel talos-initramfs
+              TAGS="spin-tailscale"
+              ;;
+            "both")
+              echo "Building both variants"
+              # Build spin-only first
+              export TAILSCALE_ENABLED=false
+              ./hack/gen-profiles.sh
+              make talos-metal talos-kernel talos-initramfs
+              
+              # Rename assets
+              cd ../../../
+              mkdir -p _out/assets/spin-only
+              mv _out/assets/kernel-arm64 _out/assets/spin-only/
+              mv _out/assets/initramfs-metal-arm64.xz _out/assets/spin-only/
+              
+              # Build spin-tailscale
+              cd packages/core/installer
+              export TAILSCALE_ENABLED=true  
+              ./hack/gen-profiles.sh
+              make talos-metal talos-kernel talos-initramfs
+              
+              # Rename assets
+              cd ../../../
+              mkdir -p _out/assets/spin-tailscale
+              mv _out/assets/kernel-arm64 _out/assets/spin-tailscale/
+              mv _out/assets/initramfs-metal-arm64.xz _out/assets/spin-tailscale/
+              
+              TAGS="both"
+              ;;
+          esac
           
-          # Get Talos version that was built
-          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
+          # Get Talos version from build
+          TALOS_VERSION=$(awk '/^version:/ {print $2}' packages/core/installer/images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION"
+          echo "build-variant=$TAGS" >> $GITHUB_OUTPUT
+          echo "Built Talos version: $TALOS_VERSION, variant: $TAGS"
 
       - name: Extract and package assets
         id: assets

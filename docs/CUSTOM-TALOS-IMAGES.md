@@ -2,44 +2,87 @@
 
 ## Overview
 
-This document specifies the custom ARM64 Talos Linux images needed for the "Home Lab to the Moon and Back" demo. These images will be built using CozyStack's existing Makefile-based build system via **hephy-builder** (formerly kaniko-builder) pattern and stored in GHCR (GitHub Container Registry) for free.
+This document specifies the custom ARM64 Talos Linux images needed for the "Home Lab to the Moon and Back" demo. These images will be built using CozyStack's existing Makefile-based build system via **hephy-builder** pattern and stored in GHCR (GitHub Container Registry) for free.
 
-## Build Strategy: Hephy-Builder + CozyStack Integration
+**Based on proven approach**: [kingdonb/cozystack:merged-branches](https://github.com/kingdonb/cozystack/commits/merged-branches/) - 12 commits ahead with working Spin + Tailscale builds.
 
-**Approach**: Use CozyStack's existing `talos-imager` build system, not custom Dockerfiles
-**Pattern**: Clone `cozystack/cozystack` → Apply ARM64 + Spin/Tailscale patches → Run Make targets
-**Base**: CozyStack's profiles system with custom extensions
-**Target Registry**: `ghcr.io/urmanac/talos-cozystack-demo`
-**Architecture**: ARM64 only (matches t4g instances and future Raspberry Pi CM3)
+## Build Strategy: Proven CozyStack Fork Pattern
 
-## CozyStack Build System Analysis
+**Existing Pattern** (from your `merged-branches`):
+```
+kingdonb/cozystack fork → Manual builds → Docker Hub
+├── cozystack-spin-only (Spin runtime only)  
+├── cozystack-spin-tailscale (Spin + Tailscale)
+└── Custom matchbox image (netboot configuration)
+```
 
-**Current State** (from `cozystack/cozystack` repo):
-- Uses `ghcr.io/siderolabs/imager:${TALOS_VERSION}` for builds
-- Profile generator: `hack/gen-profiles.sh` creates YAML configs
-- Make targets: `talos-metal`, `talos-kernel`, `talos-initramfs`, etc.
-- **Problem**: Only AMD64 architecture supported
-- **Problem**: No Spin or Tailscale extensions included
+**New CI Pattern** (this project):
+```
+urmanac/cozystack-moon-and-back → GitHub Actions → GHCR
+├── Reference kingdonb/cozystack commits c112ec63 → c21b1a86
+├── Automate the proven manual build process
+└── Add ARM64 architecture support
+```
 
-**Our Patches Required**:
-1. **ARM64 Architecture**: Modify profile generator to support `arch: arm64`
-2. **Spin Runtime Extension**: Add SpinKube extension to systemExtensions list
-3. **Tailscale Extension**: Add Tailscale extension to systemExtensions list
-4. **Build Pipeline**: Adapt Make targets to work in GitHub Actions environment
+**Target Registry**: `ghcr.io/urmanac/talos-cozystack-demo`  
+**Architecture**: ARM64 only (matches t4g instances and future Raspberry Pi CM3)  
+**Versioning**: Mirror upstream CozyStack versions exactly (no custom versions)
 
-## Required Extensions
+## Proven Implementation Analysis
 
-### 1. Spin Runtime Extension
-- **Purpose**: Enable SpinKube workloads (WebAssembly on Kubernetes)
-- **Source**: Need to identify/build Spin extension for Talos
-- **Integration**: Add to `systemExtensions` in profile YAML
-- **Validation**: `spin --version` should work on nodes + `spin` RuntimeClass created
+**From `kingdonb/cozystack:merged-branches`** - commit sequence c112ec63 → c21b1a86:
 
-### 2. Tailscale Extension  
-- **Purpose**: Secure networking overlay for home lab integration
-- **Source**: Check if official Talos Tailscale extension exists
-- **Integration**: Add to `systemExtensions` in profile YAML  
-- **Validation**: `tailscale status` should work on nodes
+### Commit c112ec63: `publish (matchbox) to kingdonb on docker.io`
+- **What**: Initial matchbox image publication to Docker Hub
+- **Pattern**: Manual build process established
+- **Registry**: `kingdonb/` namespace on Docker Hub
+
+### Commit 24d566b: `hardcode spin + tailscale versions`  
+- **What**: Pin specific extension versions for reproducibility
+- **Extensions**: Spin runtime + Tailscale pinned to working versions
+- **Approach**: Hardcoded rather than dynamic version fetching
+
+### Commit 06a28cc: `hack/gen-profiles.sh`
+- **What**: Modified profile generator for custom extensions
+- **Changes**: Added Spin and Tailscale to extensions list
+- **Pattern**: Patch CozyStack's existing build system
+
+### Commit c581c59: `-tailscale` then e9c41ce: `Revert "-tailscale"`
+- **What**: Testing different extension combinations
+- **Variants**: spin-only vs. spin-tailscale builds
+- **Strategy**: Multiple image variants for different use cases
+
+### Commit ce8b1bb: `REGISTRY := kingdonb`
+- **What**: Registry destination configuration
+- **Pattern**: Simple variable override in Makefile
+- **Target**: Docker Hub personal registry
+
+### Commit 3d8e781: `build complete` 
+- **What**: Successful manual build validation
+- **Assets**: All custom Talos images built successfully
+- **Quality**: Proven working state
+
+### Commit 1c8e759: `matchbox.tag`
+- **What**: Matchbox image tagging/versioning
+- **Integration**: Matchbox configured for custom Talos images
+- **Pattern**: Separate matchbox build after Talos assets
+
+### Commit c21b1a86: `publish matchbox image`
+- **What**: Final step - publish matchbox with custom configuration  
+- **Complete**: End-to-end custom netboot infrastructure
+- **Status**: Production-ready manual process
+
+## Our Automation Strategy
+
+**Convert proven manual process → GitHub Actions automation:**
+
+1. **Clone kingdonb/cozystack** at working commit
+2. **Apply ARM64 patches** on top of proven x86_64 changes
+3. **Update registry target** from `kingdonb` → `ghcr.io/urmanac`
+4. **Automate build sequence** following exact commit pattern
+5. **Generate both variants**: spin-only and spin-tailscale
+6. **Build custom matchbox** with ARM64 asset configuration
+7. **Version mirroring** to match upstream CozyStack releases
 
 ## Hephy-Builder Integration
 
