@@ -2,27 +2,44 @@
 
 ## Overview
 
-This document specifies the custom ARM64 Talos Linux images needed for the "Home Lab to the Moon and Back" demo. These images will be built via GitHub Actions and stored in GHCR (GitHub Container Registry) for free.
+This document specifies the custom ARM64 Talos Linux images needed for the "Home Lab to the Moon and Back" demo. These images will be built using CozyStack's existing Makefile-based build system via **hephy-builder** (formerly kaniko-builder) pattern and stored in GHCR (GitHub Container Registry) for free.
 
-## Base Requirements
+## Build Strategy: Hephy-Builder + CozyStack Integration
 
-**Base Image**: `ghcr.io/siderolabs/talos:v1.9.0` (ARM64)
+**Approach**: Use CozyStack's existing `talos-imager` build system, not custom Dockerfiles
+**Pattern**: Clone `cozystack/cozystack` → Apply ARM64 + Spin/Tailscale patches → Run Make targets
+**Base**: CozyStack's profiles system with custom extensions
 **Target Registry**: `ghcr.io/urmanac/talos-cozystack-demo`
 **Architecture**: ARM64 only (matches t4g instances and future Raspberry Pi CM3)
+
+## CozyStack Build System Analysis
+
+**Current State** (from `cozystack/cozystack` repo):
+- Uses `ghcr.io/siderolabs/imager:${TALOS_VERSION}` for builds
+- Profile generator: `hack/gen-profiles.sh` creates YAML configs
+- Make targets: `talos-metal`, `talos-kernel`, `talos-initramfs`, etc.
+- **Problem**: Only AMD64 architecture supported
+- **Problem**: No Spin or Tailscale extensions included
+
+**Our Patches Required**:
+1. **ARM64 Architecture**: Modify profile generator to support `arch: arm64`
+2. **Spin Runtime Extension**: Add SpinKube extension to systemExtensions list
+3. **Tailscale Extension**: Add Tailscale extension to systemExtensions list
+4. **Build Pipeline**: Adapt Make targets to work in GitHub Actions environment
 
 ## Required Extensions
 
 ### 1. Spin Runtime Extension
 - **Purpose**: Enable SpinKube workloads (WebAssembly on Kubernetes)
-- **Source**: TBD - need to identify official Spin extension or build custom
-- **Validation**: `spin --version` should work on nodes
-- **Runtime Class**: Should create `spin` RuntimeClass in Kubernetes
+- **Source**: Need to identify/build Spin extension for Talos
+- **Integration**: Add to `systemExtensions` in profile YAML
+- **Validation**: `spin --version` should work on nodes + `spin` RuntimeClass created
 
-### 2. Tailscale Extension
+### 2. Tailscale Extension  
 - **Purpose**: Secure networking overlay for home lab integration
-- **Source**: Official Talos Tailscale extension (if available) or custom build
+- **Source**: Check if official Talos Tailscale extension exists
+- **Integration**: Add to `systemExtensions` in profile YAML  
 - **Validation**: `tailscale status` should work on nodes
-- **Config**: Will be configured via Talos machine config
 
 ## Image Tags Strategy
 
