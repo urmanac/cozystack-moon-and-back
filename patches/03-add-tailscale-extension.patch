@@ -1,0 +1,54 @@
+From: Hephy Builder <hephy@urmanac.com>
+Date: Sat, 16 Nov 2025 00:00:00 +0000
+Subject: [PATCH 3/3] Add Tailscale extension for secure networking
+
+This patch adds the Tailscale extension to enable secure mesh networking
+between the cloud deployment and home lab, supporting the "moon and back"
+demo architecture.
+
+The Tailscale extension provides:
+- Tailscale daemon on each Talos node  
+- Secure WireGuard mesh networking
+- Integration with home lab infrastructure
+
+Note: This patch assumes the existence of a Tailscale extension for Talos.
+The official siderolabs/tailscale extension may need ARM64 support verification.
+
+---
+ packages/core/installer/hack/gen-profiles.sh | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/packages/core/installer/hack/gen-profiles.sh b/packages/core/installer/hack/gen-profiles.sh
+index 1234567..fedcba9 100755
+--- a/packages/core/installer/hack/gen-profiles.sh
++++ b/packages/core/installer/hack/gen-profiles.sh
+@@ -5,7 +5,7 @@ set -u
+ TMPDIR=$(mktemp -d)
+ PROFILES="initramfs kernel iso installer nocloud metal"
+ FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
+-EXTENSIONS="drbd zfs spin"
++EXTENSIONS="drbd zfs spin tailscale"
+ SPIN_EXTENSION_VERSION="${SPIN_EXTENSION_VERSION:-latest}"
++TAILSCALE_EXTENSION_VERSION="${TAILSCALE_EXTENSION_VERSION:-latest}"
+ 
+ mkdir -p images/talos/profiles
+@@ -28,6 +28,11 @@ printf "fetching spin runtime extension: "
+ SPIN_IMAGE="ghcr.io/spinkube/spin-talos-extension:${SPIN_EXTENSION_VERSION}"
+ echo "$SPIN_IMAGE"
+ 
++# Special handling for Tailscale extension
++printf "fetching tailscale extension: "
++TAILSCALE_IMAGE="ghcr.io/siderolabs/tailscale:${TAILSCALE_EXTENSION_VERSION}"
++echo "$TAILSCALE_IMAGE"
++
+ for extension in $EXTENSIONS; do
+   printf "fetching %s version: " "$extension"
+   extension_var=$(echo "$extension" | tr '[:lower:]' '[:upper:]' | tr - _)_IMAGE
+@@ -74,6 +79,7 @@ input:
+     - imageRef: ${DRBD_IMAGE}
+     - imageRef: ${ZFS_IMAGE}
+     - imageRef: ${SPIN_IMAGE}
++    - imageRef: ${TAILSCALE_IMAGE}
+ output:
+   kind: ${kind}
+   imageOptions: ${image_options}

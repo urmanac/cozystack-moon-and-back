@@ -1,0 +1,52 @@
+From: Hephy Builder <hephy@urmanac.com>
+Date: Sat, 16 Nov 2025 00:00:00 +0000
+Subject: [PATCH 2/3] Add Spin runtime extension for SpinKube support
+
+This patch adds the Spin runtime extension to the Talos system extensions,
+enabling WebAssembly workloads via SpinKube on the CozyStack cluster.
+
+The Spin extension provides:
+- Spin runtime for WebAssembly applications
+- RuntimeClass configuration for Kubernetes
+- OCI artifact support for Spin applications
+
+Note: This patch assumes the existence of a Spin extension for Talos.
+If no official extension exists, this will need to be built separately.
+
+---
+ packages/core/installer/hack/gen-profiles.sh | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/packages/core/installer/hack/gen-profiles.sh b/packages/core/installer/hack/gen-profiles.sh
+index abcdefg..1234567 100755
+--- a/packages/core/installer/hack/gen-profiles.sh
++++ b/packages/core/installer/hack/gen-profiles.sh
+@@ -5,6 +5,7 @@ set -u
+ TMPDIR=$(mktemp -d)
+ PROFILES="initramfs kernel iso installer nocloud metal"
+ FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
+-EXTENSIONS="drbd zfs"
++EXTENSIONS="drbd zfs spin"
++SPIN_EXTENSION_VERSION="${SPIN_EXTENSION_VERSION:-latest}"
+ 
+ mkdir -p images/talos/profiles
+@@ -22,6 +23,11 @@ for firmware in $FIRMWARES; do
+   export "$firmware_var=$image"
+ done
+ 
++# Special handling for Spin extension (may not be in official extensions catalog)
++printf "fetching spin runtime extension: "
++SPIN_IMAGE="ghcr.io/spinkube/spin-talos-extension:${SPIN_EXTENSION_VERSION}"
++echo "$SPIN_IMAGE"
++
+ for extension in $EXTENSIONS; do
+   printf "fetching %s version: " "$extension"
+   extension_var=$(echo "$extension" | tr '[:lower:]' '[:upper:]' | tr - _)_IMAGE
+@@ -67,6 +73,7 @@ input:
+     - imageRef: ${QLOGIC_FIRMWARE_IMAGE}
+     - imageRef: ${DRBD_IMAGE}
+     - imageRef: ${ZFS_IMAGE}
++    - imageRef: ${SPIN_IMAGE}
+ output:
+   kind: ${kind}
+   imageOptions: ${image_options}
