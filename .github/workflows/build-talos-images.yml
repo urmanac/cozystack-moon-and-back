@@ -1,0 +1,201 @@
+name: Build Custom Talos Images
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'talos/**'
+      - '.github/workflows/build-talos-images.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'talos/**'
+      - '.github/workflows/build-talos-images.yml'
+  workflow_dispatch:
+    inputs:
+      tag_suffix:
+        description: 'Additional tag suffix (optional)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: urmanac/talos-cozystack-demo
+
+jobs:
+  build-custom-talos-arm64:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Branch-based tags
+            type=ref,event=branch
+            type=ref,event=pr
+            
+            # Semantic versioning
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            
+            # Date-based tags for reproducibility
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}
+            
+            # Demo stable tag (only on main branch)
+            type=raw,value=demo-stable,enable={{is_default_branch}}
+            
+            # Latest tag (only on main branch)
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+            # Custom suffix if provided
+            type=raw,value=v1.9.0-spin-tailscale${{ github.event.inputs.tag_suffix || '' }},enable={{is_default_branch}}
+
+      - name: Build and push custom Talos image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./talos
+          file: ./talos/Dockerfile.custom-extensions
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            TALOS_VERSION=v1.9.0
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Generate build summary
+        run: |
+          echo "## 🚀 Custom Talos Image Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pull commands:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Pull latest build:" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+          echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
+          echo "  extract-boot-assets /output/talos/custom/" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  test-image-smoke:
+    runs-on: ubuntu-latest
+    needs: build-custom-talos-arm64
+    steps:
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Test image pull
+        run: |
+          # Test that image can be pulled without authentication (public)
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+
+      - name: Basic smoke test
+        run: |
+          # Test that image has expected labels and structure
+          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          
+          # Check for expected labels (build metadata)
+          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \
+            --format='{{index .Config.Labels "org.opencontainers.image.source"}}'
+          
+          # Verify it's ARM64 architecture
+          ARCH=$(docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \
+            --format='{{.Architecture}}')
+          if [ "$ARCH" != "arm64" ]; then
+            echo "❌ Expected arm64, got $ARCH"
+            exit 1
+          fi
+          
+          echo "✅ Image smoke tests passed"
+
+  update-docs:
+    runs-on: ubuntu-latest
+    needs: [build-custom-talos-arm64, test-image-smoke]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image references in docs
+        run: |
+          # Update docs/CUSTOM-TALOS-IMAGES.md with latest digest
+          DIGEST="${{ needs.build-custom-talos-arm64.outputs.image-digest }}"
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          # Create/update build info in docs
+          cat > docs/LATEST-BUILD.md << EOF
+          # Latest Custom Talos Image Build
+          
+          **Built:** $DATE  
+          **Digest:** \`$DIGEST\`  
+          **Tags:** 
+          \`\`\`
+          ${{ needs.build-custom-talos-arm64.outputs.image-tags }}
+          \`\`\`
+          
+          **Pull command for demo:**
+          \`\`\`bash
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          \`\`\`
+          
+          **For AWS bastion:**
+          \`\`\`bash
+          # Extract boot assets for matchbox server
+          docker run --rm -v /opt/matchbox/assets:/output \\
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\
+            extract-boot-assets /output/talos/custom/
+          \`\`\`
+          EOF
+
+      - name: Commit updated docs
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/LATEST-BUILD.md
+          git commit -m "Update latest build info: ${{ needs.build-custom-talos-arm64.outputs.image-digest }}" || exit 0
+          git push
