@@ -41,31 +41,34 @@ This document specifies the custom ARM64 Talos Linux images needed for the "Home
 - **Integration**: Add to `systemExtensions` in profile YAML  
 - **Validation**: `tailscale status` should work on nodes
 
-## Image Tags Strategy
+## Hephy-Builder Integration
 
+**Repository Pattern**:
 ```
-ghcr.io/urmanac/talos-cozystack-demo:v1.9.0-spin-tailscale-latest
-ghcr.io/urmanac/talos-cozystack-demo:v1.9.0-spin-tailscale-20251116
-ghcr.io/urmanac/talos-cozystack-demo:demo-stable
+urmanac/cozystack-moon-and-back
+├── .github/workflows/build-talos-images.yml
+├── patches/
+│   ├── 01-arm64-architecture.patch
+│   ├── 02-add-spin-extension.patch
+│   └── 03-add-tailscale-extension.patch
+└── scripts/
+    └── build-cozystack-images.sh
 ```
 
-- **Latest**: Rolling tag for development
-- **Dated**: Immutable builds for reproducibility  
-- **demo-stable**: Tag used in actual demo (never moves)
+**Build Process**:
+1. **Clone**: `git clone https://github.com/cozystack/cozystack.git`
+2. **Patch**: Apply patches for ARM64 + Spin + Tailscale
+3. **Build Dependencies**: Ensure `docker`, `skopeo`, `jq`, `yq` available
+4. **Generate Profiles**: Run patched `hack/gen-profiles.sh` for ARM64
+5. **Build Images**: Run `make talos-metal talos-kernel talos-initramfs`
+6. **Extract Assets**: Get kernel/initramfs for matchbox server
+7. **Push**: Upload to GHCR with proper tags
 
-## Build Requirements
-
-### GitHub Actions Free Tier Constraints
-- ✅ ARM64 builds supported via `runs-on: ubuntu-latest` with QEMU
-- ✅ GHCR pushes free for public repos
-- ✅ Build time should be <30 minutes (generous free tier limits)
-- ❌ No cost for storage (public images)
-
-### Build Dependencies
-- Docker buildx for multi-arch builds
-- QEMU for ARM64 emulation
-- GitHub token with `packages:write` permission
-- Reference to existing `kingdon-ci/kaniko-builder` patterns
+**GitHub Actions Environment**:
+- ✅ `runs-on: ubuntu-latest` has Docker + build tools
+- ✅ QEMU available for ARM64 emulation via `docker/setup-qemu-action`
+- ✅ Can run `make` commands directly (no kaniko needed)
+- ✅ GHCR authentication via `GITHUB_TOKEN`
 
 ## Integration Points
 
