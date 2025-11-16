@@ -1,0 +1,10 @@
+diff --git a/scripts/common-envs.mk b/scripts/common-envs.mk
+index 5baff83..abc123 100644
+--- a/scripts/common-envs.mk
++++ b/scripts/common-envs.mk
+@@ -1,4 +1,4 @@
+-REGISTRY := kingdonb
++REGISTRY := ghcr.io/urmanac
+ PUSH := 1
+ LOAD := 0
+ COZYSTACK_VERSION = $(patsubst v%,%,$(shell git describe --tags))

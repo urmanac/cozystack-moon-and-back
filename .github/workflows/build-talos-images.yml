@@ -93,7 +93,10 @@ jobs:
               echo "Applying $(basename "$patch")"
               git apply "$patch" || {
                 echo "Failed to apply $patch"
+                echo "Git status after failure:"
                 git status
+                echo "Patch content:"
+                cat "$patch"
                 exit 1
               }
             fi
