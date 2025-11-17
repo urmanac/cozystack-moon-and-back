@@ -39,3 +39,14 @@ index bbe932d..new456 100755
  output:
    kind: ${kind}
    imageOptions: ${image_options}
++diff --git a/packages/core/installer/hack/gen-versions.sh b/packages/core/installer/hack/gen-versions.sh
++index 143356b..new789 100755
++--- a/packages/core/installer/hack/gen-versions.sh
+++++ b/packages/core/installer/hack/gen-versions.sh
++@@ -2,7 +2,7 @@
++ 
++ FIRMWARES="amd-ucode amdgpu-firmware bnx2-bnx2x i915-ucode intel-ice-firmware intel-ucode qlogic-firmware"
++-EXTENSIONS="drbd zfs"
+++EXTENSIONS="drbd zfs spin tailscale"
++ 
++ talos_version=${1:-$(skopeo --override-os linux --override-arch amd64 list-tags docker://ghcr.io/siderolabs/imager | jq -r '.Tags[]' | grep '^v[0-9]\+.[0-9]\+.[0-9]\+$' | sort -V | tail -n 1)}
