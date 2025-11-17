@@ -413,6 +413,12 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: urmanac/talos-cozystack-demo
     steps:
+      - name: Install crane for container inspection
+        run: |
+          # Install crane (container registry tool) for FROM scratch container testing
+          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
+          crane version
+
       - name: Log in to GitHub Container Registry  
         uses: docker/login-action@v3
         with:
