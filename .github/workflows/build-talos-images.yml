@@ -108,8 +108,15 @@ jobs:
 
       - name: Build Talos images following proven pattern
         id: build
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          PUSH: 1
+          LOAD: 0
         run: |
           cd cozystack-upstream/packages/core/installer
+          
+          # Override registry for our build
+          echo "Building with REGISTRY=$REGISTRY"
           
           # Build variants based on proven pattern
           VARIANT="${{ github.event.inputs.build_variant || 'both' }}"
