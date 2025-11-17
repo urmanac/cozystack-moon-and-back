@@ -40,6 +40,8 @@ jobs:
       kernel-digest: ${{ steps.assets.outputs.kernel-digest }}
       initramfs-digest: ${{ steps.assets.outputs.initramfs-digest }}
       talos-version: ${{ steps.build.outputs.talos-version }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+      test-image: ${{ steps.extract-first-tag.outputs.first-tag }}
     
     steps:
       - name: Checkout repository
@@ -259,6 +261,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Extract first tag for testing
+        id: extract-first-tag
+        run: |
+          # Get the first tag from the metadata output for smoke testing
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "first-tag=$FIRST_TAG" >> $GITHUB_OUTPUT
+          echo "Using tag for smoke test: $FIRST_TAG"
+
       - name: Generate build summary
         run: |
           echo "## 🚀 Custom Talos Image Build Complete" >> $GITHUB_STEP_SUMMARY
@@ -309,8 +319,8 @@ jobs:
       - name: Test asset extraction
         run: |
           # Test that container can be pulled and assets extracted
-          # Use the timestamped tag that gets created on all branches
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64"
+          # Use the first tag from the actual build output
+          IMAGE_TAG="${{ needs.build-cozystack-talos-arm64.outputs.test-image }}"
           echo "Testing image: $IMAGE_TAG"
           docker pull "$IMAGE_TAG"
           
