@@ -1,3 +1,8 @@
+---
+title: "Documentation"
+layout: page
+---
+
 # 📚 CozyStack ARM64 Documentation
 
 Welcome to the comprehensive documentation for the **CozyStack ARM64 Project** - validating ARM64 architecture in the cloud before committing to bare-metal hardware.
