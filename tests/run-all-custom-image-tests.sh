@@ -44,6 +44,19 @@ fi
 ((TOTAL_TESTS++))
 echo ""
 
+# Test 3: Cost Strategy and Budget Validation
+echo "Test 3: Cost tracking and budget validation"
+echo "============================================"
+if bash tests/cost/22-cost-tracking.sh; then
+    echo "✅ Test 3 PASSED"
+    ((PASSED_TESTS++))
+else
+    echo "❌ Test 3 FAILED"
+    ((FAILED_TESTS++))
+fi
+((TOTAL_TESTS++))
+echo ""
+
 # Summary
 echo "📊 Test Results Summary"
 echo "======================"
