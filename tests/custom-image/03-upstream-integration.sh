@@ -34,7 +34,7 @@ test_complete_asset_array_structure() {
   echo "🔍 Testing: Complete asset array structure with validation"
   
   # GIVEN: Container built with upstream system
-  # WHEN: Extracting assets
+  # WHEN: Extracting assets using crane (proper tool for FROM scratch containers)
   # THEN: Complete directory structure with boot/, containers/, validation/
   
   IMAGE="ghcr.io/urmanac/talos-cozystack-demo:demo-stable"
@@ -42,13 +42,28 @@ test_complete_asset_array_structure() {
   
   mkdir -p "$TEST_DIR"
   
-  # Extract all assets
-  docker run --rm -v "$TEST_DIR:/output" "$IMAGE" \
-    sh -c "cp -r /assets/* /output/" >/dev/null 2>&1 || {
-    echo "❌ Failed to extract assets from container"
-    rm -rf "$TEST_DIR"
-    return 1
-  }
+  # Extract all assets using crane (handles FROM scratch containers)
+  if command -v crane >/dev/null 2>&1; then
+    cd "$TEST_DIR" && crane export "$IMAGE" | tar -xf - 2>/dev/null || {
+      echo "❌ Failed to extract assets from container using crane"
+      rm -rf "$TEST_DIR"
+      return 1
+    }
+  else
+    # Fallback to docker cp method (but won't work with FROM scratch)
+    docker create --name temp-test-$$ "$IMAGE" >/dev/null 2>&1 || {
+      echo "❌ Failed to create container (install crane for better FROM scratch support)"
+      rm -rf "$TEST_DIR"
+      return 1
+    }
+    docker cp temp-test-$$:/assets/. "$TEST_DIR/" >/dev/null 2>&1 || {
+      echo "❌ Failed to extract assets from container"
+      docker rm temp-test-$$ >/dev/null 2>&1
+      rm -rf "$TEST_DIR"
+      return 1
+    }
+    docker rm temp-test-$$ >/dev/null 2>&1
+  fi
   
   # Check for new structure
   EXPECTED_STRUCTURE=(
