@@ -1,5 +1,5 @@
 diff --git a/packages/core/installer/hack/gen-profiles.sh b/packages/core/installer/hack/gen-profiles.sh
-index bbe932d..new456 100755
+index bbe932d..abcdef0 100755
 --- a/packages/core/installer/hack/gen-profiles.sh
 +++ b/packages/core/installer/hack/gen-profiles.sh
 @@ -5,7 +5,7 @@ set -u
@@ -39,11 +39,8 @@ index bbe932d..new456 100755
  output:
    kind: ${kind}
    imageOptions: ${image_options}
-   outFormat: ${out_format}
- EOT
- done
 diff --git a/packages/core/installer/hack/gen-versions.sh b/packages/core/installer/hack/gen-versions.sh
-index 143356b..new789 100755
+index 143356b..bcdef01 100755
 --- a/packages/core/installer/hack/gen-versions.sh
 +++ b/packages/core/installer/hack/gen-versions.sh
 @@ -2,7 +2,7 @@
