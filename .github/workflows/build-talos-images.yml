@@ -118,70 +118,61 @@ jobs:
           # Override registry for our build
           echo "Building with REGISTRY=$REGISTRY"
           
-          # Build variants based on proven pattern
-          VARIANT="${{ github.event.inputs.build_variant || 'both' }}"
+          # Generate profiles (this will now use ARM64 architecture)
+          echo "Generating ARM64 profiles with dynamic extension versions..."
+          ./hack/gen-profiles.sh
           
-          case "$VARIANT" in
-            "spin-only")
-              echo "Building Spin-only variant"
-              export TAILSCALE_ENABLED=false
-              ./hack/gen-profiles.sh
-              make talos-metal talos-kernel talos-initramfs
-              TAGS="spin-only"
-              ;;
-            "spin-tailscale")
-              echo "Building Spin+Tailscale variant"  
-              export TAILSCALE_ENABLED=true
-              ./hack/gen-profiles.sh
-              make talos-metal talos-kernel talos-initramfs
-              TAGS="spin-tailscale"
-              ;;
-            "both")
-              echo "Building both variants"
-              # Build spin-only first
-              export TAILSCALE_ENABLED=false
-              ./hack/gen-profiles.sh
-              make talos-metal talos-kernel talos-initramfs
-              
-              # Rename assets
-              cd ../../../
-              mkdir -p _out/assets/spin-only
-              mv _out/assets/kernel-arm64 _out/assets/spin-only/
-              mv _out/assets/initramfs-metal-arm64.xz _out/assets/spin-only/
-              
-              # Build spin-tailscale
-              cd packages/core/installer
-              export TAILSCALE_ENABLED=true  
-              ./hack/gen-profiles.sh
-              make talos-metal talos-kernel talos-initramfs
-              
-              # Rename assets
-              cd ../../../
-              mkdir -p _out/assets/spin-tailscale
-              mv _out/assets/kernel-arm64 _out/assets/spin-tailscale/
-              mv _out/assets/initramfs-metal-arm64.xz _out/assets/spin-tailscale/
-              
-              TAGS="both"
-              ;;
-          esac
+          # Show what profile was generated for debugging
+          echo "Generated metal profile:"
+          cat images/talos/profiles/metal.yaml
+          
+          # Build ARM64 Talos assets  
+          echo "Building ARM64 Talos kernel and initramfs..."
+          make talos-kernel talos-initramfs
           
           # Get Talos version from build
-          TALOS_VERSION=$(awk '/^version:/ {print $2}' packages/core/installer/images/talos/profiles/metal.yaml)
+          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
-          echo "build-variant=$TAGS" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION, variant: $TAGS"
+          echo "build-variant=spin-tailscale-arm64" >> $GITHUB_OUTPUT
+          echo "Built Talos version: $TALOS_VERSION for ARM64"
 
       - name: Extract and package assets
         id: assets
         run: |
           cd cozystack-upstream
           
+          # List what files were actually generated
+          echo "Files in _out/assets:"
+          ls -la _out/assets/
+          
           # Create output directory structure
           mkdir -p assets/talos/arm64
           
-          # Copy built assets
-          cp _out/assets/kernel-arm64 assets/talos/arm64/vmlinuz
-          cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/initramfs.xz
+          # Copy built ARM64 assets (filenames will be based on architecture)
+          # Check multiple possible naming patterns
+          if [ -f "_out/assets/kernel-arm64" ]; then
+            cp _out/assets/kernel-arm64 assets/talos/arm64/vmlinuz
+          elif [ -f "_out/assets/vmlinuz-arm64" ]; then
+            cp _out/assets/vmlinuz-arm64 assets/talos/arm64/vmlinuz
+          elif [ -f "_out/assets/vmlinuz" ]; then
+            cp _out/assets/vmlinuz assets/talos/arm64/vmlinuz
+          else
+            echo "❌ Could not find kernel file. Available files:"
+            ls -la _out/assets/
+            exit 1
+          fi
+          
+          if [ -f "_out/assets/initramfs-metal-arm64.xz" ]; then
+            cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/initramfs.xz
+          elif [ -f "_out/assets/initramfs-arm64.xz" ]; then
+            cp _out/assets/initramfs-arm64.xz assets/talos/arm64/initramfs.xz
+          elif [ -f "_out/assets/initramfs.xz" ]; then
+            cp _out/assets/initramfs.xz assets/talos/arm64/initramfs.xz
+          else
+            echo "❌ Could not find initramfs file. Available files:"
+            ls -la _out/assets/
+            exit 1
+          fi
           
           # Create checksums
           cd assets/talos/arm64
@@ -194,6 +185,9 @@ jobs:
           
           echo "kernel-digest=sha256:$KERNEL_DIGEST" >> $GITHUB_OUTPUT
           echo "initramfs-digest=sha256:$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          
+          echo "✅ Successfully extracted ARM64 assets:"
+          ls -la .
 
       - name: Create asset container
         run: |
