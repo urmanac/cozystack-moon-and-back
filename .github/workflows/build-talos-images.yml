@@ -13,23 +13,17 @@ on:
       - '.github/workflows/build-talos-images.yml'
   workflow_dispatch:
     inputs:
-      cozystack_ref:
-        description: 'CozyStack git ref (branch/tag/commit)'
+      cozystack_commit:
+        description: 'CozyStack upstream commit (for reproducible builds)'
         required: false
-        default: 'merged-branches'  # Use proven working branch
-      base_commit:
-        description: 'Base commit from kingdonb fork'
-        required: false
-        default: 'c21b1a86'  # Latest working commit
+        default: 'HEAD'  # Use latest main
       build_variant:
-        description: 'Build variant'
+        description: 'Build variant (deprecated - now always builds ARM64 with Spin+Tailscale)'
         required: false
-        default: 'both'
+        default: 'arm64-spin-tailscale'
         type: choice
         options:
-          - 'both'
-          - 'spin-only'
-          - 'spin-tailscale'
+          - 'arm64-spin-tailscale'
 
 env:
   REGISTRY: ghcr.io
@@ -67,20 +61,21 @@ jobs:
           jq --version
           yq --version
 
-      - name: Clone and setup CozyStack (proven branch)
+      - name: Clone and setup CozyStack (upstream main)
         run: |
-          # Clone kingdonb fork at proven working commit
-          git clone https://github.com/kingdonb/cozystack.git cozystack-upstream
+          # Clone upstream CozyStack at main branch (clean, current)
+          git clone https://github.com/cozystack/cozystack.git cozystack-upstream
           cd cozystack-upstream
-          git checkout ${{ github.event.inputs.cozystack_ref || 'merged-branches' }}
+          git checkout main
           
-          # Reset to specific base commit if provided
-          if [[ -n "${{ github.event.inputs.base_commit }}" ]]; then
-            git reset --hard ${{ github.event.inputs.base_commit }}
+          # Pin to specific commit for reproducible builds
+          COZYSTACK_COMMIT="${{ github.event.inputs.cozystack_commit || 'HEAD' }}"
+          if [[ "$COZYSTACK_COMMIT" != "HEAD" ]]; then
+            git reset --hard "$COZYSTACK_COMMIT"
           fi
           
           echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          echo "Building from proven commit: $(git log -1 --oneline)"
+          echo "Building from CozyStack upstream: $(git log -1 --oneline)"
 
       - name: Apply ARM64 conversion patches
         run: |
@@ -106,7 +101,7 @@ jobs:
           echo "Patches applied successfully:"
           git status --porcelain
 
-      - name: Build Talos images following proven pattern
+      - name: Build ARM64 Talos images with Spin+Tailscale
         id: build
         env:
           REGISTRY: ${{ env.REGISTRY }}
@@ -118,8 +113,8 @@ jobs:
           # Override registry for our build
           echo "Building with REGISTRY=$REGISTRY"
           
-          # Generate profiles (this will now use ARM64 architecture)
-          echo "Generating ARM64 profiles with dynamic extension versions..."
+          # Generate ARM64 profiles with dynamic Spin+Tailscale versions
+          echo "Generating ARM64 profiles with latest Spin+Tailscale extensions..."
           ./hack/gen-profiles.sh
           
           # Show what profile was generated for debugging
@@ -133,8 +128,8 @@ jobs:
           # Get Talos version from build
           TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
-          echo "build-variant=spin-tailscale-arm64" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION for ARM64"
+          echo "build-variant=arm64-spin-tailscale" >> $GITHUB_OUTPUT
+          echo "Built Talos version: $TALOS_VERSION for ARM64 with latest Spin+Tailscale"
 
       - name: Extract and package assets
         id: assets
