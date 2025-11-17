@@ -329,6 +329,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-cozystack-talos-arm64, test-image-smoke]
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write  # Need write permission to push docs
+      pages: write     # Need pages permission for GitHub Pages  
+      id-token: write  # Need for pages deployment
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: urmanac/talos-cozystack-demo
