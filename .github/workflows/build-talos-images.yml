@@ -81,25 +81,58 @@ jobs:
         run: |
           cd cozystack-upstream
           
-          # Apply our patches to convert x86_64 → ARM64
-          echo "Applying patches to convert proven x86_64 build to ARM64..."
-          for patch in ../patches/*.patch; do
-            if [ -f "$patch" ]; then
-              echo "Applying $(basename "$patch")"
-              git apply "$patch" || {
-                echo "Failed to apply $patch"
-                echo "Git status after failure:"
-                git status
-                echo "Patch content:"
-                cat "$patch"
+          # Show exact file states before patching
+          echo "=== BEFORE PATCHING ==="
+          echo "gen-profiles.sh EXTENSIONS line:"
+          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh || echo "Not found"
+          echo ""
+          echo "gen-profiles.sh arch lines:"
+          grep -n -A2 -B2 "arch:" packages/core/installer/hack/gen-profiles.sh || echo "Not found"
+          echo ""
+          echo "gen-versions.sh EXTENSIONS line:"
+          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh || echo "Not found"
+          
+          echo ""
+          echo "=== PATCH CONTENT ==="
+          cat ../patches/01-arm64-spin-tailscale.patch
+          
+          echo ""
+          echo "=== APPLYING PATCH WITH -v FOR VERBOSE OUTPUT ==="
+          git apply -v ../patches/01-arm64-spin-tailscale.patch || {
+            echo ""
+            echo "=== PATCH FAILED - TRYING WITH --3way ==="
+            git apply --3way ../patches/01-arm64-spin-tailscale.patch || {
+              echo ""
+              echo "=== TRYING WITH --ignore-whitespace ==="
+              git apply --ignore-whitespace ../patches/01-arm64-spin-tailscale.patch || {
+                echo ""
+                echo "=== MANUAL DIFF CHECK ==="
+                echo "Checking if files exist:"
+                ls -la packages/core/installer/hack/gen-*.sh
+                echo ""
+                echo "File checksums:"
+                md5sum packages/core/installer/hack/gen-*.sh
+                echo ""
+                echo "First 10 lines of gen-profiles.sh:"
+                head -10 packages/core/installer/hack/gen-profiles.sh
+                echo ""
+                echo "Lines around EXTENSIONS in gen-profiles.sh:"
+                grep -n -A3 -B3 EXTENSIONS packages/core/installer/hack/gen-profiles.sh
                 exit 1
               }
-            fi
-          done
+            }
+          }
           
-          # Verify patch application
-          echo "Patches applied successfully:"
+          echo ""
+          echo "=== AFTER PATCHING ==="
+          echo "Modified files:"
           git status --porcelain
+          echo ""
+          echo "gen-profiles.sh EXTENSIONS line (should show spin tailscale):"
+          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh
+          echo ""
+          echo "gen-versions.sh EXTENSIONS line (should show spin tailscale):"
+          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh
 
       - name: Build ARM64 Talos images with Spin+Tailscale
         id: build
