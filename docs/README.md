@@ -1,0 +1,167 @@
+# 📚 CozyStack ARM64 Documentation
+
+Welcome to the comprehensive documentation for the **CozyStack ARM64 Project** - validating ARM64 architecture in the cloud before committing to bare-metal hardware.
+
+> 🎯 **Mission**: Transform a 76°F office space heater into a cloud-validated, ARM64-first CozyStack deployment for [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**.
+
+---
+
+## 🏗️ Architecture Decision Records
+
+📋 **[ADR Index](ADRs/)** - Formal architectural decisions and their rationale
+
+| ADR | Title | Status |
+|-----|-------|--------|
+| [ADR-001](ADRs/ADR-001-ARM64-ARCHITECTURE.md) | ARM64 Architecture Choice | ✅ Accepted |
+| [ADR-002](ADRs/ADR-002-TDG-METHODOLOGY.md) | Test-Driven Generation Methodology | ✅ Accepted |
+| [ADR-003](ADRs/ADR-003-PATCH-GENERATION.md) | Patch Generation Best Practices | ✅ Accepted |
+
+---
+
+## 📖 Implementation Guides
+
+🔧 **Step-by-step guides for building and deploying the system**
+
+### Infrastructure Setup
+- 📦 **[Custom Talos Images](guides/CUSTOM-TALOS-IMAGES.md)** - Building ARM64 Talos with Spin + Tailscale
+- ☁️ **[AWS Infrastructure Handoff](guides/AWS-INFRASTRUCTURE-HANDOFF.md)** - Cloud validation setup
+- 🌐 **[Matchbox Server Config](guides/MATCHBOX-SERVER-CONFIG.md)** - Network boot configuration
+
+### Development & Testing  
+- 🧪 **[TDG Implementation Story](TDG-PLAN.md)** - Test-Driven Generation journey
+- 📊 **[Repository Overview](REPO-OVERVIEW.md)** - Project structure and organization
+
+---
+
+## 💰 Cost Analysis & Planning
+
+📈 **Financial planning and cost validation**
+
+- 💵 **[Detailed Cost Analysis](COST-ANALYSIS.md)** - Comprehensive cost breakdown and projections
+- 📊 **[Cost Summary](COST.md)** - Quick cost reference and baseline metrics
+
+**Budget Targets:**
+- **Baseline**: <$0.10/month (idle infrastructure)  
+- **Validation**: <$15/month (active testing periods)
+- **Demo**: Efficient resource usage for live presentation
+
+---
+
+## 🚀 Quick Start
+
+### 1. **Validate ARM64 Talos Images**
+```bash
+# Pull the demo-ready ARM64 image
+docker pull ghcr.io/urmanac/talos-cozystack-demo:demo-stable
+
+# Extract boot assets for validation
+mkdir -p /tmp/talos-assets
+docker create --name temp ghcr.io/urmanac/talos-cozystack-demo:demo-stable true
+docker cp temp:/assets/. /tmp/talos-assets/
+docker rm temp
+
+# Verify ARM64 Talos files
+ls -la /tmp/talos-assets/talos/arm64/
+```
+
+### 2. **Run Local Validation**
+```bash
+# Comprehensive validation suite (6 stages)
+./validate-complete.sh
+
+# Individual validations
+./validate-patch.sh                    # Patch application
+yq eval '.jobs.build-cozystack-talos-arm64' .github/workflows/build-talos-images.yml  # Workflow syntax
+```
+
+### 3. **Deploy to AWS (Optional)**
+```bash
+# See AWS Infrastructure Handoff guide
+cd terraform/
+terraform init
+terraform plan -var="environment=demo"
+terraform apply
+```
+
+---
+
+## 📊 Project Status
+
+### ✅ **Completed Milestones**
+- [x] ARM64 Talos image builds with Spin + Tailscale extensions
+- [x] GitHub Actions CI/CD pipeline with comprehensive validation
+- [x] Container image publishing to GitHub Container Registry  
+- [x] Test-Driven Generation methodology implementation
+- [x] Comprehensive documentation with ADRs
+
+### 🔄 **Current Phase: Documentation & Pages**
+- [ ] GitHub Pages setup with beautiful navigation
+- [ ] Integration with upstream CozyStack build system  
+- [ ] Performance benchmarking on AWS t4g instances
+- [ ] Cost optimization and monitoring setup
+
+### 🎯 **December 4, 2025 Demo Targets**
+- [ ] Live SpinKube demonstration on ARM64
+- [ ] Tailscale mesh networking showcase
+- [ ] Real-time cost transparency during presentation
+- [ ] Home lab transition plan presentation
+
+---
+
+## 🛠️ Development Workflow
+
+### **Test-Driven Generation (TDG) Process**
+1. **🔍 Understand** - Analyze requirements and constraints
+2. **🧪 Local Validation** - Run complete validation suite
+3. **✅ Validate Changes** - Ensure patches apply cleanly  
+4. **🚀 Generate Solutions** - Use proper tooling (Git, not manual)
+5. **📚 Document Decisions** - Capture knowledge in ADRs
+
+### **Validation Gates**
+```bash
+# Before any commit
+./validate-complete.sh          # 6-stage comprehensive validation
+
+# Before any push  
+git apply --check patches/*.patch  # Patch compatibility
+yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
+```
+
+---
+
+## 🌟 Key Technologies
+
+| Technology | Purpose | ARM64 Status |
+|------------|---------|--------------|
+| **Talos Linux** | Immutable Kubernetes OS | ✅ Full support |
+| **CozyStack** | Kubernetes distribution | 🔄 Custom ARM64 build |
+| **Spin** | WebAssembly runtime | ✅ Native ARM64 |
+| **Tailscale** | Mesh networking | ✅ ARM64 optimized |
+| **AWS Graviton** | ARM64 cloud validation | ✅ t4g instances |
+
+---
+
+## 📞 Support & Contributing
+
+- **🐛 Issues**: [GitHub Issues](https://github.com/urmanac/cozystack-moon-and-back/issues)
+- **💡 Discussions**: [GitHub Discussions](https://github.com/urmanac/cozystack-moon-and-back/discussions)
+- **📧 Contact**: [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
+
+### **Contributing Guidelines**
+1. Follow TDG methodology (see [ADR-002](ADRs/ADR-002-TDG-METHODOLOGY.md))
+2. Run local validation before PR submission
+3. Document architectural decisions in ADRs
+4. Update cost analysis for infrastructure changes
+
+---
+
+## 🏷️ Project Meta
+
+- **License**: Apache 2.0
+- **Status**: Active Development (Demo: Dec 4, 2025)
+- **Architecture**: ARM64-first with cloud validation
+- **Methodology**: Test-Driven Generation (TDG)
+
+---
+
+📍 **Navigation**: [🏠 Project Home](../README.md) | [🏗️ ADRs](ADRs/) | [📖 Guides](guides/)

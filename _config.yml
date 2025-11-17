@@ -1,0 +1,43 @@
+# GitHub Pages Configuration
+theme: minima
+title: "CozyStack ARM64 Project"
+description: "Validating ARM64 CozyStack in the cloud before committing to bare-metal hardware"
+baseurl: "/cozystack-moon-and-back"
+url: "https://urmanac.github.io"
+
+# Site settings
+author:
+  name: "CozySummit Virtual 2025 Team"
+  email: "contact@example.com"
+
+# Navigation
+header_pages:
+  - docs/README.md
+  - docs/ADRs/README.md
+  - docs/TDG-PLAN.md
+  - README.md
+
+# Plugins (GitHub Pages compatible)
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Markdown processing
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Show excerpts on homepage
+show_excerpts: true
+
+# GitHub-specific settings
+github_username: urmanac
+repository: urmanac/cozystack-moon-and-back
+
+# Social links
+social_links:
+  - https://github.com/urmanac/cozystack-moon-and-back
+  - https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/
