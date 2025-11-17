@@ -51,6 +51,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y skopeo jq
           
+          # Install crane (container registry tool)
+          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
+          
           # Install mikefarah/yq (required by CozyStack)
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
@@ -58,6 +61,7 @@ jobs:
           # Verify versions
           docker --version
           skopeo --version  
+          crane version
           jq --version
           yq --version
 
@@ -81,58 +85,28 @@ jobs:
         run: |
           cd cozystack-upstream
           
-          # Show exact file states before patching
-          echo "=== BEFORE PATCHING ==="
-          echo "gen-profiles.sh EXTENSIONS line:"
-          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh || echo "Not found"
-          echo ""
-          echo "gen-profiles.sh arch lines:"
-          grep -n -A2 -B2 "arch:" packages/core/installer/hack/gen-profiles.sh || echo "Not found"
-          echo ""
-          echo "gen-versions.sh EXTENSIONS line:"
-          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh || echo "Not found"
-          
-          echo ""
-          echo "=== PATCH CONTENT ==="
-          cat ../patches/01-arm64-spin-tailscale.patch
-          
-          echo ""
-          echo "=== APPLYING PATCH WITH -v FOR VERBOSE OUTPUT ==="
-          git apply -v ../patches/01-arm64-spin-tailscale.patch || {
-            echo ""
-            echo "=== PATCH FAILED - TRYING WITH --3way ==="
-            git apply --3way ../patches/01-arm64-spin-tailscale.patch || {
-              echo ""
-              echo "=== TRYING WITH --ignore-whitespace ==="
-              git apply --ignore-whitespace ../patches/01-arm64-spin-tailscale.patch || {
-                echo ""
-                echo "=== MANUAL DIFF CHECK ==="
-                echo "Checking if files exist:"
-                ls -la packages/core/installer/hack/gen-*.sh
-                echo ""
-                echo "File checksums:"
-                md5sum packages/core/installer/hack/gen-*.sh
-                echo ""
-                echo "First 10 lines of gen-profiles.sh:"
-                head -10 packages/core/installer/hack/gen-profiles.sh
-                echo ""
-                echo "Lines around EXTENSIONS in gen-profiles.sh:"
-                grep -n -A3 -B3 EXTENSIONS packages/core/installer/hack/gen-profiles.sh
+          # Apply our patches to convert to ARM64 with Spin+Tailscale
+          echo "Applying ARM64+Spin+Tailscale patches..."
+          for patch in ../patches/*.patch; do
+            if [ -f "$patch" ]; then
+              echo "Applying $(basename "$patch")"
+              git apply "$patch" || {
+                echo "Failed to apply $patch"
+                git status
+                cat "$patch"
                 exit 1
               }
-            }
-          }
+            fi
+          done
+          
+          # Verify patch application
+          echo "Patches applied successfully:"
+          git status --porcelain
           
           echo ""
-          echo "=== AFTER PATCHING ==="
-          echo "Modified files:"
-          git status --porcelain
-          echo ""
-          echo "gen-profiles.sh EXTENSIONS line (should show spin tailscale):"
-          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh
-          echo ""
-          echo "gen-versions.sh EXTENSIONS line (should show spin tailscale):"
-          grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh
+          echo "Verified changes:"
+          echo "- EXTENSIONS: $(grep EXTENSIONS= packages/core/installer/hack/gen-profiles.sh)"
+          echo "- Architecture: $(grep 'arch:' packages/core/installer/hack/gen-profiles.sh)"
 
       - name: Build ARM64 Talos images with Spin+Tailscale
         id: build
