@@ -1,21 +1,14 @@
----
-title: "Latest Build"
-layout: page
----
-
 # Latest CozyStack ARM64 Talos Build
 
-**Built:** 2025-11-17 02:56:23 UTC  
+**Built:** 2025-11-17 05:31:24 UTC  
 **Talos Version:** `v1.11.5`  
-**CozyStack Commit:** `a62f757`  
-**Build Target:** `image`  
-**Total Assets:** 7  
+**CozyStack Commit:** `${COZYSTACK_COMMIT:-'unknown'}`  
 **Build Target:** `assets`  
 **Total Assets:** 6  
 
 **Asset Digests:**
 - **Kernel:** `sha256:2777e9bd8d98736ba632fa8cb34ff9f7815779e806d52a5379da872213bb1da8`
-- **Initramfs:** `sha256:717729e430c8f6602c529fd0c3417cd49f0d5778f4baf9c0d45e6c69f71ec69b`
+- **Initramfs:** `sha256:df16c0e2460fea951c2f4755cde07d86602401e2b0c06e7ba0b375e2f71e6f9f`
 
 **Container Image:**
 ```bash
