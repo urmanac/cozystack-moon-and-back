@@ -1,0 +1,12 @@
+diff --git a/packages/core/installer/hack/gen-profiles.sh b/packages/core/installer/hack/gen-profiles.sh
+index bbe932d..abcdef0 100755
+--- a/packages/core/installer/hack/gen-profiles.sh
++++ b/packages/core/installer/hack/gen-profiles.sh
+@@ -4,7 +4,7 @@ set -u
+ TMPDIR=$(mktemp -d)
+ PROFILES="initramfs kernel iso installer nocloud metal"
+ FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
+-EXTENSIONS="drbd zfs"
++EXTENSIONS="drbd zfs spin tailscale"
+ 
+ mkdir -p images/talos/profiles
