@@ -199,9 +199,10 @@ jobs:
           
           # Create Dockerfile for asset container
           cat > Dockerfile.assets << 'EOF'
-          FROM scratch
+          FROM alpine:latest
           COPY assets/ /assets/
           COPY scripts/extract-boot-assets.sh /extract-boot-assets
+          RUN chmod +x /extract-boot-assets
           ENTRYPOINT ["/extract-boot-assets"]
           EOF
           
