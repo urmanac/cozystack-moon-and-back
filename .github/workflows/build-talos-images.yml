@@ -1,0 +1,380 @@
+name: Build Custom Talos Images (CozyStack + ARM64)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'patches/**'
+      - '.github/workflows/build-talos-images.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'patches/**' 
+      - '.github/workflows/build-talos-images.yml'
+  workflow_dispatch:
+    inputs:
+      cozystack_commit:
+        description: 'CozyStack upstream commit (for reproducible builds)'
+        required: false
+        default: 'HEAD'  # Use latest main
+      build_variant:
+        description: 'Build variant (deprecated - now always builds ARM64 with Spin+Tailscale)'
+        required: false
+        default: 'arm64-spin-tailscale'
+        type: choice
+        options:
+          - 'arm64-spin-tailscale'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: urmanac/talos-cozystack-demo
+
+jobs:
+  build-cozystack-talos-arm64:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      kernel-digest: ${{ steps.assets.outputs.kernel-digest }}
+      initramfs-digest: ${{ steps.assets.outputs.initramfs-digest }}
+      talos-version: ${{ steps.build.outputs.talos-version }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+      test-image: ${{ steps.extract-first-tag.outputs.first-tag }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          # Install CozyStack build dependencies
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          
+          # Install crane (container registry tool)
+          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
+          
+          # Install mikefarah/yq (required by CozyStack)
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          
+          # Verify versions
+          docker --version
+          skopeo --version  
+          crane version
+          jq --version
+          yq --version
+
+      - name: Clone and setup CozyStack (upstream main)
+        run: |
+          # Clone upstream CozyStack at main branch (clean, current)
+          git clone https://github.com/cozystack/cozystack.git cozystack-upstream
+          cd cozystack-upstream
+          git checkout main
+          
+          # Pin to specific commit for reproducible builds
+          COZYSTACK_COMMIT="${{ github.event.inputs.cozystack_commit || 'HEAD' }}"
+          if [[ "$COZYSTACK_COMMIT" != "HEAD" ]]; then
+            git reset --hard "$COZYSTACK_COMMIT"
+          fi
+          
+          echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "Building from CozyStack upstream: $(git log -1 --oneline)"
+
+      - name: Apply ARM64 conversion patches
+        run: |
+          cd cozystack-upstream
+          
+          # Apply our patches to convert to ARM64 with Spin+Tailscale
+          echo "Applying ARM64+Spin+Tailscale patches..."
+          for patch in ../patches/*.patch; do
+            if [ -f "$patch" ]; then
+              echo "Applying $(basename "$patch")"
+              git apply "$patch" || {
+                echo "Failed to apply $patch"
+                git status
+                cat "$patch"
+                exit 1
+              }
+            fi
+          done
+          
+          # Verify patch application
+          echo "Patches applied successfully:"
+          git status --porcelain
+          
+          echo ""
+          echo "Verified changes:"
+          echo "- EXTENSIONS: $(grep EXTENSIONS= packages/core/installer/hack/gen-profiles.sh)"
+          echo "- Architecture: $(grep 'arch:' packages/core/installer/hack/gen-profiles.sh)"
+
+      - name: Build ARM64 Talos images with Spin+Tailscale
+        id: build
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          PUSH: 1
+          LOAD: 0
+        run: |
+          cd cozystack-upstream/packages/core/installer
+          
+          # Override registry for our build
+          echo "Building with REGISTRY=$REGISTRY"
+          
+          # Generate ARM64 profiles with dynamic Spin+Tailscale versions
+          echo "Generating ARM64 profiles with latest Spin+Tailscale extensions..."
+          ./hack/gen-profiles.sh
+          
+          # Show what profile was generated for debugging
+          echo "Generated metal profile:"
+          cat images/talos/profiles/metal.yaml
+          
+          # Build ARM64 Talos assets  
+          echo "Building ARM64 Talos kernel and initramfs..."
+          make talos-kernel talos-initramfs
+          
+          # Get Talos version from build
+          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
+          echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
+          echo "build-variant=arm64-spin-tailscale" >> $GITHUB_OUTPUT
+          echo "Built Talos version: $TALOS_VERSION for ARM64 with latest Spin+Tailscale"
+
+      - name: Extract and package assets
+        id: assets
+        run: |
+          cd cozystack-upstream
+          
+          # List what files were actually generated
+          echo "Files in _out/assets:"
+          ls -la _out/assets/
+          
+          # Create output directory structure
+          mkdir -p assets/talos/arm64
+          
+          # Copy built ARM64 assets (filenames will be based on architecture)
+          # Check multiple possible naming patterns
+          if [ -f "_out/assets/kernel-arm64" ]; then
+            cp _out/assets/kernel-arm64 assets/talos/arm64/vmlinuz
+          elif [ -f "_out/assets/vmlinuz-arm64" ]; then
+            cp _out/assets/vmlinuz-arm64 assets/talos/arm64/vmlinuz
+          elif [ -f "_out/assets/vmlinuz" ]; then
+            cp _out/assets/vmlinuz assets/talos/arm64/vmlinuz
+          else
+            echo "❌ Could not find kernel file. Available files:"
+            ls -la _out/assets/
+            exit 1
+          fi
+          
+          if [ -f "_out/assets/initramfs-metal-arm64.xz" ]; then
+            cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/initramfs.xz
+          elif [ -f "_out/assets/initramfs-arm64.xz" ]; then
+            cp _out/assets/initramfs-arm64.xz assets/talos/arm64/initramfs.xz
+          elif [ -f "_out/assets/initramfs.xz" ]; then
+            cp _out/assets/initramfs.xz assets/talos/arm64/initramfs.xz
+          else
+            echo "❌ Could not find initramfs file. Available files:"
+            ls -la _out/assets/
+            exit 1
+          fi
+          
+          # Create checksums
+          cd assets/talos/arm64
+          sha256sum vmlinuz > vmlinuz.sha256
+          sha256sum initramfs.xz > initramfs.xz.sha256
+          
+          # Output digests for tracking
+          KERNEL_DIGEST=$(sha256sum vmlinuz | cut -d' ' -f1)
+          INITRAMFS_DIGEST=$(sha256sum initramfs.xz | cut -d' ' -f1)
+          
+          echo "kernel-digest=sha256:$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          echo "initramfs-digest=sha256:$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          
+          echo "✅ Successfully extracted ARM64 assets:"
+          ls -la .
+
+      - name: Create asset container
+        run: |
+          cd cozystack-upstream
+          
+          # Create Dockerfile for asset container
+          cat > Dockerfile.assets << 'EOF'
+          FROM scratch
+          COPY assets/ /assets/
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          platforms: linux/arm64,linux/amd64
+
+      - name: Log in to GitHub Container Registry  
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata and build container
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Talos version tag
+            type=raw,value=${{ steps.build.outputs.talos-version }}-arm64-spin-tailscale
+            
+            # Date-based tag for reproducibility  
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-arm64
+            
+            # Demo stable tag (only on main branch)
+            type=raw,value=demo-stable,enable={{is_default_branch}}
+            
+            # Latest tag (only on main branch)
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push asset container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./cozystack-upstream
+          file: ./cozystack-upstream/Dockerfile.assets
+          platforms: linux/arm64,linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract first tag for testing
+        id: extract-first-tag
+        run: |
+          # Get the first tag from the metadata output for smoke testing
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "first-tag=$FIRST_TAG" >> $GITHUB_OUTPUT
+          echo "Using tag for smoke test: $FIRST_TAG"
+
+      - name: Generate build summary
+        run: |
+          echo "## 🚀 Custom Talos Image Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pull commands:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "# Pull latest build (demo-stable only available on main):" >> $GITHUB_STEP_SUMMARY  
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "# Pull PR build (demo-stable available after merge to main):" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY  
+            echo "# For testing asset extraction:" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "docker run --rm -v /tmp/test-assets:/output \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64 \\" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "  extract-boot-assets /output/talos/custom/" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  test-image-smoke:
+    runs-on: ubuntu-latest
+    needs: build-cozystack-talos-arm64
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: urmanac/talos-cozystack-demo
+    steps:
+      - name: Log in to GitHub Container Registry  
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test asset extraction
+        run: |
+          # Test that container can be pulled and assets extracted
+          # Use the first tag from the actual build output
+          IMAGE_TAG="${{ needs.build-cozystack-talos-arm64.outputs.test-image }}"
+          echo "Testing image: $IMAGE_TAG"
+          docker pull "$IMAGE_TAG"
+          
+          # Test asset extraction - just copy files from the container
+          mkdir -p /tmp/test-assets
+          docker create --name temp-container "$IMAGE_TAG" true
+          docker cp temp-container:/assets/. /tmp/test-assets/
+          docker rm temp-container
+          
+          # Verify ARM64 assets exist
+          test -f /tmp/test-assets/talos/arm64/vmlinuz
+          test -f /tmp/test-assets/talos/arm64/initramfs.xz
+          test -f /tmp/test-assets/talos/arm64/vmlinuz.sha256
+          test -f /tmp/test-assets/talos/arm64/initramfs.xz.sha256
+          
+          echo "✅ CozyStack ARM64 asset tests passed"
+          echo "Assets verified:"
+          ls -la /tmp/test-assets/talos/arm64/
+
+  update-docs:
+    runs-on: ubuntu-latest
+    needs: [build-cozystack-talos-arm64, test-image-smoke]
+    if: github.ref == 'refs/heads/main'
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: urmanac/talos-cozystack-demo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update build documentation
+        run: |
+          # Update docs with latest build info
+          TALOS_VERSION="${{ needs.build-cozystack-talos-arm64.outputs.talos-version }}"
+          KERNEL_DIGEST="${{ needs.build-cozystack-talos-arm64.outputs.kernel-digest }}"
+          INITRAMFS_DIGEST="${{ needs.build-cozystack-talos-arm64.outputs.initramfs-digest }}"
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          cat > docs/LATEST-BUILD.md << EOF
+          # Latest CozyStack ARM64 Talos Build
+          
+          **Built:** $DATE  
+          **Talos Version:** \`$TALOS_VERSION\`  
+          **CozyStack Commit:** \`$COZYSTACK_COMMIT\`  
+          
+          **Asset Digests:**
+          - **Kernel:** \`$KERNEL_DIGEST\`
+          - **Initramfs:** \`$INITRAMFS_DIGEST\`
+          
+          **Container Image:**
+          \`\`\`bash
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          \`\`\`
+          
+          **For AWS Bastion Matchbox Setup:**
+          \`\`\`bash
+          # Extract boot assets
+          docker run --rm -v /opt/matchbox/assets:/output \\
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\
+            /output/talos/arm64/
+          \`\`\`
+          EOF
+
+      - name: Commit updated docs
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/LATEST-BUILD.md
+          git commit -m "Update CozyStack ARM64 build: ${{ needs.build-cozystack-talos-arm64.outputs.talos-version }}" || exit 0
+          git push

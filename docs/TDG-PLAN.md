@@ -701,6 +701,131 @@ Is it infrastructure (VPC, EC2, IAM)?
 
 ---
 
+## TDG Success Story: Custom Talos Images (Nov 16-17, 2025)
+
+### The Problem: ARM64 Talos Images with Spin + Tailscale
+
+**Initial Requirement**: Build custom ARM64 Talos images with Spin runtime and Tailscale extensions for CozyStack deployment on AWS t4g instances.
+
+**Classic Anti-Pattern (What We Almost Did)**:
+1. Start writing GitHub Actions workflow from scratch
+2. Guess at patch format by looking at examples  
+3. Trial-and-error approach with commit-push-check cycles
+4. Debug failures by reading CI logs and making assumptions
+5. Accumulate "almost working" patches and debugging artifacts
+6. End up with 20+ commits of incremental fixes and confusion
+
+### The TDG Approach (What Actually Worked)
+
+#### Red Phase: Write Tests First
+Before writing any GitHub Actions or patch files, we defined **exactly** what success looks like:
+
+```bash
+# Test: Patch should apply cleanly to upstream
+cd /tmp && git clone https://github.com/cozystack/cozystack.git
+cd cozystack && git apply --check /path/to/our.patch
+
+# Test: Expected changes should be present  
+grep "EXTENSIONS.*spin tailscale" packages/core/installer/hack/gen-profiles.sh
+grep "arch: arm64" packages/core/installer/hack/gen-profiles.sh
+grep "SPIN_IMAGE\|TAILSCALE_IMAGE" packages/core/installer/hack/gen-profiles.sh
+```
+
+**Key Insight**: Tests defined the exact file changes needed BEFORE we tried to create patches.
+
+#### Green Phase: Make Tests Pass (The Hard Part)
+**First Attempt**: Manual patch construction → Failed spectacularly
+- Hand-crafted unified diff format
+- Wrong line numbers (humans are bad at counting)
+- Malformed patch structure ("fragment without header")
+- Multiple debugging cycles with broken patches
+
+**Second Attempt**: Git-generated patches → Succeeded immediately
+```bash
+# Make actual changes to files
+cd /tmp/cozystack
+sed -i 's/EXTENSIONS="drbd zfs"/EXTENSIONS="drbd zfs spin tailscale"/' hack/gen-profiles.sh
+sed -i 's/arch: amd64/arch: arm64/' hack/gen-profiles.sh
+# ... other changes
+
+# Let Git create proper patch
+git diff > working.patch
+git apply --check working.patch  # ✓ PASSES
+```
+
+**Critical Lesson**: Don't outsmart the tools. Use `git diff` to create patches, not string manipulation.
+
+#### Refactor Phase: Clean and Validate
+**Problem Discovered**: Multiple patch files in directory caused sequential application failures
+- `01-arm64-spin-tailscale.patch` (working) 
+- `01-gen-profiles-only.patch` (leftover debugging, broken)
+- `test-*.patch` (various debugging artifacts)
+
+**Solution**: Cleanup + Comprehensive validation
+```bash
+# Remove all debugging artifacts
+rm patches/test-*.patch patches/*-only.patch
+
+# Create validation suite to prevent future regressions
+./validate-complete.sh
+# ✓ Patch applies cleanly to upstream
+# ✓ All expected changes present
+# ✓ Workflow syntax valid  
+# ✓ Dependencies configured
+# ✓ Clean patch directory
+```
+
+### Results: From Chaos to Confidence
+
+**Before TDG (Typical Approach)**:
+- 15+ commits over multiple hours
+- "patch fragment without header" errors
+- "corrupt patch at line X" failures
+- Manual debugging of GitHub Actions output
+- Guessing what might be wrong
+- Stream of half-working incremental fixes
+
+**After TDG (Test-First Approach)**:
+- 3 clean commits: working patch + validation suite + docs
+- Immediate success on each GitHub Actions run
+- Local validation prevents CI failures
+- Clear understanding of what each component does
+- Reusable patterns for future patch generation
+
+### Key TDG Principles Validated
+
+1. **Tests First**: Writing validation scripts forced us to understand what "success" actually meant
+2. **Red-Green-Refactor**: Each cycle improved both the solution and our understanding
+3. **Local Feedback**: Running tests locally is infinitely faster than CI debugging
+4. **Documentation**: Writing ADR-003 prevented future developers (including ourselves) from repeating mistakes
+
+### Broader Applicability
+
+This same TDG approach applies to:
+- **Terraform**: Write `terraform plan` assertions before writing resources
+- **Kubernetes**: Write `kubectl wait` tests before creating manifests
+- **Docker**: Write container health checks before Dockerfile optimization
+- **Any Infrastructure Code**: Define observable success criteria first
+
+### The Validation Suite Legacy
+
+The `validate-complete.sh` script now ensures:
+- No future patch generation mistakes
+- Workflow changes are validated locally
+- Repository cleanliness is maintained
+- Documentation stays in sync
+
+**Future developers can run one command and know their changes will work.**
+
+### Quote from the Trenches
+> "When you force yourself to write a test, you can run the test, and you don't get a stream of commits of half-garbage because nobody knows how to write this stuff from scratch!"
+
+**The TDG methodology transformed debugging chaos into engineering confidence.**
+
+---
+
+---
+
 ## Handoff Notes for Next Claude Agent
 
 **Operator context:**

@@ -1,7 +1,7 @@
 # 🚀 Home Lab to the Moon and Back
 
-> **Proving you can run CozyStack in the cloud for less than a cup of coffee per month**  
-> *And then fly it back home to Raspberry Pi land*
+> **Validating ARM64 CozyStack in the cloud before committing to bare-metal**  
+> *Smart validation strategy: Test first, buy hardware second*
 
 [![CozySummit Virtual 2025](https://img.shields.io/badge/CozySummit-Dec%204%2C%202025-blue)](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
@@ -13,11 +13,11 @@
 
 Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first CozyStack deployment** that:
 
-- ✅ Runs on AWS free tier (~$0.10/month - just EBS costs)
-- ✅ Validates on t4g.small instances before Raspberry Pi deployment
+- ✅ Validates ARM64 architecture on t4g instances before Raspberry Pi purchase
+- ✅ Runs experiments within reasonable budget (baseline: $0.08/month, validation: <$15/month)
 - ✅ Netboots Talos Linux with custom extensions (Spin + Tailscale)
 - ✅ Demonstrates SpinKube on ARM64 in production-like conditions
-- ✅ Proves the economics of hybrid cloud for home labs
+- ✅ Proves when cloud makes sense vs. efficient home lab hardware
 - ✅ Maintains zero GDPR risk (private networking only)
 
 **Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
@@ -85,17 +85,34 @@ VPC: 10.20.0.0/16 (eu-west-1)
 
 ## 📊 The Economics
 
-| Resource | Monthly Cost | Free Tier | Actual Cost |
-|----------|-------------|-----------|-------------|
-| t4g.small compute (750 hrs) | ~$13.00 | ✅ FREE | $0.00 |
-| EBS storage (gp3) | ~$0.88/GB | ❌ Paid | ~$0.04 |
-| Data transfer (private) | $0.00 | ✅ FREE | $0.00 |
-| NAT Gateway | ~$32.00 | ⚠️ Partial | ~$0.04 |
-| **Total** | **~$45** | **Free tier magic** | **~$0.08** |
+### Cost Strategy
 
-**Target**: Keep monthly cost under $0.10 (one dime!) through December 2025.
+**Baseline Infrastructure (no experiments):**
+```
+Bastion (t4g.small, 5hrs/day):  $0.00 (free tier)
+EBS volumes (during runtime):   $0.04/month  
+NAT Gateway (minimal usage):    $0.04/month
+-------------------------------------------------
+Baseline cost:                  $0.08/month
+```
 
-**After free tier expires**: Scale appropriately or return to home (now on efficient ARM64).
+**Validation Phase (5 experiments, 2-3 hours each):**
+```
+3x Talos nodes (t4g.small):     $0.00 (free tier < 750hrs/month)
+4x EBS volumes (8GB each):      $0.25-0.50/session
+NAT Gateway (active egress):    $0.15-0.35/session  
+-------------------------------------------------
+Per experiment session:         $0.40-0.85
+Target validation budget:       <$15/month
+```
+
+**Break-even Analysis:**
+- Home lab power consumption: $30-50/month
+- Cloud validation phase: Target <$15/month
+- Production cloud cost: $25-70/month (estimated)
+- **Decision point**: When cloud exceeds $40/month, efficient ARM64 home lab wins
+
+**Strategy**: Validate in cloud for less than the cost of buying wrong hardware ($500+ Raspberry Pi mistake), then deploy with confidence.
 
 ---
 
@@ -130,6 +147,7 @@ Run tests: `./tests/run-all.sh`
 - 🧪 [TDG Plan](https://claude.ai/public/artifacts/e71fc7aa-f756-4c0a-b413-a80672791f7c) - Test-driven development roadmap
 - 🗺️ [Repository Overview](https://claude.ai/public/artifacts/1e7205a0-672a-46c8-8d37-0a2aeec5f657) - Full constellation map
 - 📖 [README](https://claude.ai/public/artifacts/208614e9-7f5c-4824-af43-2a5591ce68c2) - This README.md, gen. Claude Desktop
+- 💰 [COST](docs/COST.md)
 
 ### Repository Constellation
 
