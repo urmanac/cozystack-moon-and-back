@@ -42,14 +42,10 @@ jobs:
         
       - name: Install dependencies
         run: |
-          # Create Gemfile for Jekyll
+          # Create Gemfile for Jekyll with GitHub Pages gems
           cat > Gemfile << 'EOF'
           source "https://rubygems.org"
-          gem "jekyll", "~> 4.3"
-          gem "jekyll-theme-minima"
-          gem "jekyll-feed"
-          gem "jekyll-sitemap" 
-          gem "jekyll-seo-tag"
+          gem "github-pages", group: :jekyll_plugins
           gem "webrick", "~> 1.8"
           EOF
           

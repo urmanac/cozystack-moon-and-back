@@ -17,16 +17,7 @@ header_pages:
   - docs/TDG-PLAN.md
   - README.md
 
-# Collections
-collections:
-  docs:
-    output: true
-    permalink: /:collection/:name/
-  adrs:
-    output: true
-    permalink: /adrs/:name/
-
-# Plugins
+# Plugins (GitHub Pages compatible)
 plugins:
   - jekyll-feed
   - jekyll-sitemap
