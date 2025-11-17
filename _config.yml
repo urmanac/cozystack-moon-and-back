@@ -12,10 +12,10 @@ author:
 
 # Navigation
 header_pages:
-  - docs/README.md
+  - index.md
+  - docs/README.md  
   - docs/ADRs/README.md
-  - docs/TDG-PLAN.md
-  - README.md
+  - docs/LATEST-BUILD.md
 
 # Plugins (GitHub Pages compatible)
 plugins:

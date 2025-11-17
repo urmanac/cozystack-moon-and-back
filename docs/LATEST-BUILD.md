@@ -1,8 +1,15 @@
+---
+title: "Latest Build"
+layout: page
+---
+
 # Latest CozyStack ARM64 Talos Build
 
-**Built:** 2025-11-17 05:08:20 UTC  
+**Built:** 2025-11-17 02:56:23 UTC  
 **Talos Version:** `v1.11.5`  
-**CozyStack Commit:** ``  
+**CozyStack Commit:** `a62f757`  
+**Build Target:** `image`  
+**Total Assets:** 7  
 **Build Target:** `assets`  
 **Total Assets:** 6  
 
@@ -19,9 +26,9 @@ docker pull ghcr.io/urmanac/talos-cozystack-demo:demo-stable
 ```bash
 # Extract complete ARM64 asset array with validation
 mkdir -p /opt/cozystack-assets
-docker run --rm -v /opt/cozystack-assets:/output \
-  ghcr.io/urmanac/talos-cozystack-demo:demo-stable \
-  sh -c "cp -r /assets/* /output/"
+docker create --name temp-extract ghcr.io/urmanac/talos-cozystack-demo:demo-stable
+docker cp temp-extract:/assets/. /opt/cozystack-assets/
+docker rm temp-extract
 
 # Verify checksums
 cd /opt/cozystack-assets/talos/arm64
@@ -34,7 +41,7 @@ cat validation/build-report.txt
 **For AWS Bastion Matchbox Setup:**
 ```bash
 # Extract boot assets for matchbox
-docker run --rm -v /opt/matchbox/assets:/output \
-  ghcr.io/urmanac/talos-cozystack-demo:demo-stable \
-  sh -c "cp /assets/talos/arm64/boot/* /output/"
+docker create --name temp-matchbox ghcr.io/urmanac/talos-cozystack-demo:demo-stable
+docker cp temp-matchbox:/assets/talos/arm64/boot/. /opt/matchbox/assets/
+docker rm temp-matchbox
 ```

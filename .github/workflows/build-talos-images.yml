@@ -497,7 +497,7 @@ jobs:
           
           **Built:** $DATE  
           **Talos Version:** \`$TALOS_VERSION\`  
-          **CozyStack Commit:** \`$COZYSTACK_COMMIT\`  
+          **CozyStack Commit:** \`\${COZYSTACK_COMMIT:-'unknown'}\`  
           **Build Target:** \`$BUILD_TARGET\`  
           **Total Assets:** $ASSET_COUNT  
           
@@ -514,9 +514,9 @@ jobs:
           \`\`\`bash
           # Extract complete ARM64 asset array with validation
           mkdir -p /opt/cozystack-assets
-          docker run --rm -v /opt/cozystack-assets:/output \\
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\
-            sh -c "cp -r /assets/* /output/"
+          docker create --name temp-extract ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          docker cp temp-extract:/assets/. /opt/cozystack-assets/
+          docker rm temp-extract
           
           # Verify checksums
           cd /opt/cozystack-assets/talos/arm64
@@ -529,9 +529,9 @@ jobs:
           **For AWS Bastion Matchbox Setup:**
           \`\`\`bash
           # Extract boot assets for matchbox
-          docker run --rm -v /opt/matchbox/assets:/output \\
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\
-            sh -c "cp /assets/talos/arm64/boot/* /output/"
+          docker create --name temp-matchbox ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          docker cp temp-matchbox:/assets/talos/arm64/boot/. /opt/matchbox/assets/
+          docker rm temp-matchbox
           \`\`\`
           EOF
 
