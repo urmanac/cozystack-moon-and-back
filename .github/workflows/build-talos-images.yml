@@ -311,7 +311,7 @@ jobs:
           
           # Test asset extraction - just copy files from the container
           mkdir -p /tmp/test-assets
-          docker create --name temp-container "$IMAGE_TAG"
+          docker create --name temp-container "$IMAGE_TAG" true
           docker cp temp-container:/assets/. /tmp/test-assets/
           docker rm temp-container
           
