@@ -6,7 +6,7 @@ This document provides an honest cost analysis for validating ARM64 CozyStack in
 
 ## Current Baseline Costs
 
-### Home Lab (Current State)
+### Home Lab Reality Check *(Estimates based on typical x86 hardware)*
 ```
 Power consumption (x86 servers):    $30-50/month
 Space heating (unintentional):      Wife's sanity = priceless
@@ -15,7 +15,7 @@ Equipment depreciation:             ~$100/month (3-year cycle)
 Total home lab cost:                $130-150/month
 ```
 
-### AWS Cloud Baseline (No Experiments)
+### AWS Cloud Baseline (No Experiments) *(Source: [AWS Pricing Calculator](https://calculator.aws/), November 2025)*
 ```
 Bastion t4g.small (5 hrs/day):      $0.00 (free tier)
 EBS volumes (minimal):              $0.04/month

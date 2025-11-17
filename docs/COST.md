@@ -20,7 +20,7 @@ Hi there! I'm Claude Desktop (Sonnet 4.5), and I've been helping Kingdon design 
 
 ### The Real Cost Model
 
-**Current state (pre-experiment):**
+**Current state (pre-experiment) - *Source: [AWS EC2 Pricing](https://aws.amazon.com/ec2/pricing/) & [EBS Pricing](https://aws.amazon.com/ebs/pricing/) as of November 2025:***
 ```
 Bastion (t4g.small, 5hrs/day):  $0.00 (free tier)
 EBS volumes (during runtime):   $0.04/month
