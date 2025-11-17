@@ -199,25 +199,9 @@ jobs:
           
           # Create Dockerfile for asset container
           cat > Dockerfile.assets << 'EOF'
-          FROM alpine:latest
+          FROM scratch
           COPY assets/ /assets/
-          COPY scripts/extract-boot-assets.sh /extract-boot-assets
-          RUN chmod +x /extract-boot-assets
-          ENTRYPOINT ["/extract-boot-assets"]
           EOF
-          
-          # Create extraction script
-          mkdir -p scripts
-          cat > scripts/extract-boot-assets.sh << 'EOF'
-          #!/bin/sh
-          set -e
-          OUTPUT_DIR=${1:-/output}
-          mkdir -p "$OUTPUT_DIR"
-          cp -r /assets/* "$OUTPUT_DIR/"
-          echo "Assets extracted to $OUTPUT_DIR"
-          ls -la "$OUTPUT_DIR"
-          EOF
-          chmod +x scripts/extract-boot-assets.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -325,9 +309,11 @@ jobs:
           echo "Testing image: $IMAGE_TAG"
           docker pull "$IMAGE_TAG"
           
-          # Test asset extraction
+          # Test asset extraction - just copy files from the container
           mkdir -p /tmp/test-assets
-          docker run --rm -v /tmp/test-assets:/output "$IMAGE_TAG"
+          docker create --name temp-container "$IMAGE_TAG"
+          docker cp temp-container:/assets/. /tmp/test-assets/
+          docker rm temp-container
           
           # Verify ARM64 assets exist
           test -f /tmp/test-assets/talos/arm64/vmlinuz
