@@ -830,7 +830,7 @@ The `validate-complete.sh` script now ensures:
 
 **Operator context:**
 - Works at NASA (via Navteca, LLC) but presenting personal work
-- Home lab is space heater problem (15°F warmer office)
+- Home lab generates significant heat and power consumption
 - Already has working home lab with Talos + CozyStack
 - Needs cloud replica for talk demo + to prove economics
 - Conference: CozySummit Virtual 2025, December 4 (~18 days)

@@ -12,8 +12,8 @@ Choose ARM64 as the target architecture for CozyStack deployment instead of the 
 
 **Traditional Home Lab Approach:**
 - Buy expensive hardware first, discover limitations later
-- AMD64 hardware runs hot (76°F office space heater problem)
-- Higher power consumption and cooling costs
+- AMD64 hardware typically runs hot and consumes more power
+- Higher electricity costs and cooling requirements
 - Limited ability to test ARM64 workloads like SpinKube
 
 **Business Context:**
