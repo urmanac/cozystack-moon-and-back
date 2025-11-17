@@ -272,13 +272,23 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull commands:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "# Pull latest build:" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
-          echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "# Pull latest build (demo-stable only available on main):" >> $GITHUB_STEP_SUMMARY  
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "# Pull PR build (demo-stable available after merge to main):" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY  
+            echo "# For testing asset extraction:" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "docker run --rm -v /tmp/test-assets:/output \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64 \\" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "  extract-boot-assets /output/talos/custom/" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
@@ -296,14 +306,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test asset container extraction
+      - name: Test asset extraction
         run: |
           # Test that container can be pulled and assets extracted
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          # Use the timestamped tag that gets created on all branches
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64"
+          echo "Testing image: $IMAGE_TAG"
+          docker pull "$IMAGE_TAG"
           
           # Test asset extraction
           mkdir -p /tmp/test-assets
-          docker run --rm -v /tmp/test-assets:/output ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          docker run --rm -v /tmp/test-assets:/output "$IMAGE_TAG"
           
           # Verify ARM64 assets exist
           test -f /tmp/test-assets/talos/arm64/vmlinuz
