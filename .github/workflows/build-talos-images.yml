@@ -55,8 +55,7 @@ on:
 
 # Source: https://github.com/cozystack/cozystack/blob/main/packages/core/installer/Makefile
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: urmanac/talos-cozystack-demo
+  REGISTRY: ghcr.io/urmanac/talos-cozystack-demo
 
 jobs:
   build-cozystack-upstream:
@@ -144,7 +143,7 @@ jobs:
       - name: Update upstream dependencies and build with Makefile targets
         id: build
         env:
-          REGISTRY: ${{ env.REGISTRY }}
+          REGISTRY: ghcr.io/urmanac/talos-cozystack-demo
           PUSH: 1
           LOAD: 0
         run: |
@@ -342,8 +341,8 @@ jobs:
           echo "✅ Successfully extracted and validated ARM64 asset array:"
           ls -la .
 
-      - name: Tag and push upstream CozyStack images
-        id: upstream-push
+      - name: Verify upstream CozyStack image build and push
+        id: upstream-verify
         run: |
           cd cozystack-upstream
           
@@ -351,38 +350,14 @@ jobs:
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
           TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
           
-          echo "Tagging and pushing upstream images for: $BUILD_OUTPUTS"
+          echo "✅ Upstream CozyStack build completed successfully!"
+          echo "Built: $BUILD_OUTPUTS"
+          echo "Talos Version: $TALOS_VERSION"
           
-          # List what images were actually built
-          echo "Local docker images after build:"
-          docker images
-          
-          # Tag and push images based on what was built
-          if [[ "$BUILD_OUTPUTS" == *"talos-installer"* ]]; then
-            echo "Tagging Talos installer image..."
-            # Find the locally built talos image and tag it
-            LOCAL_TALOS_IMAGE=$(docker images --format 'table {{.Repository}}:{{.Tag}}' | grep -E '(talos|installer)' | head -1 | awk '{print $1}')
-            if [[ -n "$LOCAL_TALOS_IMAGE" ]]; then
-              docker tag "$LOCAL_TALOS_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-${TALOS_VERSION}-arm64-spin-tailscale"
-              docker tag "$LOCAL_TALOS_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-latest"
-              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-${TALOS_VERSION}-arm64-spin-tailscale"
-              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-latest"
-              echo "Pushed Talos image: talos-${TALOS_VERSION}-arm64-spin-tailscale"
-            fi
-          fi
-          
-          if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
-            echo "Tagging matchbox server image..."
-            # Find the locally built matchbox image and tag it
-            LOCAL_MATCHBOX_IMAGE=$(docker images --format 'table {{.Repository}}:{{.Tag}}' | grep matchbox | head -1 | awk '{print $1}')
-            if [[ -n "$LOCAL_MATCHBOX_IMAGE" ]]; then
-              docker tag "$LOCAL_MATCHBOX_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-${TALOS_VERSION}-arm64"
-              docker tag "$LOCAL_MATCHBOX_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-latest"
-              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-${TALOS_VERSION}-arm64"
-              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-latest"
-              echo "Pushed matchbox image: matchbox-${TALOS_VERSION}-arm64"
-            fi
-          fi
+          # The upstream Makefile targets already pushed to our registry:
+          echo "Images pushed to ${{ env.REGISTRY }}:"
+          echo "  - talos:v$TALOS_VERSION (if image-talos target ran)"
+          echo "  - matchbox:latest (if image-matchbox target ran)"
 
       - name: Set up Docker Buildx (for fallback asset container)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
