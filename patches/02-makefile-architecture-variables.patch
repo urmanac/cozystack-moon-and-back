@@ -1,5 +1,5 @@
 diff --git a/packages/core/installer/Makefile b/packages/core/installer/Makefile
-index a51e7b6..059ff24 100644
+index a51e7b61..09117623 100644
 --- a/packages/core/installer/Makefile
 +++ b/packages/core/installer/Makefile
 @@ -34,12 +34,12 @@ image-cozystack:
@@ -19,4 +19,16 @@ index a51e7b6..059ff24 100644
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
- 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
+diff --git a/packages/core/installer/images/matchbox/Dockerfile b/packages/core/installer/images/matchbox/Dockerfile
+index 1083ab26..510928e6 100644
+--- a/packages/core/installer/images/matchbox/Dockerfile
++++ b/packages/core/installer/images/matchbox/Dockerfile
+@@ -1,6 +1,6 @@
+ FROM quay.io/poseidon/matchbox:v0.10.0
+ 
+-COPY _out/assets/initramfs-metal-amd64.xz /var/lib/matchbox/assets/initramfs.xz
+-COPY _out/assets/kernel-amd64 /var/lib/matchbox/assets/vmlinuz
++COPY _out/assets/initramfs-metal-arm64.xz /var/lib/matchbox/assets/initramfs.xz
++COPY _out/assets/kernel-arm64 /var/lib/matchbox/assets/vmlinuz
+ COPY packages/core/installer/images/matchbox/groups /var/lib/matchbox/groups
+ COPY packages/core/installer/images/matchbox/profiles /var/lib/matchbox/profiles
