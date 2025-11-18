@@ -6,6 +6,26 @@ This document maps the constellation of repositories that support the "Home Lab 
 
 **For the next Claude agent**: Use this as a reference map. Don't rebuild what exists - integrate it. Each repo serves a specific purpose in the ecosystem.
 
+## Demo Strategy & Expected Blockers
+
+**Demo approach**: Speed run showing CozyStack bootstrap through **ClickOps in dashboard**
+- **NOT traditional GitOps** (manual YAML editing) 
+- **ClickOps → GitOps**: Dashboard creates HelmReleases, stores in cozy-fleet
+- **Focus**: ARM64-specific needs, not comprehensive CozyStack installation
+- **Show moving parts**: Provision Kubernetes through dashboard if possible
+
+**Expected blockers we'll handle gracefully**:
+- **Virtualization support**: KubeVirt/virtualization may not work on ARM64
+- **Action plan**: Open GitHub issues, link to them, but don't let them block us
+- **Fallback**: SpinKube WASM modules will work fine on ARM64 
+- **Key insight**: Most CozyStack workloads already work, virtualization is the question mark
+
+**Success criteria**:
+- Audience understands ClickOps → GitOps workflow
+- ARM64 cluster bootstraps successfully  
+- SpinKube demos work (even if virtualization doesn't)
+- Blockers are documented, not ignored
+
 ---
 
 ## Repository Map (By Function)
@@ -71,12 +91,13 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 - **Status**: ⚠️ Unclear if active or superseded by cozy-fleet
 - **Action needed**: Operator to confirm canonical status
 
-#### **kingdon-ci/cozy-fleet** - NEW Flux bootstrap for CozyStack
+#### **kingdon-ci/cozy-fleet** - The canonical Flux repository ⭐
 - **Purpose**: GitOps management of CozyStack clusters
 - **Contains**: Flux controllers, Kustomizations, HelmReleases
-- **Status**: Likely canonical for production CozyStack
+- **Status**: This is THE canonical repo we're using for the demo
 - **Integration**: Bootstrap from this repo for demo cluster
-- **Flux 2.7 opportunity**: Use ExternalArtifact features!
+- **Demo strategy**: ClickOps → HelmReleases → stored in cozy-fleet
+- **Note**: Fleets belong in orgs (kingdon-ci), foundational GitOps principle
 
 **Test for Flux bootstrap:**
 ```bash
@@ -84,17 +105,18 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 # tests/integration/11-flux-bootstrap.sh
 
 test_cozy_fleet_is_canonical() {
-  # GIVEN: Both fleet-infra and cozy-fleet exist
-  # WHEN: Checking commit activity and structure
-  # THEN: cozy-fleet should be the active repo
+  # GIVEN: cozy-fleet is confirmed canonical
+  # WHEN: Preparing for CozySummit demo
+  # THEN: This repo should contain our demo configs
   
-  # This is a manual verification test
-  echo "Manual check: Compare last commit dates"
-  echo "fleet-infra: $(git -C ../fleet-infra log -1 --format=%cd)"
-  echo "cozy-fleet: $(git -C ../cozy-fleet log -1 --format=%cd)"
+  [ -d "../cozy-fleet" ] || {
+    echo "REQUIRED: git clone git@github.com:kingdon-ci/cozy-fleet.git"
+    return 1
+  }
   
-  # Operator should confirm which to use
-  true
+  # Should contain HelmReleases from ClickOps
+  helm_releases=$(find ../cozy-fleet -name "*.yaml" -exec grep -l "kind: HelmRelease" {} \; | wc -l)
+  [ "$helm_releases" -ge 0 ] # May start empty, gets populated via ClickOps
 }
 
 test_flux_external_artifact_support() {
@@ -632,6 +654,30 @@ test_readme_in_each_repo && test_cross_references_documented
 
 **When operator returns:**
 "I've mapped all 8+ repositories in your constellation. The integration tests show we should import aws-accounts modules rather than duplicate, reference talm-demo configs, and use Flux 2.7 ExternalArtifacts for custom Talos images. Which repo should I focus on first?"
+
+---
+
+## Remote Repository Links
+
+**Core repositories accessed during this analysis:**
+
+- **aws-accounts** - `git@github.com:urmanac/aws-accounts.git`
+  - Status: Validated modules for Security Groups, VPCs, Route Tables
+  - Integration: Import terraform modules instead of duplicating
+  - Key modules: vpc, security_groups, route_tables
+  - Branch: main
+
+- **kubeconfig-ca-fetch** - `git@github.com:kingdon-ci/kubeconfig-ca-fetch.git`  
+  - Status: Verified kubeconfig download automation
+  - Integration: Use as-is for cluster access
+  - Purpose: Fetch kubeconfigs with CA bundle verification
+  - Branch: main
+
+- **moonlander** - `git@github.com:kingdon-ci/moonlander.git`
+  - Status: Confirmed Terraform AWS provider setup
+  - Integration: Reference provider configurations
+  - Purpose: AWS infrastructure patterns and provider setup
+  - Branch: main
 
 ---
 
