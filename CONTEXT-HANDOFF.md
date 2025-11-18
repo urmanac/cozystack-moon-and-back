@@ -30,17 +30,21 @@
 - ✅ Professional GitHub Pages site with working navigation and container commands
 - ✅ Complete architectural documentation following proper TDG methodology
 
-## 📋 Future Enhancement Opportunities
-```markdown
-- [ ] Optimize CI for docs-only changes
-  - Add path filtering to GitHub Actions workflow so docs-only changes don't trigger unnecessary Talos image rebuilds or LATEST-BUILD.md updates. Consider using 'paths-ignore' or conditional jobs to skip build when only documentation files change.
-- [ ] Implement dual image strategy
-  - Create separate spin-only and tailscale+spin variants to avoid unused extension loading issues on homogeneous clusters
-- [ ] Add automated dependency updates
-  - Add automated workflow to update CozyStack dependencies and create PRs using gh cli, following Flux CD pattern
-- [ ] Enhanced build dashboard
-  - Add build metrics, historical tracking, deployment status integration to LATEST-BUILD.md
-```
+## 📋 Current Active Issues (Documented in GitHub)
+
+✅ **Issues Created for Remaining Work:**
+- **[Issue #7](https://github.com/urmanac/cozystack-moon-and-back/issues/7)**: Implement dual ARM64 Talos image variants for role-based cluster architecture
+- **[Issue #8](https://github.com/urmanac/cozystack-moon-and-back/issues/8)**: Optimize CI pipeline to skip builds for documentation-only changes
+- **[Issue #9](https://github.com/urmanac/cozystack-moon-and-back/issues/9)**: Enhance TDG test suite with role-based cluster formation and WASM deployment validation  
+- **[Issue #10](https://github.com/urmanac/cozystack-moon-and-back/issues/10)**: Audit and update outdated documentation for accuracy and current project state
+
+## 📁 Files Moved to Attic (Purpose Fulfilled)
+
+✅ **Completed Setup Documentation:**
+- `GITHUB-PAGES-SETUP.md` → `attic/` (GitHub Pages working)
+- `AWS-INFRASTRUCTURE-HANDOFF.md` → `attic/` (Infrastructure established)  
+- `DEMO-MACHINERY.md` → `attic/` (Build system evolved)
+- `CLAUDE.md` → `attic/` (Context superseded by current docs)
 
 ## ✅ Completed Major Milestones
 
@@ -247,7 +251,7 @@ navigation:
 
 ### � Next Sprint Enhancement Ideas
 - **CI Optimization:** Add path filtering for docs-only changes to avoid unnecessary rebuilds
-- **Dual Image Strategy:** Separate spin-only and tailscale+spin variants for homogeneous clusters  
+- **Dual Image Strategy:** Role-based images (compute vs gateway nodes) for proper cluster formation  
 - **Enhanced Dashboard:** Build metrics, historical tracking, deployment status integration
 - **Automated Updates:** Dependency update workflow with automated PR generation
 

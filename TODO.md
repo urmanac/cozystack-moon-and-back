@@ -12,14 +12,14 @@ Current patch applies both extensions to all images:
 +EXTENSIONS="drbd zfs spin tailscale"
 ```
 
-**Issue:** Homogeneous clusters don't need both extensions, causing unnecessary resource usage.
+**Issue:** Kubernetes nodes only reach "Ready" state when ALL configured extensions are active. With tailscale on every node, multiple subnet routers conflict → cluster formation fails.
 
 ### 🎯 Required Tasks
 
 #### 1. **Implement Dual Image Strategy**
-Create separate build variants:
-- **spin-only**: `EXTENSIONS="drbd zfs spin"` 
-- **tailscale+spin**: `EXTENSIONS="drbd zfs spin tailscale"`
+Create separate build variants for different node roles:
+- **compute nodes**: `EXTENSIONS="drbd zfs spin"` (majority of cluster)
+- **gateway node**: `EXTENSIONS="drbd zfs spin tailscale"` (one per cluster)
 
 **Implementation:** Modify workflow to build both variants with different patches/configs.
 
@@ -38,8 +38,9 @@ paths-ignore:
 - Need: Additional patches or workflow matrix for dual variants
 
 ### 💡 Success Criteria
-- ✅ Two distinct ARM64 image variants published
-- ✅ Production-ready images for homogeneous clusters
+- ✅ Two distinct ARM64 image variants published (compute vs gateway roles)
+- ✅ Compute nodes (spin-only) can form cluster and reach Ready state
+- ✅ Gateway node (spin+tailscale) provides subnet routing without conflicts
 - ✅ Docs-only changes don't trigger rebuilds
 
 Repository: `urmanac/cozystack-moon-and-back` on `main` branch  

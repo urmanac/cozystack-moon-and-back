@@ -14,6 +14,7 @@ This directory contains Architecture Decision Records for the CozyStack ARM64 pr
 | [ADR-001](ADR-001-ARM64-ARCHITECTURE.md) | ARM64 Architecture Choice | ✅ Accepted | 2025-11-16 |
 | [ADR-002](ADR-002-TDG-METHODOLOGY.md) | Test-Driven Generation Methodology | ✅ Accepted | 2025-11-16 |
 | [ADR-003](ADR-003-PATCH-GENERATION.md) | Patch Generation Best Practices | ✅ Accepted | 2025-11-16 |
+| [ADR-004](ADR-004-ROLE-BASED-IMAGES.md) | Role-Based Talos Image Architecture | ✅ Accepted | 2025-11-18 |
 
 ## 🏗️ ADR Template
 
