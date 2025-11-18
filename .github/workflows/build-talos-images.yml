@@ -149,6 +149,9 @@ jobs:
         run: |
           cd cozystack-upstream/packages/core/installer
           
+          # Authenticate skopeo to GHCR for upstream Makefile push
+          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
+          
           # Override registry for our build
           echo "Building with REGISTRY=$REGISTRY"
           
