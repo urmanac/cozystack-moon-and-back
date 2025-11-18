@@ -33,24 +33,12 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-          cache-version: 0
-          working-directory: ./
+          cache-version: 1
           
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v4
         
-      - name: Install dependencies
-        run: |
-          # Create Gemfile for Jekyll with GitHub Pages gems
-          cat > Gemfile << 'EOF'
-          source "https://rubygems.org"
-          gem "github-pages", group: :jekyll_plugins
-          gem "webrick", "~> 1.8"
-          EOF
-          
-          bundle install
-          
       - name: Build site
         run: |
           bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
