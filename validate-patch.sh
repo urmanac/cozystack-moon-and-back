@@ -29,39 +29,84 @@ echo "gen-versions.sh EXTENSIONS line:"
 grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh
 
 echo ""
-echo "=== 3. APPLYING PATCH ==="
-# Copy our patch to test location
-cp /Users/yebyen/u/c/cozystack-moon-and-back/patches/01-arm64-spin-tailscale.patch ./test.patch
+echo "=== 3. APPLYING ALL PATCHES ==="
+# Find all patches in our patches directory
+PATCH_DIR="/Users/yebyen/u/c/cozystack-moon-and-back/patches"
+PATCHES=($(find "$PATCH_DIR" -name "*.patch" | sort))
 
-echo "Trying git apply --check (dry run)..."
-if git apply --check test.patch; then
-    echo "✅ Patch check passed!"
-else
-    echo "❌ Patch check failed!"
-    echo ""
-    echo "Trying with --ignore-whitespace..."
-    if git apply --check --ignore-whitespace test.patch; then
-        echo "✅ Patch check passed with --ignore-whitespace!"
+echo "Found ${#PATCHES[@]} patches to validate:"
+for patch in "${PATCHES[@]}"; do
+    echo "  - $(basename "$patch")"
+done
+
+echo ""
+echo "=== 3a. DRY RUN: Checking all patches... ==="
+ALL_PATCHES_VALID=true
+for patch in "${PATCHES[@]}"; do
+    echo "Checking $(basename "$patch")..."
+    if git apply --check "$patch"; then
+        echo "✅ $(basename "$patch") check passed!"
     else
-        echo "❌ Patch check failed even with --ignore-whitespace"
-        echo ""
-        echo "Trying with fuzz..."
-        if git apply --check --ignore-whitespace --reject test.patch; then
-            echo "✅ Patch would apply with rejects/fuzz"
+        echo "❌ $(basename "$patch") check failed!"
+        ALL_PATCHES_VALID=false
+        
+        echo "Trying with --ignore-whitespace..."
+        if git apply --check --ignore-whitespace "$patch"; then
+            echo "⚠️  $(basename "$patch") needs --ignore-whitespace"
         else
-            echo "❌ Patch completely incompatible"
+            echo "❌ $(basename "$patch") completely incompatible"
         fi
     fi
+    echo ""
+done
+
+if [ "$ALL_PATCHES_VALID" = true ]; then
+    echo "✅ ALL PATCHES PASSED DRY RUN!"
+else
+    echo "❌ Some patches failed validation"
+    echo "Continuing with actual application to see detailed failures..."
 fi
 
 echo ""
-echo "=== 4. ACTUALLY APPLYING PATCH ==="
-echo "Applying with verbose output..."
-if git apply -v test.patch; then
-    echo "✅ Patch applied successfully!"
+echo "=== 3b. ACTUAL APPLICATION: Applying all patches... ==="
+APPLIED_PATCHES=()
+FAILED_PATCHES=()
+
+for patch in "${PATCHES[@]}"; do
+    echo "Applying $(basename "$patch")..."
+    if git apply -v "$patch"; then
+        echo "✅ $(basename "$patch") applied successfully!"
+        APPLIED_PATCHES+=("$patch")
+    else
+        echo "❌ $(basename "$patch") application failed"
+        FAILED_PATCHES+=("$patch")
+        
+        echo "Git status after failure:"
+        git status
+        echo ""
+    fi
+    echo ""
+done
+
+echo "=== PATCH APPLICATION SUMMARY ==="
+echo "✅ Applied successfully: ${#APPLIED_PATCHES[@]} patches"
+for patch in "${APPLIED_PATCHES[@]}"; do
+    echo "  - $(basename "$patch")"
+done
+
+if [ ${#FAILED_PATCHES[@]} -gt 0 ]; then
+    echo "❌ Failed to apply: ${#FAILED_PATCHES[@]} patches"
+    for patch in "${FAILED_PATCHES[@]}"; do
+        echo "  - $(basename "$patch")"
+    done
+fi
+
+echo ""
+echo "=== 4. VERIFYING CHANGES ==="
+if [ ${#FAILED_PATCHES[@]} -eq 0 ]; then
+    echo "All patches applied successfully! Verifying changes..."
     
     echo ""
-    echo "=== 5. VERIFYING CHANGES ==="
     echo "Modified files:"
     git status --porcelain
     
@@ -82,15 +127,19 @@ if git apply -v test.patch; then
     grep -A10 "systemExtensions:" packages/core/installer/hack/gen-profiles.sh
     
     echo ""
-    echo "✅ PATCH VALIDATION SUCCESSFUL!"
-else
-    echo "❌ Patch application failed"
+    echo "Makefile asset references (should show arm64):"
+    grep -n "installer-.*\.tar\|kernel-.*\|initramfs-.*\.xz" packages/core/installer/Makefile
+    
     echo ""
-    echo "Git status:"
+    echo "✅ ALL PATCHES VALIDATION SUCCESSFUL!"
+else
+    echo "❌ Some patches failed - see details above"
+    echo ""
+    echo "Final git status:"
     git status
     
     echo ""
-    echo "Diff of what git sees:"
+    echo "Final diff of applied changes:"
     git diff
 fi
 

@@ -8,14 +8,15 @@ index a51e7b6..059ff24 100644
  image-talos:
 -	test -f ../../../_out/assets/installer-amd64.tar || make talos-installer
 -	skopeo copy docker-archive:../../../_out/assets/installer-amd64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
-+	test -f ../../../_out/assets/installer-$(ARCH).tar || make talos-installer
-+	skopeo copy docker-archive:../../../_out/assets/installer-$(ARCH).tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
++	test -f ../../../_out/assets/installer-arm64.tar || make talos-installer
++	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
  
  image-matchbox:
 -	test -f ../../../_out/assets/kernel-amd64 || make talos-kernel
 -	test -f ../../../_out/assets/initramfs-metal-amd64.xz || make talos-initramfs
-+	test -f ../../../_out/assets/kernel-$(ARCH) || make talos-kernel
-+	test -f ../../../_out/assets/initramfs-metal-$(ARCH).xz || make talos-initramfs
++	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
++	test -f ../../../_out/assets/initramfs-metal-arm64.xz || make talos-initramfs
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
+ 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
