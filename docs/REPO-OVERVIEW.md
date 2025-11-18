@@ -9,10 +9,19 @@ This document maps the constellation of repositories that support the "Home Lab 
 ## Demo Strategy & Expected Blockers
 
 **Demo approach**: Speed run showing CozyStack bootstrap through **ClickOps in dashboard**
-- **NOT traditional GitOps** (manual YAML editing) 
-- **ClickOps → GitOps**: Dashboard creates HelmReleases, stores in cozy-fleet
+- **NOT GitOps** - CozyStack currently doesn't depend on Git, only Helm
+- **Dashboard → K8s API**: Creates HelmReleases via CozyStack API (K8s API Aggregation Layer)
+- **Controlled access**: Each CozyStack API object (e.g., "Kubernetes") creates a HelmRelease with a specific chart. RBAC controls which CozyStack APIs tenants can access - "tenant can create databases but not kuberneteses" via API permissions, not direct HelmRelease access
 - **Focus**: ARM64-specific needs, not comprehensive CozyStack installation
 - **Show moving parts**: Provision Kubernetes through dashboard if possible
+
+**Current CozyStack architecture**:
+- **Embedded Helm Chart repository** in CozyStack installer
+- **CozyStack API**: K8s API Aggregation Layer providing controlled abstraction over HelmReleases
+- **Security model**: Tenants access CozyStack APIs (not raw HelmReleases) - prevents arbitrary chart installation
+- **RBAC integration**: Control which CozyStack resource types tenants can create
+- **No Git dependency**: Dashboard calls K8s API directly
+- **Future evolution**: May support Git-based infrastructure or OCI for GitLess Flux
 
 **Expected blockers we'll handle gracefully**:
 - **Virtualization support**: KubeVirt/virtualization may not work on ARM64
@@ -21,10 +30,11 @@ This document maps the constellation of repositories that support the "Home Lab 
 - **Key insight**: Most CozyStack workloads already work, virtualization is the question mark
 
 **Success criteria**:
-- Audience understands ClickOps → GitOps workflow
+- Audience understands **ClickOps → K8s API** workflow (not GitOps)
 - ARM64 cluster bootstraps successfully  
 - SpinKube demos work (even if virtualization doesn't)
 - Blockers are documented, not ignored
+- Clear explanation of CozyStack API Aggregation Layer providing controlled abstraction over HelmReleases
 
 ---
 
@@ -91,12 +101,12 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 - **Status**: ⚠️ Unclear if active or superseded by cozy-fleet
 - **Action needed**: Operator to confirm canonical status
 
-#### **kingdon-ci/cozy-fleet** - The canonical Flux repository ⭐
-- **Purpose**: GitOps management of CozyStack clusters
-- **Contains**: Flux controllers, Kustomizations, HelmReleases
-- **Status**: This is THE canonical repo we're using for the demo
-- **Integration**: Bootstrap from this repo for demo cluster
-- **Demo strategy**: ClickOps → HelmReleases → stored in cozy-fleet
+#### **kingdon-ci/cozy-fleet** - Demo infrastructure GitOps ⭐
+- **Purpose**: GitOps management of demo cluster infrastructure (not CozyStack configs)
+- **Contains**: Flux controllers, Kustomizations for demo environment
+- **Status**: This is THE canonical repo for demo infrastructure
+- **Integration**: Bootstrap demo cluster from this repo
+- **Important**: CozyStack itself doesn't store configs here - uses K8s API directly
 - **Note**: Fleets belong in orgs (kingdon-ci), foundational GitOps principle
 
 **Test for Flux bootstrap:**
@@ -105,18 +115,19 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 # tests/integration/11-flux-bootstrap.sh
 
 test_cozy_fleet_is_canonical() {
-  # GIVEN: cozy-fleet is confirmed canonical
+  # GIVEN: cozy-fleet manages demo infrastructure
   # WHEN: Preparing for CozySummit demo
-  # THEN: This repo should contain our demo configs
+  # THEN: This repo should contain our demo cluster bootstrap
   
   [ -d "../cozy-fleet" ] || {
     echo "REQUIRED: git clone git@github.com:kingdon-ci/cozy-fleet.git"
     return 1
   }
   
-  # Should contain HelmReleases from ClickOps
-  helm_releases=$(find ../cozy-fleet -name "*.yaml" -exec grep -l "kind: HelmRelease" {} \; | wc -l)
-  [ "$helm_releases" -ge 0 ] # May start empty, gets populated via ClickOps
+  # Contains Flux configs for demo infrastructure, NOT CozyStack HelmReleases
+  # CozyStack HelmReleases are created via dashboard → K8s API
+  flux_configs=$(find ../cozy-fleet -name "*.yaml" -exec grep -l "flux" {} \; | wc -l)
+  [ "$flux_configs" -ge 0 ] # Demo infrastructure configs
 }
 
 test_flux_external_artifact_support() {
@@ -138,12 +149,12 @@ test_cozy_fleet_is_canonical && test_flux_external_artifact_support
 
 ### 🎬 Demo & Application Layer
 
-#### **kingdonb/cozystack-talm-demo** - HelmRelease storage & Speed Runs
-- **Purpose**: Record of Cozystack configurations and YouTube demos
-- **Contains**: HelmReleases, cluster configs, links to Speed Run videos
+#### **kingdonb/cozystack-talm-demo** - CozyStack state backups & Speed Runs
+- **Purpose**: Makefile-based backups of CozyStack state, YouTube demo links
+- **Contains**: HelmRelease snapshots (via backup Makefile), Speed Run videos
 - **YouTube**: youtube.com/@yebyen/streams
-- **Integration**: Reference existing HelmReleases instead of recreating
-- **Note**: CozyStack might settle on Git repo architecture after v0.37
+- **Integration**: Reference for understanding CozyStack structure, not active workflow
+- **Note**: HelmReleases here are backups, not source - CozyStack uses K8s API directly
 
 **Demo reference test:**
 ```bash

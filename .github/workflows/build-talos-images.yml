@@ -44,9 +44,10 @@ on:
       build_targets:
         description: 'Build targets to execute'
         required: false
-        default: 'image'
+        default: 'upstream-images'
         type: choice
         options:
+          - 'upstream-images'  # Build image-talos + image-matchbox (recommended)
           - 'image'           # Full build (pre-checks + matchbox + cozystack + talos)
           - 'assets'          # Just Talos assets (kernel + initramfs)
           - 'image-talos'     # Just Talos installer image
@@ -161,10 +162,19 @@ jobs:
           cat images/talos/profiles/metal.yaml
           
           # Use upstream Makefile target based on workflow input
-          BUILD_TARGET="${{ github.event.inputs.build_targets || 'assets' }}"
+          BUILD_TARGET="${{ github.event.inputs.build_targets || 'upstream-images' }}"
           echo "Building with upstream target: make $BUILD_TARGET"
           
           case "$BUILD_TARGET" in
+            "upstream-images")
+              echo "Building upstream-compatible images: image-talos + image-matchbox..."
+              make pre-checks
+              echo "Building Talos image first (to establish assets)..."
+              make image-talos
+              echo "Building matchbox image (reusing same assets)..."
+              make image-matchbox
+              echo "build-outputs=talos-installer,matchbox" >> $GITHUB_OUTPUT
+              ;;
             "image")
               echo "Running full build (pre-checks + matchbox + cozystack + talos)..."
               make pre-checks
@@ -332,34 +342,73 @@ jobs:
           echo "✅ Successfully extracted and validated ARM64 asset array:"
           ls -la .
 
-      - name: Create comprehensive asset container
+      - name: Tag and push upstream CozyStack images
+        id: upstream-push
         run: |
           cd cozystack-upstream
           
-          # Create enhanced Dockerfile for complete asset container
-          cat > Dockerfile.assets << 'EOF'
-          FROM scratch
-          LABEL org.opencontainers.image.title="CozyStack ARM64 Talos Assets"
-          LABEL org.opencontainers.image.description="Complete ARM64 Talos asset array with validation"
-          LABEL org.opencontainers.image.source="https://github.com/urmanac/cozystack-moon-and-back"
-          COPY assets/ /assets/
-          CMD ["echo", "Use this container to extract CozyStack ARM64 Talos assets"]
-          EOF
+          # Get build outputs from upstream build
+          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
+          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
+          
+          echo "Tagging and pushing upstream images for: $BUILD_OUTPUTS"
+          
+          # List what images were actually built
+          echo "Local docker images after build:"
+          docker images
+          
+          # Tag and push images based on what was built
+          if [[ "$BUILD_OUTPUTS" == *"talos-installer"* ]]; then
+            echo "Tagging Talos installer image..."
+            # Find the locally built talos image and tag it
+            LOCAL_TALOS_IMAGE=$(docker images --format 'table {{.Repository}}:{{.Tag}}' | grep -E '(talos|installer)' | head -1 | awk '{print $1}')
+            if [[ -n "$LOCAL_TALOS_IMAGE" ]]; then
+              docker tag "$LOCAL_TALOS_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-${TALOS_VERSION}-arm64-spin-tailscale"
+              docker tag "$LOCAL_TALOS_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-latest"
+              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-${TALOS_VERSION}-arm64-spin-tailscale"
+              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:talos-latest"
+              echo "Pushed Talos image: talos-${TALOS_VERSION}-arm64-spin-tailscale"
+            fi
+          fi
+          
+          if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
+            echo "Tagging matchbox server image..."
+            # Find the locally built matchbox image and tag it
+            LOCAL_MATCHBOX_IMAGE=$(docker images --format 'table {{.Repository}}:{{.Tag}}' | grep matchbox | head -1 | awk '{print $1}')
+            if [[ -n "$LOCAL_MATCHBOX_IMAGE" ]]; then
+              docker tag "$LOCAL_MATCHBOX_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-${TALOS_VERSION}-arm64"
+              docker tag "$LOCAL_MATCHBOX_IMAGE" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-latest"
+              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-${TALOS_VERSION}-arm64"
+              docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:matchbox-latest"
+              echo "Pushed matchbox image: matchbox-${TALOS_VERSION}-arm64"
+            fi
+          fi
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (for fallback asset container)
+        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
           platforms: linux/arm64,linux/amd64
 
-      - name: Log in to GitHub Container Registry  
+      - name: Log in to GitHub Container Registry (for fallback)
+        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata and build container
+      - name: Log in to GitHub Container Registry (for upstream images)
+        if: steps.build.outputs.build-outputs != 'kernel,initramfs,iso,nocloud,metal'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata and build asset container (fallback)
+        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         id: meta
         uses: docker/metadata-action@v5
         with:

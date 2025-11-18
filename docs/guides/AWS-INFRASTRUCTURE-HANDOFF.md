@@ -8,9 +8,65 @@
 
 ## 🎯 Mission: Single-Node ARM64 Talos Testing
 
-Create foundation for ARM64 Talos Linux netbooting within AWS free tier limits. Following CozyStack PXE documentation (https://cozystack.io/docs/install/talos/pxe/) adapted for ARM64 architecture.
+**PRIORITY: Build essential images first before infrastructure work!**
 
-**Phase 1 Goal**: Deploy single ARM64 Talos node with Spin + Tailscale extensions, verify netboot process works, establish Tailscale connectivity for private cluster access.
+### Prerequisites (Build Status)
+- [ ] **matchbox image**: Working and can serve Talos images via PXE
+- [ ] **spin-tailscale image**: ARM64 Talos with Spin + Tailscale extensions  
+- [ ] **spin-only image**: ARM64 Talos with only Spin (future multi-node)
+
+**⚠️ DO NOT PROCEED with infrastructure until builds are working!**
+
+### Step 1: Trigger Essential Builds
+
+**Action required**: Ensure the GitHub Actions workflow builds essential components:
+
+```bash
+# Trigger full build (includes matchbox + spin-tailscale)
+# GitHub: Actions -> Build CozyStack ARM64 Images -> Run workflow
+# Select: build_targets = "image" (default)
+# Or push to main branch with code changes (not docs)
+```
+
+**Validation**: 
+- matchbox image available at: `ghcr.io/urmanac/talos-cozystack-demo:matchbox-latest`
+- spin-tailscale image available at: `ghcr.io/urmanac/talos-cozystack-demo:arm64-spin-tailscale`
+
+**Debugging**: Check GitHub Actions logs if builds fail
+- Issues likely in: extension versions, upstream CozyStack changes, ARM64 compatibility
+
+### Test-Driven Generation Approach
+
+**Phase 1**: Single-node test to find breaking points
+- Deploy one ARM64 instance with spin-tailscale image
+- Attempt CozyStack installation 
+- **Expected failure**: Insufficient RAM/disk for all Helm releases
+- **Document blockers**: RAM, disk, virtualization support on ARM64
+- **Bill hourly while testing**: Document on unpaid time afterward
+
+**Phase 2**: Scale or optimize based on Phase 1 results
+- Either: Add more/larger nodes 
+- Or: "I have a plan" (user's solution TBD)
+
+### Claude Desktop Instructions
+
+**Your role**: Create AWS resources following this script, test the scenario, report results
+
+**Reporting format**: 
+```
+TEST RESULTS - Single Node ARM64 CozyStack
+===========================================
+✅ Infrastructure: Created successfully
+✅ Netboot: ARM64 Talos booted from matchbox  
+❌ CozyStack install: Failed - insufficient RAM (X GB needed, Y GB available)
+❌ Virtualization: ARM64 support unclear/failing
+✅ SpinKube: WASM modules work fine on ARM64
+💰 Cost: $X.XX for Y.YY hours
+
+RECOMMENDED: Scale to Z nodes with AA GB RAM each
+or 
+ALTERNATIVE: [User's plan implementation]
+```
 
 ## 📋 Infrastructure Requirements (Terraform - Persistent)
 
