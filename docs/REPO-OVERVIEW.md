@@ -338,7 +338,7 @@ test_noclaude_alternative_backend && test_cluster_hosted_ai_ready
 
 #### **chanwit/tdg** - Test-Driven Generation skill
 - **Purpose**: Open source TDG methodology and Claude skill
-- **Credit**: Chanwit Kaewkasi (CozyStack creator)
+- **Credit**: Chanwit Kaewkasi (TDG methodology creator)
 - **Integration**: This entire document follows TDG principles
 - **Reference**: https://chanwit.medium.com/i-was-wrong-about-test-driven-generation-and-i-couldnt-be-happier-9942b6f09502
 - **License**: Open source (check repo for specific license)
