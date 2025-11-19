@@ -1,18 +1,31 @@
-## 🎯 Focused Task: Complete CozyStack ARM64 Dual Image Strategy
+## ✅ COMPLETED: CozyStack ARM64 Dual Image Strategy
 
-### Current Status
+### 🎉 **SUCCESS - Matrix Strategy Working**
 ✅ **Working ARM64 Talos images** with upstream CozyStack integration  
-✅ **Single image** with both Spin + Tailscale extensions  
-❌ **Missing dual variants** needed for production clusters
+✅ **Dual image variants** implemented with matrix strategy  
+✅ **Role-based cluster architecture** ready for production
 
-### 🚨 Problem
-Current patch applies both extensions to all images:
+### 🚀 **Working Results**
+**Two distinct repository variants:**
+- `ghcr.io/urmanac/talos-cozystack-spin-only/talos:v1.11.5` (compute nodes)
+- `ghcr.io/urmanac/talos-cozystack-spin-tailscale/talos:v1.11.5` (gateway nodes)
+
+**Extensions by role:**
+- **Compute nodes**: `EXTENSIONS="drbd zfs spin"` (majority of cluster)
+- **Gateway nodes**: `EXTENSIONS="drbd zfs spin tailscale"` (one per cluster)
+
+### ✅ **Problem Solved**
+Previous issue with cluster formation resolved:
 ```diff
--EXTENSIONS="drbd zfs"
-+EXTENSIONS="drbd zfs spin tailscale"
+# Before: Single image with all extensions
+-EXTENSIONS="drbd zfs spin tailscale"  # All nodes → conflicts
+
+# After: Role-based extensions
++Compute: EXTENSIONS="drbd zfs spin"           # Most nodes
++Gateway: EXTENSIONS="drbd zfs spin tailscale" # One per cluster
 ```
 
-**Issue:** Kubernetes nodes only reach "Ready" state when ALL configured extensions are active. With tailscale on every node, multiple subnet routers conflict → cluster formation fails.
+**Kubernetes Node Ready State:** Nodes now only wait for extensions they actually need!
 
 ### 🎯 Required Tasks
 

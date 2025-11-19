@@ -19,12 +19,24 @@
 ✅ **Container Testing:** Fixed FROM scratch container testing using crane export methodology
 ✅ **Visual Polish:** Fixed GitHub Pages navigation header wrapping and container extraction commands
 
-## 🎯 Project Status: PRODUCTION READY
+## 🎯 Current Status: PRODUCTION READY + MATRIX STRATEGY COMPLETE
 **All Core Objectives Achieved:** The project successfully delivers ARM64 Talos images with Spin WebAssembly + Tailscale networking using proper upstream CozyStack build system integration.
+
+**Latest Achievement - Matrix Strategy Success:**
+- ✅ **Dual image variants** implemented with parallel matrix builds
+- ✅ **Role-based architecture** with compute vs gateway node separation  
+- ✅ **Clean tagging** resolved (no more duplicate tag issues)
+- ✅ **Distinct repositories** for each variant preventing conflicts
+
+**Working Results:**
+- `ghcr.io/urmanac/talos-cozystack-spin-only/talos:v1.11.5` (compute nodes)
+- `ghcr.io/urmanac/talos-cozystack-spin-tailscale/talos:v1.11.5` (gateway nodes)
 
 **What Was Completed:**
 - ✅ Full upstream CozyStack Makefile targets integration (`make image`, `make assets`, `make talos-kernel`, `make talos-initramfs`)
 - ✅ ARM64 + Spin + Tailscale patches working with upstream build system
+- ✅ **Matrix strategy** for parallel variant builds from single git push
+- ✅ **Role-based cluster formation** capability with proper extension isolation
 - ✅ Comprehensive TDG test suite with 4 passing tests validating upstream compatibility
 - ✅ Fixed CI/CD pipeline with proper asset validation and crane-based testing
 - ✅ Professional GitHub Pages site with working navigation and container commands
