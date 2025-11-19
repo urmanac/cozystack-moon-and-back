@@ -118,7 +118,7 @@ Target validation budget:       <$15/month
 
 ## 🧪 Test-Driven Generation (TDG)
 
-This project follows the **Test-Driven Generation** methodology created by [Chanwit Kaewkasi](https://github.com/chanwit) (CozyStack creator).
+This project follows the **Test-Driven Generation** methodology created by [Chanwit Kaewkasi](https://github.com/chanwit).
 
 **Principle**: Write tests FIRST, then generate code to make them pass.
 
@@ -302,7 +302,10 @@ This project demonstrates:
 *Working on Science Cloud for NASA Goddard Space Flight Center*
 
 **Methodology**: [Chanwit Kaewkasi](https://github.com/chanwit)  
-*CozyStack Creator, TDG Innovator*
+*TDG Innovator*
+
+**Platform**: [Andrei Kvapil](https://github.com/kvaps)  
+*CozyStack Creator*
 
 **Built with**:
 - 🤖 [Claude](https://claude.ai) (Anthropic) - Infrastructure design & TDG implementation

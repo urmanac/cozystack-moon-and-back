@@ -6,6 +6,36 @@ This document maps the constellation of repositories that support the "Home Lab 
 
 **For the next Claude agent**: Use this as a reference map. Don't rebuild what exists - integrate it. Each repo serves a specific purpose in the ecosystem.
 
+## Demo Strategy & Expected Blockers
+
+**Demo approach**: Speed run showing CozyStack bootstrap through **ClickOps in dashboard**
+- **NOT GitOps** - CozyStack currently doesn't depend on Git, only Helm
+- **Dashboard → K8s API**: Creates HelmReleases via CozyStack API (K8s API Aggregation Layer)
+- **Controlled access**: Each CozyStack API object (e.g., "Kubernetes") creates a HelmRelease with a specific chart. RBAC controls which CozyStack APIs tenants can access - "tenant can create databases but not kuberneteses" via API permissions, not direct HelmRelease access
+- **Focus**: ARM64-specific needs, not comprehensive CozyStack installation
+- **Show moving parts**: Provision Kubernetes through dashboard if possible
+
+**Current CozyStack architecture**:
+- **Embedded Helm Chart repository** in CozyStack installer
+- **CozyStack API**: K8s API Aggregation Layer providing controlled abstraction over HelmReleases
+- **Security model**: Tenants access CozyStack APIs (not raw HelmReleases) - prevents arbitrary chart installation
+- **RBAC integration**: Control which CozyStack resource types tenants can create
+- **No Git dependency**: Dashboard calls K8s API directly
+- **Future evolution**: May support Git-based infrastructure or OCI for GitLess Flux
+
+**Expected blockers we'll handle gracefully**:
+- **Virtualization support**: KubeVirt/virtualization may not work on ARM64
+- **Action plan**: Open GitHub issues, link to them, but don't let them block us
+- **Fallback**: SpinKube WASM modules will work fine on ARM64 
+- **Key insight**: Most CozyStack workloads already work, virtualization is the question mark
+
+**Success criteria**:
+- Audience understands **ClickOps → K8s API** workflow (not GitOps)
+- ARM64 cluster bootstraps successfully  
+- SpinKube demos work (even if virtualization doesn't)
+- Blockers are documented, not ignored
+- Clear explanation of CozyStack API Aggregation Layer providing controlled abstraction over HelmReleases
+
 ---
 
 ## Repository Map (By Function)
@@ -71,12 +101,13 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 - **Status**: ⚠️ Unclear if active or superseded by cozy-fleet
 - **Action needed**: Operator to confirm canonical status
 
-#### **kingdon-ci/cozy-fleet** - NEW Flux bootstrap for CozyStack
-- **Purpose**: GitOps management of CozyStack clusters
-- **Contains**: Flux controllers, Kustomizations, HelmReleases
-- **Status**: Likely canonical for production CozyStack
-- **Integration**: Bootstrap from this repo for demo cluster
-- **Flux 2.7 opportunity**: Use ExternalArtifact features!
+#### **kingdon-ci/cozy-fleet** - Demo infrastructure GitOps ⭐
+- **Purpose**: GitOps management of demo cluster infrastructure (not CozyStack configs)
+- **Contains**: Flux controllers, Kustomizations for demo environment
+- **Status**: This is THE canonical repo for demo infrastructure
+- **Integration**: Bootstrap demo cluster from this repo
+- **Important**: CozyStack itself doesn't store configs here - uses K8s API directly
+- **Note**: Fleets belong in orgs (kingdon-ci), foundational GitOps principle
 
 **Test for Flux bootstrap:**
 ```bash
@@ -84,17 +115,19 @@ test_can_import_vpc_module && test_bastion_asg_reusable
 # tests/integration/11-flux-bootstrap.sh
 
 test_cozy_fleet_is_canonical() {
-  # GIVEN: Both fleet-infra and cozy-fleet exist
-  # WHEN: Checking commit activity and structure
-  # THEN: cozy-fleet should be the active repo
+  # GIVEN: cozy-fleet manages demo infrastructure
+  # WHEN: Preparing for CozySummit demo
+  # THEN: This repo should contain our demo cluster bootstrap
   
-  # This is a manual verification test
-  echo "Manual check: Compare last commit dates"
-  echo "fleet-infra: $(git -C ../fleet-infra log -1 --format=%cd)"
-  echo "cozy-fleet: $(git -C ../cozy-fleet log -1 --format=%cd)"
+  [ -d "../cozy-fleet" ] || {
+    echo "REQUIRED: git clone git@github.com:kingdon-ci/cozy-fleet.git"
+    return 1
+  }
   
-  # Operator should confirm which to use
-  true
+  # Contains Flux configs for demo infrastructure, NOT CozyStack HelmReleases
+  # CozyStack HelmReleases are created via dashboard → K8s API
+  flux_configs=$(find ../cozy-fleet -name "*.yaml" -exec grep -l "flux" {} \; | wc -l)
+  [ "$flux_configs" -ge 0 ] # Demo infrastructure configs
 }
 
 test_flux_external_artifact_support() {
@@ -116,12 +149,12 @@ test_cozy_fleet_is_canonical && test_flux_external_artifact_support
 
 ### 🎬 Demo & Application Layer
 
-#### **kingdonb/cozystack-talm-demo** - HelmRelease storage & Speed Runs
-- **Purpose**: Record of Cozystack configurations and YouTube demos
-- **Contains**: HelmReleases, cluster configs, links to Speed Run videos
+#### **kingdonb/cozystack-talm-demo** - CozyStack state backups & Speed Runs
+- **Purpose**: Makefile-based backups of CozyStack state, YouTube demo links
+- **Contains**: HelmRelease snapshots (via backup Makefile), Speed Run videos
 - **YouTube**: youtube.com/@yebyen/streams
-- **Integration**: Reference existing HelmReleases instead of recreating
-- **Note**: CozyStack might settle on Git repo architecture after v0.37
+- **Integration**: Reference for understanding CozyStack structure, not active workflow
+- **Note**: HelmReleases here are backups, not source - CozyStack uses K8s API directly
 
 **Demo reference test:**
 ```bash
@@ -305,7 +338,7 @@ test_noclaude_alternative_backend && test_cluster_hosted_ai_ready
 
 #### **chanwit/tdg** - Test-Driven Generation skill
 - **Purpose**: Open source TDG methodology and Claude skill
-- **Credit**: Chanwit Kaewkasi (CozyStack creator)
+- **Credit**: Chanwit Kaewkasi (TDG methodology creator)
 - **Integration**: This entire document follows TDG principles
 - **Reference**: https://chanwit.medium.com/i-was-wrong-about-test-driven-generation-and-i-couldnt-be-happier-9942b6f09502
 - **License**: Open source (check repo for specific license)
@@ -632,6 +665,30 @@ test_readme_in_each_repo && test_cross_references_documented
 
 **When operator returns:**
 "I've mapped all 8+ repositories in your constellation. The integration tests show we should import aws-accounts modules rather than duplicate, reference talm-demo configs, and use Flux 2.7 ExternalArtifacts for custom Talos images. Which repo should I focus on first?"
+
+---
+
+## Remote Repository Links
+
+**Core repositories accessed during this analysis:**
+
+- **aws-accounts** - `git@github.com:urmanac/aws-accounts.git`
+  - Status: Validated modules for Security Groups, VPCs, Route Tables
+  - Integration: Import terraform modules instead of duplicating
+  - Key modules: vpc, security_groups, route_tables
+  - Branch: main
+
+- **kubeconfig-ca-fetch** - `git@github.com:kingdon-ci/kubeconfig-ca-fetch.git`  
+  - Status: Verified kubeconfig download automation
+  - Integration: Use as-is for cluster access
+  - Purpose: Fetch kubeconfigs with CA bundle verification
+  - Branch: main
+
+- **moonlander** - `git@github.com:kingdon-ci/moonlander.git`
+  - Status: Confirmed Terraform AWS provider setup
+  - Integration: Reference provider configurations
+  - Purpose: AWS infrastructure patterns and provider setup
+  - Branch: main
 
 ---
 
