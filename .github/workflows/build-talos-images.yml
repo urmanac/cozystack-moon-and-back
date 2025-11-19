@@ -253,38 +253,43 @@ jobs:
         run: |
           REGISTRY="ghcr.io/urmanac/talos-cozystack-demo"
           EXTENSION_VARIANT="${{ inputs.extension_variant || 'spin-tailscale' }}"
-          BUILD_VARIANT="${{ steps.build.outputs.build-variant }}"
-          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
           
-          echo "Adding extension-aware tags for $BUILD_VARIANT..."
+          echo "Adding extension-aware tags for $EXTENSION_VARIANT variant..."
+          
+          # Find and retag images that were actually built
+          echo "Checking what images were built..."
+          skopeo list-tags docker://$REGISTRY/talos | jq -r '.Tags[]' | head -5
+          skopeo list-tags docker://$REGISTRY/matchbox | jq -r '.Tags[]' | head -5
           
           # Tag Talos images with extension variant
           if [[ "$BUILD_OUTPUTS" =~ "talos" ]]; then
-            echo "Retagging Talos image with extension variant..."
-            SOURCE_TAG="$REGISTRY/talos:$TALOS_VERSION"
+            echo "Finding latest Talos image..."
+            LATEST_TALOS_TAG=$(skopeo list-tags docker://$REGISTRY/talos | jq -r '.Tags[]' | grep -v latest | grep -v demo-stable | tail -1)
             
-            # Extension-specific tags
-            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/talos:$TALOS_VERSION-$BUILD_VARIANT
-            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/talos:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT
-            
-            echo "Tagged Talos image as:"
-            echo "  $REGISTRY/talos:$TALOS_VERSION-$BUILD_VARIANT"
-            echo "  $REGISTRY/talos:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT"
+            if [ -n "$LATEST_TALOS_TAG" ]; then
+              echo "Retagging Talos image: $LATEST_TALOS_TAG -> $EXTENSION_VARIANT"
+              SHORT_TAG=$(echo $LATEST_TALOS_TAG | sed 's/-v0\.[0-9]*\.[0-9]*-alpha\.[0-9]*//')
+              
+              skopeo copy docker://$REGISTRY/talos:$LATEST_TALOS_TAG docker://$REGISTRY/talos:$SHORT_TAG-$EXTENSION_VARIANT
+              
+              echo "Tagged Talos image as: $REGISTRY/talos:$SHORT_TAG-$EXTENSION_VARIANT"
+            fi
           fi
           
           # Tag matchbox images with extension variant 
           if [[ "$BUILD_OUTPUTS" =~ "matchbox" ]]; then
-            echo "Retagging matchbox image with extension variant..."
-            SOURCE_TAG="$REGISTRY/matchbox:$TALOS_VERSION"
+            echo "Finding latest matchbox image..."
+            LATEST_MATCHBOX_TAG=$(skopeo list-tags docker://$REGISTRY/matchbox | jq -r '.Tags[]' | grep -v latest | grep -v demo-stable | tail -1)
             
-            # Extension-specific tags
-            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/matchbox:$TALOS_VERSION-$BUILD_VARIANT  
-            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/matchbox:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT
-            
-            echo "Tagged matchbox image as:"
-            echo "  $REGISTRY/matchbox:$TALOS_VERSION-$BUILD_VARIANT"
-            echo "  $REGISTRY/matchbox:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT"
+            if [ -n "$LATEST_MATCHBOX_TAG" ]; then
+              echo "Retagging matchbox image: $LATEST_MATCHBOX_TAG -> $EXTENSION_VARIANT"
+              SHORT_TAG=$(echo $LATEST_MATCHBOX_TAG | sed 's/-v0\.[0-9]*\.[0-9]*-alpha\.[0-9]*//')
+              
+              skopeo copy docker://$REGISTRY/matchbox:$LATEST_MATCHBOX_TAG docker://$REGISTRY/matchbox:$SHORT_TAG-$EXTENSION_VARIANT
+              
+              echo "Tagged matchbox image as: $REGISTRY/matchbox:$SHORT_TAG-$EXTENSION_VARIANT"
+            fi
           fi
 
       - name: Extract and package complete asset array with validation
