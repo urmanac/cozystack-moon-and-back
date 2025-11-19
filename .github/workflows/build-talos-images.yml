@@ -237,12 +237,55 @@ jobs:
               ;;
           esac
           
+          # Get extension variant and create build variant tag
+          EXTENSION_VARIANT="${{ inputs.extension_variant || 'spin-tailscale' }}"
+          BUILD_VARIANT="arm64-$EXTENSION_VARIANT"
+          
           # Get Talos version from build
           TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
-          echo "build-variant=arm64-spin-tailscale" >> $GITHUB_OUTPUT
+          echo "build-variant=$BUILD_VARIANT" >> $GITHUB_OUTPUT
+          echo "extension-variant=$EXTENSION_VARIANT" >> $GITHUB_OUTPUT
           echo "build-target=$BUILD_TARGET" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION for ARM64 with latest Spin+Tailscale using target: $BUILD_TARGET"
+          echo "Built Talos version: $TALOS_VERSION for $BUILD_VARIANT using target: $BUILD_TARGET"
+
+      - name: Add extension-aware tags to upstream images
+        run: |
+          REGISTRY="ghcr.io/urmanac/talos-cozystack-demo"
+          EXTENSION_VARIANT="${{ inputs.extension_variant || 'spin-tailscale' }}"
+          BUILD_VARIANT="${{ steps.build.outputs.build-variant }}"
+          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
+          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
+          
+          echo "Adding extension-aware tags for $BUILD_VARIANT..."
+          
+          # Tag Talos images with extension variant
+          if [[ "$BUILD_OUTPUTS" =~ "talos" ]]; then
+            echo "Retagging Talos image with extension variant..."
+            SOURCE_TAG="$REGISTRY/talos:$TALOS_VERSION"
+            
+            # Extension-specific tags
+            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/talos:$TALOS_VERSION-$BUILD_VARIANT
+            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/talos:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT
+            
+            echo "Tagged Talos image as:"
+            echo "  $REGISTRY/talos:$TALOS_VERSION-$BUILD_VARIANT"
+            echo "  $REGISTRY/talos:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT"
+          fi
+          
+          # Tag matchbox images with extension variant 
+          if [[ "$BUILD_OUTPUTS" =~ "matchbox" ]]; then
+            echo "Retagging matchbox image with extension variant..."
+            SOURCE_TAG="$REGISTRY/matchbox:$TALOS_VERSION"
+            
+            # Extension-specific tags
+            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/matchbox:$TALOS_VERSION-$BUILD_VARIANT  
+            skopeo copy docker://$SOURCE_TAG docker://$REGISTRY/matchbox:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT
+            
+            echo "Tagged matchbox image as:"
+            echo "  $REGISTRY/matchbox:$TALOS_VERSION-$BUILD_VARIANT"
+            echo "  $REGISTRY/matchbox:$(date +%Y%m%d)-${{ github.sha }}-$BUILD_VARIANT"
+          fi
 
       - name: Extract and package complete asset array with validation
         id: assets
@@ -483,11 +526,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Talos version tag
-            type=raw,value=${{ steps.build.outputs.talos-version }}-arm64-spin-tailscale
+            # Talos version with extension variant
+            type=raw,value=${{ steps.build.outputs.talos-version }}-${{ steps.build.outputs.build-variant }}
             
             # Date-based tag for reproducibility  
-            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-arm64
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-${{ steps.build.outputs.build-variant }}
             
             # Demo stable tag (only on main branch)
             type=raw,value=demo-stable,enable={{is_default_branch}}
