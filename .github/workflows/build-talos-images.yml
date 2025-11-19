@@ -41,6 +41,14 @@ on:
         description: 'CozyStack upstream commit (for reproducible builds)'
         required: false
         default: 'HEAD'  # Use latest main
+      extension_variant:
+        description: 'Extension variant to build'
+        required: false
+        default: 'spin-tailscale'
+        type: choice
+        options:
+          - 'spin-tailscale'
+          - 'spin-only'
       build_targets:
         description: 'Build targets to execute'
         required: false
@@ -121,19 +129,35 @@ jobs:
         run: |
           cd cozystack-upstream
           
-          # Apply our patches to convert to ARM64 with Spin+Tailscale
-          echo "Applying ARM64+Spin+Tailscale patches..."
-          for patch in ../patches/*.patch; do
-            if [ -f "$patch" ]; then
-              echo "Applying $(basename "$patch")"
-              git apply "$patch" || {
-                echo "Failed to apply $patch"
-                git status
-                cat "$patch"
-                exit 1
-              }
-            fi
-          done
+          # Apply patches based on extension variant
+          EXTENSION_VARIANT="${{ inputs.extension_variant || 'spin-tailscale' }}"
+          echo "Building with extension variant: $EXTENSION_VARIANT"
+          
+          if [ "$EXTENSION_VARIANT" = "spin-only" ]; then
+            echo "Applying ARM64+Spin-only patches..."
+            git apply ../patches/03-arm64-spin-only.patch || {
+              echo "Failed to apply 03-arm64-spin-only.patch"
+              git status
+              exit 1
+            }
+            git apply ../patches/02-makefile-architecture-variables.patch || {
+              echo "Failed to apply 02-makefile-architecture-variables.patch"  
+              git status
+              exit 1
+            }
+          else
+            echo "Applying ARM64+Spin+Tailscale patches..."
+            git apply ../patches/01-arm64-spin-tailscale.patch || {
+              echo "Failed to apply 01-arm64-spin-tailscale.patch"
+              git status
+              exit 1
+            }
+            git apply ../patches/02-makefile-architecture-variables.patch || {
+              echo "Failed to apply 02-makefile-architecture-variables.patch"
+              git status
+              exit 1  
+            }
+          fi
           
           # Verify patch application
           echo "Patches applied successfully:"
