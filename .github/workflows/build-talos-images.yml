@@ -366,36 +366,16 @@ jobs:
       - name: Validate ARM64 image architectures
         id: arm64-validation
         run: |
-          echo "🧪 Validating that our images are actually ARM64..."
+          echo "🧪 Validating that our container images are actually ARM64..."
           
           # Set up QEMU for ARM64 emulation on AMD64 runner
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
-          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
           
-          # Test images that were actually built
-          if [[ "$BUILD_OUTPUTS" == *"talos-installer"* ]]; then
-            echo "🔍 Testing Talos image architecture..."
-            TALOS_IMAGE="${{ env.REGISTRY }}/talos:v$TALOS_VERSION"
-            
-            # Pull ARM64 variant specifically
-            docker pull --platform linux/arm64 "$TALOS_IMAGE"
-            
-            # Inspect image architecture
-            TALOS_ARCH=$(docker image inspect --format='{{.Architecture}}' "$TALOS_IMAGE")
-            echo "Talos image architecture: $TALOS_ARCH"
-            
-            if [[ "$TALOS_ARCH" == "arm64" ]]; then
-              echo "✅ Talos image is ARM64"
-            else
-              echo "❌ Talos image is not ARM64: $TALOS_ARCH"
-              exit 1
-            fi
-          fi
-          
+          # Only test container images (not OS filesystem images like Talos)
           if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
-            echo "🔍 Testing matchbox image architecture and functionality..."
+            echo "🔍 Testing matchbox container image architecture and functionality..."
             MATCHBOX_IMAGE="${{ env.REGISTRY }}/matchbox:latest"
             
             # Pull ARM64 variant specifically  
@@ -422,10 +402,13 @@ jobs:
             else
               echo "✅ Matchbox server help command completed"
             fi
+            
+            echo "✅ Matchbox ARM64 validation completed successfully!"
+          else
+            echo "ℹ️ No container images to validate (Talos is filesystem image, not container)"
           fi
           
-          echo "🎯 ARM64 validation completed successfully!"
-          echo "Both images confirmed as ARM64-compatible" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 ARM64 validation completed" >> $GITHUB_STEP_SUMMARY
 
       - name: Set up Docker Buildx (for fallback asset container)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
