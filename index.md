@@ -17,7 +17,7 @@ title: "Home Lab to the Moon and Back: ARM64 Kubernetes with Spin and Tailscale"
 
 Transform a **128°F office space heater** into an **ARM64-first cloud deployment**:
 
-- ✅ **Talos Linux** with WebAssembly + mesh networking
+- ✅ **Talos Linux** with WebAssembly + Tailscale subnet router
 - ✅ **AWS validation** before hardware purchase  
 - ✅ **Budget-conscious**: <$0.10/month baseline, <$15/month testing
 - ✅ **Live demo** at CozySummit Virtual 2025 (December 4)
@@ -60,7 +60,7 @@ This project is under active development for CozySummit Virtual 2025 (December 4
 
 **Custom ARM64 Talos Images**:
 - `ghcr.io/urmanac/talos-cozystack-spin-only` - Talos + WebAssembly runtime
-- `ghcr.io/urmanac/talos-cozystack-spin-tailscale` - Talos + WebAssembly + mesh networking
+- `ghcr.io/urmanac/talos-cozystack-spin-tailscale` - Talos + WebAssembly + Tailscale subnet router
 
 These are pure "matchbox" and "talos" OCI images compatible with:
 - Docker/Podman for local testing
@@ -85,7 +85,7 @@ These are pure "matchbox" and "talos" OCI images compatible with:
 ARM64 Talos builds, CI/CD pipeline, container images, TDG methodology, ADR documentation
 
 **🎯 Demo Goals (December 4, 2025)**:
-Live WebAssembly demo, mesh networking showcase, cost transparency, home lab transition strategy
+Live WebAssembly demo, VPC subnet router access, cost transparency, home lab transition strategy
 
 ---
 
@@ -130,7 +130,19 @@ Our **Test-Driven Generation** approach replaces trial-and-error with systematic
 
 ## 🌟 Core Stack
 
-**Talos Linux** · **CozyStack** · **WebAssembly (Spin)** · **Tailscale** · **AWS Graviton**
+**Talos Linux** · **CozyStack** · **WebAssembly (Spin)** · **Tailscale Subnet Router** · **AWS Graviton**
+
+### 🔌 Tailscale Subnet Router Architecture
+
+Our Tailscale integration runs as a **subnet router** (not mesh) to bridge AWS VPC private networking with home lab access:
+
+- **Single subnet router node**: One Talos node provides VPC access via Tailscale
+- **VPC network access**: Connect to AWS private IPv4 networks (`10.0.0.0/16`)  
+- **CNI pod network**: Access Kubernetes pod CIDR through existing CNI (Kube-OVN/Cilium)
+- **Service network**: Reach MetalLB load balancers in ARP mode within the same VPC
+- **Home lab bridge**: Optional second subnet router on bastion host for non-privileged access
+
+This preserves CozyStack's existing CNI while adding secure VPN access to the entire VPC subnet topology.
 
 ---
 

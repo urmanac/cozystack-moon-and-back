@@ -28,7 +28,7 @@ Our GitHub Actions build on native ARM64 runners has produced:
 
 1. **Native ARM64 Talos Images**
    - Built with upstream CozyStack methodology
-   - Includes Spin (WebAssembly) + Tailscale (VPN mesh) extensions  
+   - Includes Spin (WebAssembly) + Tailscale (subnet router) extensions  
    - Validates as genuine ARM64 (no cross-compilation issues)
 
 2. **Secure Matchbox Server**
@@ -246,7 +246,7 @@ talosctl -n YOUR_NODE_IP get extensions | grep -E "(spin|tailscale)"
 - [ ] Talos installs with ARM64 architecture
 - [ ] Kubernetes cluster becomes ready
 - [ ] Spin extension loads and accepts Wasm workloads
-- [ ] Tailscale extension starts VPN mesh connectivity
+- [ ] Tailscale extension provides subnet router connectivity
 
 **🚨 Troubleshooting Notes:**
 - **PXE Boot Fails**: Check network config, DHCP, and matchbox logs
@@ -259,7 +259,7 @@ Upon successful deployment, you'll have demonstrated:
 1. **Custom ARM64 Talos build** working on real hardware
 2. **Upstream CozyStack compatibility** with extension methodology  
 3. **PXE infrastructure** ready for multi-node expansion
-4. **WebAssembly + VPN mesh** capabilities validated
+4. **WebAssembly + subnet router** capabilities validated
 
 **Next Steps**: Expand to multi-node cluster using same methodology.
 
