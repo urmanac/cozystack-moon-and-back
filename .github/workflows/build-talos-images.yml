@@ -63,7 +63,7 @@ on:
 
 # Source: https://github.com/cozystack/cozystack/blob/main/packages/core/installer/Makefile
 env:
-  REGISTRY: ghcr.io/urmanac/talos-cozystack-demo
+  REGISTRY: ghcr.io/urmanac
 
 jobs:
   build-cozystack-upstream:
@@ -178,7 +178,7 @@ jobs:
       - name: Update upstream dependencies and build with Makefile targets
         id: build
         env:
-          REGISTRY: ghcr.io/urmanac/talos-cozystack-demo
+          REGISTRY: ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}
           PUSH: 1
           LOAD: 0
         run: |
@@ -188,8 +188,8 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username ${{ github.actor }} --password-stdin
           
-          # Override registry for our build
-          echo "Building with REGISTRY=$REGISTRY"
+          # Override registry for our build with extension variant
+          echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
           
           # Generate ARM64 profiles with dynamic Spin+Tailscale versions using upstream targets
           echo "Updating upstream dependencies and generating profiles..."
@@ -250,50 +250,9 @@ jobs:
           # Get Talos version from build
           TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
-          echo "extension-variant=$EXTENSION_VARIANT" >> $GITHUB_OUTPUT
+          echo "extension-variant=${{ matrix.extension_variant }}" >> $GITHUB_OUTPUT
           echo "build-target=$BUILD_TARGET" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION with $EXTENSION_VARIANT using target: $BUILD_TARGET"
-
-      - name: Add extension-aware tags to upstream images
-        run: |
-          REGISTRY="ghcr.io/urmanac/talos-cozystack-demo"
-          EXTENSION_VARIANT="${{ matrix.extension_variant }}"
-          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
-          
-          echo "Adding extension-aware tags for $EXTENSION_VARIANT variant..."
-          
-          # Find and retag images that were actually built
-          echo "Checking what images were built..."
-          skopeo list-tags docker://$REGISTRY/talos | jq -r '.Tags[]' | head -5
-          skopeo list-tags docker://$REGISTRY/matchbox | jq -r '.Tags[]' | head -5
-          
-          # Tag Talos images with extension variant
-          if [[ "$BUILD_OUTPUTS" =~ "talos" ]]; then
-            echo "Finding latest Talos image..."
-            LATEST_TALOS_TAG=$(skopeo list-tags docker://$REGISTRY/talos | jq -r '.Tags[]' | grep -v latest | grep -v demo-stable | grep -v "$EXTENSION_VARIANT" | tail -1)
-            
-            if [ -n "$LATEST_TALOS_TAG" ]; then
-              echo "Retagging Talos image: $LATEST_TALOS_TAG -> $EXTENSION_VARIANT"
-              
-              skopeo copy docker://$REGISTRY/talos:$LATEST_TALOS_TAG docker://$REGISTRY/talos:$LATEST_TALOS_TAG-$EXTENSION_VARIANT
-              
-              echo "Tagged Talos image as: $REGISTRY/talos:$LATEST_TALOS_TAG-$EXTENSION_VARIANT"
-            fi
-          fi
-          
-          # Tag matchbox images with extension variant 
-          if [[ "$BUILD_OUTPUTS" =~ "matchbox" ]]; then
-            echo "Finding latest matchbox image..."
-            LATEST_MATCHBOX_TAG=$(skopeo list-tags docker://$REGISTRY/matchbox | jq -r '.Tags[]' | grep -v latest | grep -v demo-stable | grep -v "$EXTENSION_VARIANT" | tail -1)
-            
-            if [ -n "$LATEST_MATCHBOX_TAG" ]; then
-              echo "Retagging matchbox image: $LATEST_MATCHBOX_TAG -> $EXTENSION_VARIANT"
-              
-              skopeo copy docker://$REGISTRY/matchbox:$LATEST_MATCHBOX_TAG docker://$REGISTRY/matchbox:$LATEST_MATCHBOX_TAG-$EXTENSION_VARIANT
-              
-              echo "Tagged matchbox image as: $REGISTRY/matchbox:$LATEST_MATCHBOX_TAG-$EXTENSION_VARIANT"
-            fi
-          fi
+          echo "Built Talos version: $TALOS_VERSION with ${{ matrix.extension_variant }} using target: $BUILD_TARGET"
 
       - name: Extract and package complete asset array with validation
         id: assets
@@ -527,18 +486,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata and build asset container (fallback)
+      - name: Generate container metadata
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}
           tags: |
             # Talos version with extension variant
-            type=raw,value=${{ steps.build.outputs.talos-version }}-${{ steps.build.outputs.build-variant }}
+            type=raw,value=${{ steps.build.outputs.talos-version }}-${{ matrix.extension_variant }}
             
             # Date-based tag for reproducibility  
-            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-${{ steps.build.outputs.build-variant }}
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-${{ matrix.extension_variant }}
             
             # Demo stable tag (only on main branch)
             type=raw,value=demo-stable,enable={{is_default_branch}}
@@ -582,20 +541,20 @@ jobs:
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "# Pull latest build (demo-stable only available on main):" >> $GITHUB_STEP_SUMMARY  
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable" >> $GITHUB_STEP_SUMMARY
             echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
-            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
           else
             echo "# Pull PR build (demo-stable available after merge to main):" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY  
             echo "# For testing asset extraction:" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }}" >> $GITHUB_STEP_SUMMARY
             echo "docker run --rm -v /tmp/test-assets:/output \\" >> $GITHUB_STEP_SUMMARY
-            echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d)-${{ github.sha }}-arm64 \\" >> $GITHUB_STEP_SUMMARY
+            echo "  ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }} \\" >> $GITHUB_STEP_SUMMARY
           fi
           echo "  extract-boot-assets /output/talos/custom/" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -603,10 +562,11 @@ jobs:
   test-image-smoke:
     runs-on: ubuntu-latest
     needs: build-cozystack-upstream
-    if: needs.build-cozystack-upstream.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
+    strategy:
+      matrix:
+        extension_variant: [spin-tailscale, spin-only]
     env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: urmanac/talos-cozystack-demo
+      REGISTRY: ghcr.io/urmanac
     steps:
       - name: Install crane for container inspection
         run: |
@@ -627,7 +587,8 @@ jobs:
         run: |
           # Test that container can be pulled and assets extracted
           # Use crane for FROM scratch containers (better than docker cp)
-          IMAGE_TAG="${{ needs.build-cozystack-upstream.outputs.test-image }}"
+          IMAGE_TAG="${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable"
+          echo "Testing variant: ${{ matrix.extension_variant }}"
           echo "Testing image: $IMAGE_TAG"
           
           # Test comprehensive asset extraction using crane
@@ -665,14 +626,13 @@ jobs:
   update-docs:
     runs-on: ubuntu-latest
     needs: [build-cozystack-upstream]
-    if: github.ref == 'refs/heads/main' && success() && needs.build-cozystack-upstream.outputs.build-outputs
+    if: github.ref == 'refs/heads/main' && success()
     permissions:
       contents: write  # Need write permission to push docs
       pages: write     # Need pages permission for GitHub Pages  
       id-token: write  # Need for pages deployment
     env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: urmanac/talos-cozystack-demo
+      REGISTRY: ghcr.io/urmanac
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -702,16 +662,20 @@ jobs:
           - **Kernel:** \`$KERNEL_DIGEST\`
           - **Initramfs:** \`$INITRAMFS_DIGEST\`
           
-          **Container Image:**
-          \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
-          \`\`\`
+          **Container Images:**
+          ```bash
+          # Pull spin-tailscale variant
+          docker pull ${{ env.REGISTRY }}/talos-cozystack-spin-tailscale:demo-stable
+          
+          # Pull spin-only variant  
+          docker pull ${{ env.REGISTRY }}/talos-cozystack-spin-only:demo-stable
+          ```
           
           **Complete Asset Extraction:**
-          \`\`\`bash
+          ```bash
           # Extract complete ARM64 asset array with validation
           mkdir -p /opt/cozystack-assets
-          docker create --name temp-extract ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          docker create --name temp-extract ${{ env.REGISTRY }}/talos-cozystack-spin-tailscale:demo-stable
           docker cp temp-extract:/assets/. /opt/cozystack-assets/
           docker rm temp-extract
           
@@ -721,15 +685,15 @@ jobs:
           
           # View build report
           cat validation/build-report.txt
-          \`\`\`
+          ```
           
           **For AWS Bastion Matchbox Setup:**
-          \`\`\`bash
+          ```bash
           # Extract boot assets for matchbox
-          docker create --name temp-matchbox ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:demo-stable
+          docker create --name temp-matchbox ${{ env.REGISTRY }}/talos-cozystack-spin-tailscale:demo-stable
           docker cp temp-matchbox:/assets/talos/arm64/boot/. /opt/matchbox/assets/
           docker rm temp-matchbox
-          \`\`\`
+          ```
           EOF
 
       - name: Commit updated docs
