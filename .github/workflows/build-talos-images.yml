@@ -84,10 +84,14 @@ jobs:
           sudo apt-get install -y skopeo jq
           
           # Install crane (container registry tool)
-          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
+          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
           
           # Install mikefarah/yq (required by CozyStack)
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
           
           # Verify versions
@@ -532,7 +536,9 @@ jobs:
       - name: Install crane for container inspection
         run: |
           # Install crane (container registry tool) for FROM scratch container testing
-          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
+          curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
           crane version
 
       - name: Log in to GitHub Container Registry  
