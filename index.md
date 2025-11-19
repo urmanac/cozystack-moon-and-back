@@ -5,7 +5,7 @@ title: "Home Lab to the Moon and Back: ARM64 Kubernetes with Spin and Tailscale"
 
 # 🚀 Home Lab to the Moon and Back
 
-> **Validating ARM64 CozyStack in the cloud before committing to bare-metal hardware**
+> **Validating ARM64 Kubernetes in the cloud before committing to bare-metal hardware**
 
 [![CozySummit Virtual 2025](https://img.shields.io/badge/CozySummit-Dec%204%2C%202025-blue)](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
 [![Built with TDG](https://img.shields.io/badge/built%20with-TDG-purple)](docs/ADRs/ADR-002-TDG-METHODOLOGY.html)
@@ -13,23 +13,20 @@ title: "Home Lab to the Moon and Back: ARM64 Kubernetes with Spin and Tailscale"
 
 ---
 
-## 🎯 The Mission
+## 🎯 Mission
 
-Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first Kubernetes deployment** featuring:
+Transform a **128°F office space heater** into an **ARM64-first cloud deployment**:
 
-- ✅ **ARM64 Talos Linux** with Spin + Tailscale extensions
-- ✅ **AWS t4g validation** before Raspberry Pi hardware purchase  
-- ✅ **WebAssembly demonstrations** on cost-efficient ARM64 architecture
-- ✅ **Test-Driven Generation** methodology for reliable infrastructure
-- ✅ **Budget-conscious approach**: <$0.10/month baseline, <$15/month validation
-
-**Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
+- ✅ **Talos Linux** with WebAssembly + mesh networking
+- ✅ **AWS validation** before hardware purchase  
+- ✅ **Budget-conscious**: <$0.10/month baseline, <$15/month testing
+- ✅ **Live demo** at CozySummit Virtual 2025 (December 4)
 
 ---
 
-## 🏗️ Architecture Decisions
+## 🏗️ Key Decisions
 
-Our key architectural decisions documented in ADRs:
+Architectural decisions documented in ADRs:
 
 <div class="architecture-cards">
   <div class="card">
@@ -88,20 +85,13 @@ Follow our [AWS Infrastructure Guide](docs/guides/AWS-INFRASTRUCTURE-HANDOFF.htm
 
 ---
 
-## 📊 Project Status
+## 🎯 Project Status
 
-### ✅ **Completed (November 2025)**
-- ARM64 Talos builds with Spin + Tailscale extensions
-- Complete CI/CD pipeline with GitHub Actions
-- Container images published to GitHub Container Registry
-- Test-Driven Generation methodology implementation
-- Comprehensive ADR documentation
+**✅ Completed (November 2025)**:
+ARM64 Talos builds, CI/CD pipeline, container images, TDG methodology, ADR documentation
 
-### 🎯 **Demo Targets (December 4, 2025)**
-- Live WebAssembly demonstration on ARM64
-- Tailscale mesh networking showcase  
-- Real-time cost transparency
-- Home lab transition strategy
+**🎯 Demo Goals (December 4, 2025)**:
+Live WebAssembly demo, mesh networking showcase, cost transparency, home lab transition strategy
 
 ---
 
@@ -144,15 +134,9 @@ Our **Test-Driven Generation** approach replaces trial-and-error with systematic
 
 ---
 
-## 🌟 Key Technologies
+## 🌟 Core Stack
 
-| Technology | Purpose | ARM64 Status |
-|------------|---------|--------------|
-| **Talos Linux** | Immutable Kubernetes OS | ✅ Full support |
-| **CozyStack** | Kubernetes distribution | 🔄 Custom ARM64 build |
-| **Spin** | WebAssembly runtime | ✅ Native ARM64 |
-| **Tailscale** | Mesh networking | ✅ ARM64 optimized |
-| **AWS Graviton** | ARM64 cloud validation | ✅ t4g instances |
+**Talos Linux** · **CozyStack** · **WebAssembly (Spin)** · **Tailscale** · **AWS Graviton**
 
 ---
 

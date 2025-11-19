@@ -1,14 +1,14 @@
 # GitHub Pages Configuration
 theme: minima
-title: "CozyStack ARM64 Project"
+title: "Moon and Back"
 description: "Validating ARM64 CozyStack in the cloud before committing to bare-metal hardware"
 baseurl: "/cozystack-moon-and-back"
 url: "https://urmanac.github.io"
 
 # Site settings
 author:
-  name: "CozySummit Virtual 2025 Team"
-  email: "contact@example.com"
+  name: "CozySummit Virtual 2025"
+  email: "kingdon@urmanac.com"
 
 # Navigation
 header_pages:
