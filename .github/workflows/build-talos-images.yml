@@ -59,7 +59,7 @@ env:
 
 jobs:
   build-cozystack-upstream:
-    runs-on: ubuntu-24.04-arm64  # Use native ARM64 runner for ARM64 builds
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
