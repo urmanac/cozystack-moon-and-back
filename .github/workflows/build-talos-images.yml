@@ -372,9 +372,6 @@ jobs:
         run: |
           echo "🧪 Validating that our container images are actually ARM64..."
           
-          # Set up QEMU for ARM64 emulation on AMD64 runner
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
           
           # Only test container images (not OS filesystem images like Talos)

@@ -24,7 +24,7 @@ index 1083ab26..510928e6 100644
 --- a/packages/core/installer/images/matchbox/Dockerfile
 +++ b/packages/core/installer/images/matchbox/Dockerfile
 @@ -1,6 +1,6 @@
- FROM quay.io/poseidon/matchbox:v0.10.0
+ FROM quay.io/poseidon/matchbox:v0.11.0
  
 -COPY _out/assets/initramfs-metal-amd64.xz /var/lib/matchbox/assets/initramfs.xz
 -COPY _out/assets/kernel-amd64 /var/lib/matchbox/assets/vmlinuz
