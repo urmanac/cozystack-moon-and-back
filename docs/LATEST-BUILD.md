@@ -1,10 +1,10 @@
 # Latest CozyStack ARM64 Talos Build
 
-**Built:** 2025-11-19 01:49:54 UTC  
-**Talos Version:** `v1.11.5`  
+**Built:** 2025-11-19 01:57:03 UTC  
+**Talos Version:** ``  
 **CozyStack Commit:** `${COZYSTACK_COMMIT:-'unknown'}`  
-**Build Target:** `upstream-images`  
-**Total Assets:** 2  
+**Build Target:** ``  
+**Total Assets:** N/A  
 
 **Asset Digests:**
 - **Kernel:** ``
