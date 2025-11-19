@@ -121,8 +121,8 @@ Our **Test-Driven Generation** approach replaces trial-and-error with systematic
 
 ## 📚 Documentation
 
-- **[📖 Complete Documentation](docs/)** - Comprehensive guides and references
-- **[🏗️ Architecture Decisions](docs/ADRs/)** - Formal ADRs with rationale
+- **[📖 Complete Documentation](docs/README.html)** - Comprehensive guides and references
+- **[🏗️ Architecture Decisions](docs/ADRs/README.html)** - Formal ADRs with rationale
 - **[🧪 TDG Success Story](docs/TDG-PLAN.html)** - Methodology implementation journey
 - **[💵 Cost Planning](docs/COST-ANALYSIS.html)** - Financial analysis and projections
 
