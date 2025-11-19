@@ -50,38 +50,32 @@ Architectural decisions documented in ADRs:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Current Status
 
-### 1. **Get the Custom Talos Images**
+**⚠️ Pre-Demo Development Phase**
+
+This project is under active development for CozySummit Virtual 2025 (December 4). A complete quick start guide will be available after the demo.
+
+### Available Now
+
+**Custom ARM64 Talos Images**:
+- `ghcr.io/urmanac/talos-cozystack-spin-only` - Talos + WebAssembly runtime
+- `ghcr.io/urmanac/talos-cozystack-spin-tailscale` - Talos + WebAssembly + mesh networking
+
+These are pure "matchbox" and "talos" OCI images compatible with:
+- Docker/Podman for local testing
+- `talm` (Talos lifecycle manager)  
+- `talos-bootstrap` from CozyStack project
+
+### Development Validation
 
 ```bash
-# Pull the demo-ready image
-docker pull ghcr.io/urmanac/talos-cozystack-demo:demo-stable
-
-# Extract ARM64 boot assets
-mkdir -p /tmp/talos-assets
-docker create --name temp ghcr.io/urmanac/talos-cozystack-demo:demo-stable true
-docker cp temp:/assets/. /tmp/talos-assets/
-docker rm temp
-
-# Verify ARM64 Talos files (kernel + initramfs with extensions)
-ls -la /tmp/talos-assets/talos/arm64/
-```
-
-### 2. **Validate Locally**
-
-```bash
-# Run comprehensive validation (6 stages)
+# Validate build pipeline and patches
 ./validate-complete.sh
-
-# Check individual components
-./validate-patch.sh                    # Patch compatibility
-yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
+./validate-patch.sh
 ```
 
-### 3. **Deploy to AWS (Optional)**
-
-Follow our [AWS Infrastructure Guide](docs/guides/AWS-INFRASTRUCTURE-HANDOFF.html) for cloud validation setup.
+**Full deployment guide coming post-demo** 🎯
 
 ---
 
