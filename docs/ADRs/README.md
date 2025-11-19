@@ -5,7 +5,7 @@ layout: page
 
 # 📋 Architecture Decision Records (ADRs)
 
-This directory contains Architecture Decision Records for the CozyStack ARM64 project. ADRs document significant architectural decisions, their context, and consequences.
+This directory contains Architecture Decision Records for the ARM64 Kubernetes project. ADRs document significant architectural decisions, their context, and consequences.
 
 ## 📑 ADR Index
 

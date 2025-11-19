@@ -3,11 +3,11 @@ title: "Documentation"
 layout: page
 ---
 
-# 📚 CozyStack ARM64 Documentation
+# 📚 ARM64 Kubernetes Documentation
 
-Welcome to the comprehensive documentation for the **CozyStack ARM64 Project** - validating ARM64 architecture in the cloud before committing to bare-metal hardware.
+Welcome to the comprehensive documentation for the **Home Lab to the Moon and Back** project - validating ARM64 architecture in the cloud before committing to bare-metal hardware.
 
-> 🎯 **Mission**: Develop a cloud-validated, ARM64-first CozyStack deployment for [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025** to replace traditional high-power AMD64 home lab setups.
+> 🎯 **Mission**: Develop a cloud-validated, ARM64-first Kubernetes deployment for [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025** to replace traditional high-power AMD64 home lab setups.
 
 ---
 
