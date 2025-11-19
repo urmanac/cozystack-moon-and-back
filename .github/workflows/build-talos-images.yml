@@ -493,11 +493,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}
           tags: |
-            # Talos version with extension variant
-            type=raw,value=${{ steps.build.outputs.talos-version }}-${{ matrix.extension_variant }}
+            # Clean Talos version (variant is in repo name now)
+            type=raw,value=${{ steps.build.outputs.talos-version }}
             
             # Date-based tag for reproducibility  
-            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}-${{ matrix.extension_variant }}
+            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}
             
             # Demo stable tag (only on main branch)
             type=raw,value=demo-stable,enable={{is_default_branch}}
