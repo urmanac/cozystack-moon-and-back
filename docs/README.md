@@ -114,7 +114,7 @@ terraform apply
 ### 🎯 **December 4, 2025 Demo Targets**
 - [ ] Live SpinKube demonstration on ARM64
 - [ ] Role-based cluster formation showcase
-- [ ] Tailscale mesh networking demonstration
+- [ ] Tailscale subnet router demonstration
 - [ ] Real-time cost transparency during presentation
 - [ ] Home lab transition plan presentation
 
@@ -148,7 +148,7 @@ yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
 | **Talos Linux** | Immutable Kubernetes OS | ✅ Full support |
 | **CozyStack** | Kubernetes distribution | 🔄 Custom ARM64 build |
 | **Spin** | WebAssembly runtime | ✅ Native ARM64 |
-| **Tailscale** | Mesh networking | ✅ ARM64 optimized |
+| **Tailscale** | VPC subnet router | ✅ ARM64 optimized |
 | **AWS Graviton** | ARM64 cloud validation | ✅ t4g instances |
 
 ---

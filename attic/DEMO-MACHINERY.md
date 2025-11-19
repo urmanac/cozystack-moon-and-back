@@ -101,7 +101,7 @@ Yes, I found references to your **Cozystack Speed Runs** in the docs! The YouTub
 
 **Stretch Goals:**
 - [ ] Flux 2.7 ExternalArtifact features showcased
-- [ ] Tailscale mesh between cloud & home lab
+- [ ] Tailscale subnet router bridging cloud VPC to home lab
 - [ ] Live cost monitoring during demo
 
 ## Questions Answered 🤔
