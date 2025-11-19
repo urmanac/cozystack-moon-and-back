@@ -11,7 +11,7 @@
 
 ## 🎯 The Mission
 
-Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first Kubernetes deployment** that:
+Transform a **128°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first Kubernetes deployment** that:
 
 - ✅ Validates ARM64 architecture on t4g instances before Raspberry Pi purchase
 - ✅ Runs experiments within reasonable budget (baseline: $0.08/month, validation: <$15/month)
@@ -28,7 +28,7 @@ Transform a **76°F office space heater** (aka home lab) into a **cloud-validate
 
 ```
 Home Lab Status: 🔥
-Office Temperature: 76°F (with AC!)
+Office Temperature: 128°F (with AC!)
 Electricity Bill: 📈
 Wife's Patience: 📉
 ```
