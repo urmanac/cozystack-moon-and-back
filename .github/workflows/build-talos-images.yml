@@ -414,8 +414,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Remove problematic GitHub Actions cache - use registry cache instead
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/cache:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/cache:buildcache,mode=max
 
       - name: Extract first tag for testing
         id: extract-first-tag
