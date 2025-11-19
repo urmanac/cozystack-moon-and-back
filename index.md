@@ -1,6 +1,6 @@
 ---
 layout: home
-title: "CozyStack ARM64: Home Lab to the Moon and Back"
+title: "Home Lab to the Moon and Back: ARM64 Kubernetes with Spin and Tailscale"
 ---
 
 # 🚀 Home Lab to the Moon and Back
@@ -15,11 +15,11 @@ title: "CozyStack ARM64: Home Lab to the Moon and Back"
 
 ## 🎯 The Mission
 
-Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first CozyStack deployment** featuring:
+Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first Kubernetes deployment** featuring:
 
 - ✅ **ARM64 Talos Linux** with Spin + Tailscale extensions
 - ✅ **AWS t4g validation** before Raspberry Pi hardware purchase  
-- ✅ **SpinKube demonstrations** on cost-efficient ARM64 architecture
+- ✅ **WebAssembly demonstrations** on cost-efficient ARM64 architecture
 - ✅ **Test-Driven Generation** methodology for reliable infrastructure
 - ✅ **Budget-conscious approach**: <$0.10/month baseline, <$15/month validation
 
@@ -55,7 +55,7 @@ Our key architectural decisions documented in ADRs:
 
 ## 🚀 Quick Start
 
-### 1. **Get the ARM64 Talos Images**
+### 1. **Get the Custom Talos Images**
 
 ```bash
 # Pull the demo-ready image
@@ -98,7 +98,7 @@ Follow our [AWS Infrastructure Guide](docs/guides/AWS-INFRASTRUCTURE-HANDOFF.htm
 - Comprehensive ADR documentation
 
 ### 🎯 **Demo Targets (December 4, 2025)**
-- Live SpinKube demonstration on ARM64
+- Live WebAssembly demonstration on ARM64
 - Tailscale mesh networking showcase  
 - Real-time cost transparency
 - Home lab transition strategy

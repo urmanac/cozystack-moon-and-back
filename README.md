@@ -1,6 +1,6 @@
 # 🚀 Home Lab to the Moon and Back
 
-> **Validating ARM64 CozyStack in the cloud before committing to bare-metal**  
+> **Validating ARM64 Kubernetes in the cloud before committing to bare-metal**  
 > *Smart validation strategy: Test first, buy hardware second*
 
 [![CozySummit Virtual 2025](https://img.shields.io/badge/CozySummit-Dec%204%2C%202025-blue)](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
@@ -11,12 +11,12 @@
 
 ## 🎯 The Mission
 
-Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first CozyStack deployment** that:
+Transform a **76°F office space heater** (aka home lab) into a **cloud-validated, ARM64-first Kubernetes deployment** that:
 
 - ✅ Validates ARM64 architecture on t4g instances before Raspberry Pi purchase
 - ✅ Runs experiments within reasonable budget (baseline: $0.08/month, validation: <$15/month)
 - ✅ Netboots Talos Linux with custom extensions (Spin + Tailscale)
-- ✅ Demonstrates SpinKube on ARM64 in production-like conditions
+- ✅ Demonstrates WebAssembly on ARM64 in production-like conditions
 - ✅ Proves when cloud makes sense vs. efficient home lab hardware
 - ✅ Maintains zero GDPR risk (private networking only)
 
