@@ -103,7 +103,6 @@ Cost: ~$16-20/month (mostly EBS, t4g free tier covers compute)
 
 **📋 [AWS Design Summary](docs/AWS-DESIGN-SUMMARY.md)** - Ready for Stakpak agent  
 **🏷️ [Package Naming Cleanup](docs/PACKAGE-NAMING-CLEANUP.md)** - Fix those ugly package names!
-```
 
 **Key Innovation**: Exact replica of home lab topology in AWS, staying within free tier limits.
 
