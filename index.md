@@ -46,6 +46,12 @@ Architectural decisions documented in ADRs:
     <p>Proper patch generation using Git tools</p>
     <a href="docs/ADRs/ADR-003-PATCH-GENERATION.html">ADR-003 →</a>
   </div>
+  
+  <div class="card">
+    <h3>🏗️ Role-Based Images</h3>
+    <p>Separate compute and gateway variants for reliable cluster formation</p>
+    <a href="docs/ADRs/ADR-004-ROLE-BASED-IMAGES.html">ADR-004 →</a>
+  </div>
 </div>
 
 ---
@@ -59,8 +65,10 @@ This project is under active development for CozySummit Virtual 2025 (December 4
 ### Available Now
 
 **Custom ARM64 Talos Images**:
-- `ghcr.io/urmanac/talos-cozystack-spin-only` - Talos + WebAssembly runtime
-- `ghcr.io/urmanac/talos-cozystack-spin-tailscale` - Talos + WebAssembly + Tailscale subnet router
+- `ghcr.io/urmanac/talos-cozystack-spin-only` - **Compute nodes**: WebAssembly runtime only
+- `ghcr.io/urmanac/talos-cozystack-spin-tailscale` - **Gateway nodes**: WebAssembly + Tailscale subnet router
+
+These role-based OCI images solve cluster formation issues by preventing Tailscale configuration conflicts.
 
 These are pure "matchbox" and "talos" OCI images compatible with:
 - Docker/Podman for local testing
@@ -137,7 +145,7 @@ Our **Test-Driven Generation** approach replaces trial-and-error with systematic
 Our Tailscale integration runs as a **subnet router** (not mesh) to bridge AWS VPC private networking with home lab access:
 
 - **Single subnet router node**: One Talos node provides VPC access via Tailscale
-- **VPC network access**: Connect to AWS private IPv4 networks (`10.0.0.0/16`)  
+- **VPC network access**: Connect to AWS private IPv4 networks (`10.20.0.0/16`)  
 - **CNI pod network**: Access Kubernetes pod CIDR through existing CNI (Kube-OVN/Cilium)
 - **Service network**: Reach MetalLB load balancers in ARP mode within the same VPC
 - **Home lab bridge**: Optional second subnet router on bastion host for non-privileged access

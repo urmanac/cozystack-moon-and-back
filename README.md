@@ -15,12 +15,33 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 
 - ✅ Validates ARM64 architecture on t4g instances before Raspberry Pi purchase
 - ✅ Runs experiments within reasonable budget (baseline: $0.08/month, validation: <$15/month)
-- ✅ Netboots Talos Linux with custom extensions (Spin + Tailscale)
+- ✅ Netboots Talos Linux with custom extensions (Spin + Tailscale subnet router)
 - ✅ Demonstrates WebAssembly on ARM64 in production-like conditions
 - ✅ Proves when cloud makes sense vs. efficient home lab hardware
-- ✅ Maintains zero GDPR risk (private networking only)
 
 **Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
+
+### 🧪 TDG Test Status (Updated: November 19, 2025)
+
+**✅ Working Tests (4/5)**:
+- ✅ Patch validation (upstream conformance) - **FIXED**
+- ✅ GitHub Actions workflow syntax
+- ✅ Dependency verification (crane, skopeo, jq)
+- ✅ Patch directory cleanliness (3 patches) - **FIXED**
+
+**❌ Failing Tests (1/5)**:
+- ❌ ADR-003 documentation validation - Missing file expected by test
+
+**🚧 Image Build Tests (1/3 passing)**:
+- ❌ Container image pulls (need actual published images)
+- ❌ OCI manifest validation (images not yet published)
+- ✅ Cost tracking validation
+
+**🎯 Conformance Achieved**:
+- Upstream CozyStack integration ✅
+- Separate repository strategy ✅  
+- ARM64 native builds ✅
+- Test suite reality alignment ✅ **NEW**
 
 ---
 
@@ -80,6 +101,90 @@ VPC: 10.20.0.0/16 (eu-west-1)
 ```
 
 **Key Innovation**: Exact replica of home lab topology in AWS, staying within free tier limits.
+
+---
+
+## 🌟 Core Stack Deep Dive
+
+**Talos Linux** · **CozyStack** · **WebAssembly (Spin)** · **Tailscale Subnet Router** · **AWS Graviton**
+
+### 🔌 Tailscale Subnet Router Architecture
+
+**Key insight**: We use Tailscale's **subnet router mode** (not mesh!) to create clean network bridges between:
+- AWS VPC private networks (`10.20.0.0/16`)
+- Kubernetes pod CIDR (managed by CozyStack's CNI)
+- Service networks (MetalLB load balancers in ARP mode) 
+- Home lab networks (`10.17.13.0/24`)
+
+**Architecture**: Single privileged Talos node runs subnet router, other nodes use standard Kubernetes networking. This preserves CNI while providing seamless VPC access.
+
+*See [landing page](https://urmanac.github.io/cozystack-moon-and-back/#tailscale-subnet-router-architecture) for complete technical implementation details.*
+
+### 🗿 Talos Linux: Security-First Immutability
+
+**Why Talos?** It's **CozySummit** and CozyStack is built on it. End of justification! 🎯
+
+**What makes it compelling**:
+- **Immutable OS**: Fewer binaries = smaller attack surface
+- **Kubernetes-first**: No SSH, no shell, just API-driven infrastructure
+- **ARM64 native**: First-class support, not an afterthought
+- **Security by design**: Minimal surface area, everything locked down
+
+**Real talk**: We're not here to justify Talos vs. other distros. It's proven, it works, and it's what CozyStack uses. Moving on.
+
+### 🏗️ CozyStack: Helm-First Platform Engineering
+
+**Why CozyStack over vanilla Kubernetes?** Because it looks like something I'd build if I had unlimited time, and **I want that to exist**.
+
+**The compelling architecture**:
+- **Helm-first design**: Platform built for teams that demand "Helm only" 
+- **Flux integration**: GitOps workflows that actually work
+- **Cloud-native foundation**: CNCF projects with (hopefully) spectacular ARM64 support
+- **Platform-as-code**: Infrastructure that scales with your team, not against it
+
+**Author's note**: As a Flux maintainer, I've seen enough infrastructure built on Helm to know this is the right abstraction level. CozyStack delivers that vision.
+
+### ⚡ WebAssembly (Spin): Architecture-Independent Performance
+
+**Why WebAssembly?** **Faster, cheaper, architecture-independent.** Perfect for ARM64 validation.
+
+**The Spin advantage**:
+- **Cold start performance**: Sub-millisecond startup vs. container seconds
+- **Scale-to-zero efficiency**: Actually works, unlike most "serverless" promises  
+- **Local registry caching**: Artifact caching that makes cold starts even faster
+- **Architecture portability**: Same binary runs on x86 home lab and ARM64 cloud
+
+**Real-world impact**: We've been demoing Spin for years. The performance story is proven - now we're validating it on ARM64 at cloud scale before hardware investment.
+
+### 🏔️ AWS Graviton: Free Tier ARM64 Validation
+
+**Why Graviton?** It's **available ARM64 in the cloud** and currently **free** under AWS free tier usage.
+
+**The pragmatic choice**:
+- **Virtualization extensions**: Hopefully has what Raspberry Pi lacks for advanced CozyStack features
+- **Known platform**: AWS is familiar territory for cloud validation
+- **Risk mitigation**: Test architecture before $650+ hardware investment
+- **Uncertain alternatives**: Ampere? Chinese Raspberry Pi clones? Unknown landscape.
+
+**Honest assessment**: We think Graviton has the virtualization support that consumer ARM64 hardware might lack. We'll find out! But we'd rather discover limitations in the cloud than after buying hardware.
+
+### 🏗️ Role-Based Architecture: Real-World Discovery
+
+**The Problem**: Adding Tailscale to ALL cluster nodes breaks everything.
+
+**What we learned** (the hard way):
+- **Kubernetes Ready condition**: Nodes wait for ALL configured extensions to become active
+- **Multiple subnet routers**: Every node tries to configure as Tailscale subnet router  
+- **Configuration conflicts**: Multiple nodes compete for same routing role
+- **Cluster formation failure**: Nodes hang indefinitely, never reach Ready state
+
+**The Solution**: Role-based image architecture
+- **Compute nodes** (`spin-only`): WebAssembly runtime only, quick Ready state
+- **Gateway nodes** (`spin-tailscale`): WebAssembly + Tailscale subnet router, one per cluster
+
+**Discovery method**: "Walking the grounds and tilling the soil" - not systematic testing, but real-world cluster building experience on AMD64 that informed our ARM64 strategy.
+
+**Impact**: This architectural insight is **why** our ARM64 validation will work. We've already solved the hard problems.
 
 ---
 

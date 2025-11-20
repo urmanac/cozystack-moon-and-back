@@ -45,9 +45,8 @@ fi
 echo ""
 
 # Test 3: Cost Strategy and Budget Validation
-echo "Test 3: Cost tracking and budget validation"
-echo "============================================"
-if bash tests/cost/22-cost-tracking.sh; then
+echo "▶️  Running Test 3: Cost Tracking"
+if "$SCRIPT_DIR/cost/22-cost-tracking.sh"; then
     echo "✅ Test 3 PASSED"
     ((PASSED_TESTS++))
 else
