@@ -81,23 +81,28 @@ Internet → DD-WRT Router (10.17.12.1)
                        └─ CozyStack
 ```
 
-### AWS Cloud (Target)
+### AWS Cloud (✅ Design Complete)
 ```
-VPC: 10.20.0.0/16 (eu-west-1)
-├─ Public Subnet (10.20.1.0/24)
-│  └─ NAT Gateway
-│
-└─ Private Subnet (10.20.13.0/24)
-   ├─ Bastion (t4g.small, 5hrs/day)
-   │  └─ Docker containers:
-   │     ├─ dnsmasq
-   │     ├─ matchbox
-   │     ├─ registry caches (x5)
-   │     └─ pi-hole
+VPC: 10.10.0.0/16 (eu-west-1) 
+└─ Public Subnet (10.10.0.0/24)
+   ├─ Bastion: 10.10.0.100 (ENI + IPv6, t4g.small)
+   │  └─ Services: registry caches, Wireguard NAT, Tailscale
    │
-   └─ Talos Nodes (t4g.small, on-demand)
-      └─ CozyStack on ARM64
-         └─ SpinKube demo
+   ├─ Talos Gateway: 10.10.0.101 (t4g.medium)
+   │  └─ Extensions: spin, tailscale (subnet router)
+   │  
+   ├─ Talos Compute: 10.10.0.102 (t4g.medium)
+   │  └─ Extensions: spin only
+   │
+   └─ Talos Compute: 10.10.0.103 (t4g.medium)
+      └─ Extensions: spin only
+      
+Boot: boot-to-talos installs OCI images (no AMI management)
+Cost: ~$16-20/month (mostly EBS, t4g free tier covers compute)
+```
+
+**📋 [AWS Design Summary](docs/AWS-DESIGN-SUMMARY.md)** - Ready for Stakpak agent  
+**🏷️ [Package Naming Cleanup](docs/PACKAGE-NAMING-CLEANUP.md)** - Fix those ugly package names!
 ```
 
 **Key Innovation**: Exact replica of home lab topology in AWS, staying within free tier limits.

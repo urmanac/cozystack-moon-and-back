@@ -43,30 +43,28 @@ This document follows the **Test-Driven Generation (TDG)** methodology introduce
 
 test_vpc_exists() {
   vpc_id=$(aws ec2 describe-vpcs \
-    --filters "Name=cidr,Values=10.20.0.0/16" \
+    --filters "Name=cidr,Values=10.10.0.0/16" \
     --query 'Vpcs[0].VpcId' --output text)
   
   [ "$vpc_id" != "None" ] && [ -n "$vpc_id" ]
 }
 
-test_subnets_exist() {
+test_single_public_subnet_exists() {
+  # Desktop design: Single public subnet, no private subnet needed
   public_subnet=$(aws ec2 describe-subnets \
-    --filters "Name=cidr-block,Values=10.20.1.0/24" \
+    --filters "Name=cidr-block,Values=10.10.0.0/24" \
     --query 'Subnets[0].SubnetId' --output text)
   
-  private_subnet=$(aws ec2 describe-subnets \
-    --filters "Name=cidr-block,Values=10.20.13.0/24" \
-    --query 'Subnets[0].SubnetId' --output text)
-  
-  [ "$public_subnet" != "None" ] && [ "$private_subnet" != "None" ]
+  [ "$public_subnet" != "None" ] && [ -n "$public_subnet" ]
 }
 
-test_nat_gateway_operational() {
-  nat_state=$(aws ec2 describe-nat-gateways \
-    --filter "Name=vpc-id,Values=$vpc_id" \
-    --query 'NatGateways[0].State' --output text)
+test_internet_gateway_only() {
+  # No NAT gateway needed - IPv6 + bastion Wireguard for internet
+  igw_state=$(aws ec2 describe-internet-gateways \
+    --filters "Name=attachment.vpc-id,Values=$vpc_id" \
+    --query 'InternetGateways[0].State' --output text)
   
-  [ "$nat_state" = "available" ]
+  [ "$igw_state" = "available" ]
 }
 
 test_route_tables_configured() {
@@ -80,8 +78,8 @@ test_route_tables_configured() {
 
 # Run all tests
 test_vpc_exists && \
-test_subnets_exist && \
-test_nat_gateway_operational && \
+test_single_public_subnet_exists && \
+test_internet_gateway_only && \
 test_route_tables_configured
 ```
 
@@ -90,14 +88,14 @@ test_route_tables_configured
 
 ---
 
-### Test 2: Bastion in Private Subnet
+### Test 2: Bastion with Static ENI
 ```bash
 #!/bin/bash
-# tests/02-bastion-private-subnet.sh
+# tests/02-bastion-static-eni.sh
 
 # GIVEN: Network foundation from Test 1
-# WHEN: Bastion ASG deploys
-# THEN: Bastion runs in private subnet with static IP
+# WHEN: Bastion ASG deploys with ENI attachment
+# THEN: Bastion has static IP 10.10.0.100 via ENI
 
 test_bastion_in_private_subnet() {
   bastion_ip=$(aws ec2 describe-instances \

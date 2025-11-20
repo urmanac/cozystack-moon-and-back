@@ -2,38 +2,37 @@
 
 **Target**: eu-west-1  
 **Account**: Urmanac AWS Sandbox  
-**Constraint**: AWS Free Tier compliance  
-**MFA Session**: User will activate for temporary admin access  
-**Permanent Admin**: Bastion host IAM role (5hrs/day via ASG)  
+**Architecture**: 10.10.0.0/16 VPC, single public subnet (per Claude Desktop analysis)  
+**Boot Strategy**: boot-to-talos with existing OCI images (no AMI management)  
+**Constraint**: AWS Free Tier compliance (~$16-20/month for EBS)  
 
-## 🎯 Mission: Single-Node ARM64 Talos Testing
+## 🎯 Mission: boot-to-talos ARM64 Validation
 
-**PRIORITY: Build essential images first before infrastructure work!**
+**BREAKTHROUGH: Use boot-to-talos instead of traditional PXE netboot!**
 
-### Prerequisites (Build Status)
-- [ ] **matchbox image**: Working and can serve Talos images via PXE
-- [ ] **spin-tailscale image**: ARM64 Talos with Spin + Tailscale extensions  
-- [ ] **spin-only image**: ARM64 Talos with only Spin (future multi-node)
+### Prerequisites (Images Available ✅)
+- ✅ **OCI Images**: Available in GHCR (see packages)
+  - `talos-cozystack-spin-tailscale/talos` (gateway nodes)
+  - `talos-cozystack-spin-only/talos` (compute nodes)  
+  - `talos-cozystack-spin-tailscale/matchbox` (home lab only)
+- ✅ **boot-to-talos**: Installs OCI images on any ARM64 base AMI
 
-**⚠️ DO NOT PROCEED with infrastructure until builds are working!**
+### Step 1: Verify OCI Images Available
 
-### Step 1: Trigger Essential Builds
-
-**Action required**: Ensure the GitHub Actions workflow builds essential components:
+**Images are built ✅**: GitHub Actions has created the necessary OCI images
 
 ```bash
-# Trigger full build (includes matchbox + spin-tailscale)
-# GitHub: Actions -> Build CozyStack ARM64 Images -> Run workflow
-# Select: build_targets = "image" (default)
-# Or push to main branch with code changes (not docs)
+# Verify images exist in GHCR
+docker pull ghcr.io/urmanac/talos-cozystack-spin-tailscale/talos:latest
+docker pull ghcr.io/urmanac/talos-cozystack-spin-only/talos:latest
 ```
 
-**Validation**: 
-- matchbox image available at: `ghcr.io/urmanac/talos-cozystack-demo:matchbox-latest`
-- spin-tailscale image available at: `ghcr.io/urmanac/talos-cozystack-demo:arm64-spin-tailscale`
-
-**Debugging**: Check GitHub Actions logs if builds fail
-- Issues likely in: extension versions, upstream CozyStack changes, ARM64 compatibility
+**boot-to-talos workflow**:
+1. Launch EC2 with any ARM64 base AMI (Amazon Linux 2023)
+2. User-data downloads boot-to-talos binary
+3. boot-to-talos pulls OCI image from GHCR
+4. Installs to /dev/xvda with static IP kernel args
+5. Reboots into custom Talos (no AMI management!)
 
 ### Test-Driven Generation Approach
 
