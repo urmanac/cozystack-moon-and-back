@@ -1,6 +1,6 @@
 ---
 layout: home
-title: "Tailscale"
+title: "CozyStack"
 ---
 
 # 🚀 Home Lab to the Moon and Back
@@ -138,7 +138,17 @@ Our **Test-Driven Generation** approach replaces trial-and-error with systematic
 
 ## 🌟 Core Stack
 
-**Talos Linux** · **CozyStack** · **WebAssembly (Spin)** · **Tailscale Subnet Router** · **AWS Graviton**
+### 🏗️ CozyStack Platform
+Our "batteries included" Kubernetes distribution that handles the complexity of cloud-native deployments. CozyStack integrates Helm, Flux, and a comprehensive suite of ARM64-ready cloud-native technologies, providing a complete platform experience. Runs exclusively on Talos Linux for maximum simplicity and reliability.
+
+### 🐧 Talos Linux Foundation
+The immutable, API-driven container OS that serves as CozyStack's foundation. Talos's simplicity and robust ARM64 support make it the natural choice for this architecture. Our custom Talos images include WebAssembly and Tailscale extensions, demonstrating practical extension building patterns for specialized deployments.
+
+### ⚡ WebAssembly (Spin) Runtime
+The answer to "what happens when you lose fancy virtualization on Raspberry Pi?" WebAssembly enables **serverless patterns that scale to zero**, driving costs down while WASM's sandbox acts as a forcing function against complex Rube Goldberg architectures. This is **microservices done right** - better composability, system simplicity, and well-defined interfaces. WASM's sandboxed nature aligns perfectly with Talos's isolated/immutable design.
+
+### ☁️ AWS Graviton Validation
+Cloud-first validation using ARM64 Graviton instances provides access to advanced CPU features and virtualization extensions to exceed home lab capabilities. Enables **apples-to-apples comparisons** and advanced experiments that would otherwise require much >>$500-800 (substantial) hardware investments, through cheap (sometimes free!) cloud hardware. **Cost strategy**: Time-boxed experiments with clear outcomes, aggressive resource cleanup between rounds.
 
 ### 🔌 Tailscale Subnet Router Architecture
 

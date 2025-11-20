@@ -49,7 +49,7 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 
 ```
 Home Lab Status: 🔥
-Office Temperature: 128°F (with AC!)
+Office Temperature: 93°F (ambient, with the door closed)
 Electricity Bill: 📈
 Wife's Patience: 📉
 ```
