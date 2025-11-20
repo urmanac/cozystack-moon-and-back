@@ -6,9 +6,8 @@ baseurl: "/cozystack-moon-and-back"
 url: "https://urmanac.github.io"
 
 # Site settings
-author:
-  name: "CozySummit Virtual 2025"
-  email: "kingdon@urmanac.com"
+author: "CozySummit Virtual 2025"
+email: "kingdon@urmanac.com"
 
 # Navigation
 header_pages:
