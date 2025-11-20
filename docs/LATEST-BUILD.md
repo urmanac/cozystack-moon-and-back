@@ -1,8 +1,8 @@
 # Latest CozyStack ARM64 Talos Build
 
-**Built:** 2025-11-20 04:26:36 UTC  
+**Built:** 2025-11-20 14:08:37 UTC  
 **Talos Version:** `v1.11.5`  
-**CozyStack Commit:** `pending`  
+**CozyStack Commit:** ``  
 **Build Target:** `upstream-images`  
 **Total Assets:** 2  
 
@@ -10,8 +10,8 @@
 
 | Asset | Digest |
 |-------|--------|
-| **Kernel** | `pending` |
-| **Initramfs** | `pending` |
+| **Kernel** | `'pending'` |
+| **Initramfs** | `'pending'` |
 
 ## Container Images
 
@@ -51,4 +51,3 @@ sha256sum -c checksums.sha256
 # View build report
 cat validation/build-report.txt
 ```
-
