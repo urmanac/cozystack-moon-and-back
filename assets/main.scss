@@ -117,4 +117,66 @@
   body .site-nav .page-link:hover {
     color: #58a6ff !important;
   }
+  
+  /* ADR Panels and Card Elements */
+  html body .card,
+  body .card,
+  html body .panel,
+  body .panel,
+  html body .box,
+  body .box,
+  html body .highlight,
+  body .highlight,
+  html body .content-box,
+  body .content-box {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Table styling for cost analysis and other tables */
+  html body table,
+  body table {
+    background-color: #0d1117 !important;
+    border-collapse: collapse !important;
+  }
+  
+  html body table tr,
+  body table tr {
+    background-color: #0d1117 !important;
+  }
+  
+  html body table tr:nth-child(even),
+  body table tr:nth-child(even) {
+    background-color: #161b22 !important;
+  }
+  
+  html body table tr:nth-child(odd),
+  body table tr:nth-child(odd) {
+    background-color: #0d1117 !important;
+  }
+  
+  /* All divs that might contain content cards */
+  html body div,
+  body div {
+    background-color: transparent !important;
+  }
+  
+  /* Specific targeting for any white/light backgrounds */
+  html body [style*="background"],
+  body [style*="background"] {
+    background-color: #161b22 !important;
+  }
+  
+  /* Target common content wrapper classes */
+  html body .wrapper,
+  body .wrapper,
+  html body .container,
+  body .container,
+  html body .content,
+  body .content,
+  html body .main-content,
+  body .main-content {
+    background-color: #0d1117 !important;
+  }
 }
