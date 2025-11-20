@@ -139,21 +139,34 @@
   body table {
     background-color: #0d1117 !important;
     border-collapse: collapse !important;
+    color: #f0f6fc !important;
   }
   
   html body table tr,
   body table tr {
     background-color: #0d1117 !important;
+    color: #f0f6fc !important;
   }
   
   html body table tr:nth-child(even),
   body table tr:nth-child(even) {
     background-color: #161b22 !important;
+    color: #f0f6fc !important;
   }
   
   html body table tr:nth-child(odd),
   body table tr:nth-child(odd) {
     background-color: #0d1117 !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Table cells specifically */
+  html body table th,
+  body table th,
+  html body table td,
+  body table td {
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
   }
   
   /* All divs that might contain content cards */
@@ -166,6 +179,7 @@
   html body [style*="background"],
   body [style*="background"] {
     background-color: #161b22 !important;
+    color: #f0f6fc !important;
   }
   
   /* Target common content wrapper classes */
@@ -178,5 +192,26 @@
   html body .main-content,
   body .main-content {
     background-color: #0d1117 !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Ensure text in cards/panels is bright */
+  html body .card *,
+  body .card *,
+  html body .panel *,
+  body .panel *,
+  html body .box *,
+  body .box * {
+    color: #f0f6fc !important;
+  }
+  
+  /* Fix any dimmed text specifically */
+  html body .text-muted,
+  body .text-muted,
+  html body .muted,
+  body .muted,
+  html body .secondary,
+  body .secondary {
+    color: #e6edf3 !important;
   }
 }
