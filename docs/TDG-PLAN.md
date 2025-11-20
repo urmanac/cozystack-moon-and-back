@@ -1027,3 +1027,9 @@ test_unified_cluster_visibility
 *TDG methodology: Write tests first, generate code to make them pass*  
 *Target: CozySummit Virtual 2025, December 4, 2025*  
 *For talk: "Home Lab to the Moon and Back" by Kingdon Barrett*
+
+---
+
+## Related Documentation
+
+- 📝 **[Session Learnings](SESSION-LEARNINGS.md)** - Deep architectural discoveries and TDG methodology application from November 16, 2025
