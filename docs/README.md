@@ -31,6 +31,7 @@ Welcome to the comprehensive documentation for the **Home Lab to the Moon and Ba
 - 📦 **[Custom Talos Images](guides/CUSTOM-TALOS-IMAGES.md)** - Building ARM64 Talos with Spin + Tailscale
 - ☁️ **[AWS Infrastructure Handoff](guides/AWS-INFRASTRUCTURE-HANDOFF.md)** - Cloud validation setup
 - 🌐 **[Matchbox Server Config](guides/MATCHBOX-SERVER-CONFIG.md)** - Network boot configuration
+- 🔥 **[Live Fire Test Instructions](guides/LIVE-FIRE-TEST-INSTRUCTIONS.md)** - End-to-end validation testing
 
 ### Development & Testing  
 - 🧪 **[TDG Implementation Story](TDG-PLAN.md)** - Test-Driven Generation journey
@@ -164,6 +165,15 @@ yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
 2. Run local validation before PR submission
 3. Document architectural decisions in ADRs
 4. Update cost analysis for infrastructure changes
+
+---
+
+## 📋 Meta Documentation
+
+📚 **Project organization and build system documentation**
+
+- 📄 **[About Latest Build](ABOUT-LATEST-BUILD.md)** - Understanding auto-generated build status
+- 🏷️ **[Package Naming Cleanup](PACKAGE-NAMING-CLEANUP.md)** - Package naming conventions
 
 ---
 

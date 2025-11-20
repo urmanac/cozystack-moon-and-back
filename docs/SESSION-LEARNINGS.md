@@ -106,3 +106,7 @@ If this session ends abruptly:
 5. All changes should be driven by TDG tests, not implemented then tested
 
 **Status**: Deep architectural understanding achieved, ready for proper implementation following TDG methodology.
+
+---
+
+📍 **Related**: [🧪 TDG Implementation Story](TDG-PLAN.md) | [📚 Documentation Hub](README.md)
