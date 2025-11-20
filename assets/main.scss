@@ -37,11 +37,26 @@
   body .page-link,
   .site-nav .page-link {
     color: #f0f6fc !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.2s ease !important;
   }
   
   html body .page-link:hover,
   body .page-link:hover {
     color: #58a6ff !important;
+    text-shadow: 0 0 8px rgba(88, 166, 255, 0.4) !important;
+    transform: translateY(-1px) !important;
+  }
+  
+  /* Make the site title extra prominent */
+  html body .site-title,
+  body .site-title {
+    font-size: 1.5em !important;
+    font-weight: 700 !important;
+    color: #bd93f9 !important;
+    text-shadow: 0 0 10px rgba(189, 147, 249, 0.3) !important;
   }
   
   /* Links with nuclear specificity */

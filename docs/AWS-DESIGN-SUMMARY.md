@@ -1,3 +1,8 @@
+---
+title: "Design"
+layout: default
+---
+
 # AWS Infrastructure Design (Claude Desktop Analysis)
 
 **Status**: ✅ **APPROVED DESIGN** - Ready for implementation  

@@ -1,6 +1,6 @@
 ---
 layout: home
-title: "Home Lab to the Moon and Back: ARM64 Kubernetes with Spin and Tailscale"
+title: "Tailscale"
 ---
 
 # 🚀 Home Lab to the Moon and Back
