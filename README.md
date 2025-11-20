@@ -232,16 +232,30 @@ This project follows the **Test-Driven Generation** methodology created by [Chan
 - 🧰 [TDG Skill (Open Source)](https://github.com/chanwit/tdg)
 - 📋 [Our TDG Plan](docs/TDG-PLAN.md)
 
-### Test Status: 21 Tests Defined
+### Test Status: Two-Track Approach
 
+#### ✅ Patch & Image Validation (Current Suite)
+| Test Category | Status | Details |
+|--------------|--------|---------|
+| Patch Validation | ✅ **PASSING** | 4/5 tests passing (validate-complete.sh) |
+| Image Build Tests | 🚧 **PARTIAL** | 1/3 passing (need published images) |
+| Cost Tracking | ✅ **PASSING** | AWS cost validation working |
+
+#### 🚧 Infrastructure TDG Suite (Planned)
 | Phase | Tests | Status |
 |-------|-------|--------|
-| Network Foundation | 1-3 | ❌ In Progress |
-| Bastion & Netboot | 4-6 | ❌ Pending |
-| CozyStack Deployment | 7-9 | ❌ Pending |
-| Integration Tests | 10-21 | ❌ Pending |
+| Network Foundation | 1-3 | 📋 **DEFINED** (TDG-PLAN.md) |
+| Bastion & Netboot | 4-6 | 📋 **DEFINED** (TDG-PLAN.md) |
+| CozyStack Deployment | 7-9 | 📋 **DEFINED** (TDG-PLAN.md) |
+| Integration Tests | 10-12 | 📋 **DEFINED** (SpinApp + KubeVirt + Moonlander) |
 
-Run tests: `./tests/run-all.sh`
+**Run current tests**: `./validate-complete.sh` and `./tests/run-all-custom-image-tests.sh`  
+**Next**: Implement TDG infrastructure tests from [TDG-PLAN.md](docs/TDG-PLAN.md)
+
+**Integration Test Highlights**:
+- ✨ **Test 10**: SpinApp GitOps deployment with MetalLB external access
+- 🔄 **Test 11**: KubeVirt + Cluster-API nested Kubernetes clusters  
+- 🌐 **Test 12**: Moonlander + Harvey cross-cluster management via Crossplane
 
 ---
 
