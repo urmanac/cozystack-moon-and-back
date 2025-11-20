@@ -150,10 +150,10 @@ echo "=== TEST 4: PATCH DIRECTORY CLEANLINESS ==="
 echo "Ensuring no leftover debugging patches..."
 
 PATCH_COUNT=$(find patches/ -name "*.patch" | wc -l)
-if [[ $PATCH_COUNT -eq 1 ]]; then
-    echo "✓ Exactly one patch file present"
+if [[ $PATCH_COUNT -eq 3 ]]; then
+    echo "✓ Expected patch files present (spin-tailscale, makefile variables, spin-only)"
 else
-    echo "✗ Expected 1 patch file, found $PATCH_COUNT"
+    echo "✗ Expected 3 patch files, found $PATCH_COUNT"
     echo "Files found:"
     ls -la patches/
     exit 1
