@@ -43,30 +43,28 @@ This document follows the **Test-Driven Generation (TDG)** methodology introduce
 
 test_vpc_exists() {
   vpc_id=$(aws ec2 describe-vpcs \
-    --filters "Name=cidr,Values=10.20.0.0/16" \
+    --filters "Name=cidr,Values=10.10.0.0/16" \
     --query 'Vpcs[0].VpcId' --output text)
   
   [ "$vpc_id" != "None" ] && [ -n "$vpc_id" ]
 }
 
-test_subnets_exist() {
+test_single_public_subnet_exists() {
+  # Desktop design: Single public subnet, no private subnet needed
   public_subnet=$(aws ec2 describe-subnets \
-    --filters "Name=cidr-block,Values=10.20.1.0/24" \
+    --filters "Name=cidr-block,Values=10.10.0.0/24" \
     --query 'Subnets[0].SubnetId' --output text)
   
-  private_subnet=$(aws ec2 describe-subnets \
-    --filters "Name=cidr-block,Values=10.20.13.0/24" \
-    --query 'Subnets[0].SubnetId' --output text)
-  
-  [ "$public_subnet" != "None" ] && [ "$private_subnet" != "None" ]
+  [ "$public_subnet" != "None" ] && [ -n "$public_subnet" ]
 }
 
-test_nat_gateway_operational() {
-  nat_state=$(aws ec2 describe-nat-gateways \
-    --filter "Name=vpc-id,Values=$vpc_id" \
-    --query 'NatGateways[0].State' --output text)
+test_internet_gateway_only() {
+  # No NAT gateway needed - IPv6 + bastion Wireguard for internet
+  igw_state=$(aws ec2 describe-internet-gateways \
+    --filters "Name=attachment.vpc-id,Values=$vpc_id" \
+    --query 'InternetGateways[0].State' --output text)
   
-  [ "$nat_state" = "available" ]
+  [ "$igw_state" = "available" ]
 }
 
 test_route_tables_configured() {
@@ -80,8 +78,8 @@ test_route_tables_configured() {
 
 # Run all tests
 test_vpc_exists && \
-test_subnets_exist && \
-test_nat_gateway_operational && \
+test_single_public_subnet_exists && \
+test_internet_gateway_only && \
 test_route_tables_configured
 ```
 
@@ -90,14 +88,14 @@ test_route_tables_configured
 
 ---
 
-### Test 2: Bastion in Private Subnet
+### Test 2: Bastion with Static ENI
 ```bash
 #!/bin/bash
-# tests/02-bastion-private-subnet.sh
+# tests/02-bastion-static-eni.sh
 
 # GIVEN: Network foundation from Test 1
-# WHEN: Bastion ASG deploys
-# THEN: Bastion runs in private subnet with static IP
+# WHEN: Bastion ASG deploys with ENI attachment
+# THEN: Bastion has static IP 10.10.0.100 via ENI
 
 test_bastion_in_private_subnet() {
   bastion_ip=$(aws ec2 describe-instances \
@@ -849,8 +847,179 @@ The `validate-complete.sh` script now ensures:
 2. Move bastion to private subnet (Test 2)
 3. Add Docker containers to bastion user data (Test 3)
 
+## TDG Test Suite: Integration Layer
+
+### Test 10: SpinApp GitOps Deployment
+```bash
+#!/bin/bash
+# tests/10-spinapp-gitops.sh
+
+# GIVEN: CozyStack cluster operational from Test 5
+# WHEN: GitOps repository contains SpinApp manifest
+# THEN: Application serves externally via MetalLB
+
+test_spinapp_deployed() {
+  # Check SpinApp CRD exists and application is ready
+  kubectl get spinapp demo-spin-app -n demo \
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q "True"
+}
+
+test_metallb_service_allocated() {
+  # Verify MetalLB allocated external IP from ARP pool
+  external_ip=$(kubectl get svc demo-spin-app -n demo \
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  
+  [[ "$external_ip" =~ ^10\.20\.1\.[0-9]+$ ]] # VPC subnet range
+}
+
+test_external_access_works() {
+  # Test HTTP access from within VPC (bastion perspective)
+  ssh bastion "curl -f http://$external_ip:8080/health" | grep -q "OK"
+}
+
+test_gitops_sync_working() {
+  # Verify Flux/ArgoCD shows application in sync
+  # Implementation depends on GitOps tool choice
+  kubectl get gitrepository cozy-apps -n flux-system \
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q "True"
+}
+
+# Run all tests
+test_spinapp_deployed && \
+test_metallb_service_allocated && \
+test_external_access_works && \
+test_gitops_sync_working
+```
+
+**Status**: ❌ FAIL (No cluster yet)
+**Dependencies**: Tests 1-5 (infrastructure), GitOps repository
+**Demo Value**: ⭐⭐⭐⭐⭐ (Shows WebAssembly + GitOps + LoadBalancer)
+
+---
+
+### Test 11: KubeVirt Cluster-API Integration  
+```bash
+#!/bin/bash
+# tests/11-kubevirt-cluster-api.sh
+
+# GIVEN: CozyStack with KubeVirt provider from Test 5
+# WHEN: Cluster-API creates guest Kubernetes cluster
+# THEN: Nested cluster runs workloads successfully
+
+test_cluster_api_ready() {
+  # Verify Cluster-API controllers operational
+  kubectl get clusters -A | grep -q "Provisioned.*True"
+}
+
+test_guest_cluster_accessible() {
+  # Extract guest cluster kubeconfig and test access
+  kubectl get secret guest-cluster-kubeconfig -o jsonpath='{.data.value}' \
+    | base64 -d > /tmp/guest-kubeconfig
+  
+  KUBECONFIG=/tmp/guest-kubeconfig kubectl get nodes | grep -q "Ready"
+}
+
+test_nested_workload_scheduling() {
+  # Deploy simple workload to guest cluster
+  KUBECONFIG=/tmp/guest-kubeconfig kubectl run test-pod \
+    --image=nginx:alpine --restart=Never
+  
+  KUBECONFIG=/tmp/guest-kubeconfig kubectl wait pod test-pod \
+    --for=condition=Ready --timeout=300s
+}
+
+test_vm_resource_isolation() {
+  # Verify VMs have proper resource limits
+  kubectl get virtualmachine -A -o jsonpath='{.items[*].spec.template.spec.domain.resources}'
+}
+
+# Run all tests  
+test_cluster_api_ready && \
+test_guest_cluster_accessible && \
+test_nested_workload_scheduling && \
+test_vm_resource_isolation
+```
+
+**Status**: ❌ FAIL (No KubeVirt yet) 
+**Dependencies**: Test 5 (CozyStack), KubeVirt + Cluster-API setup
+**Demo Value**: ⭐⭐⭐⭐ (Shows infrastructure-as-code for Kubernetes)
+
+---
+
+### Test 12: Moonlander + Harvey Cross-Cluster Management
+```bash  
+#!/bin/bash
+# tests/12-moonlander-harvey-integration.sh
+
+# GIVEN: Multiple clusters from Tests 5 + 11
+# WHEN: Moonlander copies kubeconfigs for Harvey
+# THEN: Harvey (Crossplane) manages all clusters uniformly
+
+test_moonlander_secret_propagation() {
+  # Verify Moonlander copied guest cluster kubeconfig to Harvey namespace
+  kubectl get secret guest-cluster-kubeconfig -n harvey-system \
+    -o jsonpath='{.data.kubeconfig}' | base64 -d | grep -q "clusters:"
+}
+
+test_harvey_crossplane_connectivity() {
+  # Check Harvey can list resources across all clusters
+  kubectl get providerconfigs -n harvey-system | grep -q "guest-cluster"
+  
+  # Verify Crossplane can reach guest cluster
+  kubectl logs -n harvey-system deployment/harvey-controller | grep -q "successfully connected to guest-cluster"
+}
+
+test_cross_cluster_workload_deployment() {
+  # Harvey deploys workload to guest cluster via Crossplane
+  cat <<EOF | kubectl apply -f -
+apiVersion: harvey.io/v1alpha1  
+kind: CrossClusterWorkload
+metadata:
+  name: test-cross-deployment
+  namespace: harvey-system
+spec:
+  targetCluster: guest-cluster
+  template:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: harvey-managed-pod
+    spec:
+      containers:
+      - name: test
+        image: alpine:latest
+        command: [sleep, "3600"]
+EOF
+
+  # Wait for Harvey to propagate workload
+  sleep 30
+  
+  KUBECONFIG=/tmp/guest-kubeconfig kubectl get pod harvey-managed-pod | grep -q "Running"
+}
+
+test_unified_cluster_visibility() {
+  # Verify Harvey dashboard shows both host and guest clusters
+  kubectl port-forward -n harvey-system svc/harvey-dashboard 8080:80 &
+  sleep 5
+  curl -f http://localhost:8080/api/clusters | jq '.clusters | length' | grep -q "2"
+  pkill -f "kubectl port-forward"
+}
+
+# Run all tests
+test_moonlander_secret_propagation && \
+test_harvey_crossplane_connectivity && \
+test_cross_cluster_workload_deployment && \
+test_unified_cluster_visibility  
+```
+
+**Status**: ❌ FAIL (No Moonlander/Harvey yet)
+**Dependencies**: Tests 5 + 11, Moonlander secret propagation, Harvey/Crossplane
+**Demo Value**: ⭐⭐⭐⭐⭐ (Shows advanced multi-cluster orchestration)
+
+---
+
 **When operator returns, start with:**
-"Welcome back from breakfast! I've created a TDG test suite following Chanwit's methodology. We have 9 tests defined, currently all failing. Let's make Test 1 pass first - want me to generate the VPC Terraform?"
+"Welcome back! I've expanded the TDG test suite to include integration tests 10-12. These cover SpinApp GitOps deployment, KubeVirt nested clusters, and Moonlander+Harvey cross-cluster management. We now have 12 tests defined total. Want me to generate the VPC Terraform to make Test 1 pass first?"
 
 ---
 

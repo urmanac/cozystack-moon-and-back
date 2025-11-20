@@ -14,8 +14,15 @@ author:
 header_pages:
   - index.md
   - docs/README.md  
+  - docs/AWS-DESIGN-SUMMARY.md
   - docs/ADRs/README.md
   - docs/LATEST-BUILD.md
+
+# Enable dark mode support
+minima:
+  skin: auto
+  social_links:
+    - { platform: github, user_url: "https://github.com/urmanac/cozystack-moon-and-back" }
 
 # Plugins (GitHub Pages compatible)
 plugins:

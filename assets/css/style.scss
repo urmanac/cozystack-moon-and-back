@@ -1,0 +1,124 @@
+---
+---
+
+@import "minima";
+
+/* Dark Mode Toggle Styles */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--button-bg, #f8f9fa);
+  border: 1px solid var(--button-border, #dee2e6);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.theme-toggle:hover {
+  background: var(--button-hover-bg, #e9ecef);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+
+/* Light Mode Variables */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #24292e;
+  --link-color: #0366d6;
+  --border-color: #e1e4e8;
+  --code-bg: #f6f8fa;
+  --button-bg: #f8f9fa;
+  --button-border: #dee2e6;
+  --button-hover-bg: #e9ecef;
+  --header-bg: #24292e;
+  --header-text: #ffffff;
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+  --bg-color: #0d1117;
+  --text-color: #f0f6fc;
+  --link-color: #58a6ff;
+  --border-color: #30363d;
+  --code-bg: #161b22;
+  --button-bg: #21262d;
+  --button-border: #30363d;
+  --button-hover-bg: #30363d;
+  --header-bg: #161b22;
+  --header-text: #f0f6fc;
+}
+
+/* Apply Dark Mode Styles */
+body {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.site-header {
+  background-color: var(--header-bg) !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.site-title,
+.page-link {
+  color: var(--header-text) !important;
+}
+
+.page-link:hover {
+  color: var(--link-color) !important;
+}
+
+a {
+  color: var(--link-color) !important;
+}
+
+pre,
+code {
+  background-color: var(--code-bg) !important;
+  border: 1px solid var(--border-color);
+}
+
+blockquote {
+  border-left: 4px solid var(--border-color);
+  background-color: var(--code-bg);
+}
+
+table th,
+table td {
+  border: 1px solid var(--border-color);
+}
+
+table th {
+  background-color: var(--code-bg);
+}
+
+hr {
+  border-color: var(--border-color);
+}
+
+/* Badge styles for dark mode */
+[data-theme="dark"] img[src*="shields.io"] {
+  filter: brightness(0.8);
+}
+
+/* Ensure code blocks are readable in both modes */
+.highlight {
+  background-color: var(--code-bg) !important;
+}
+
+.highlight pre {
+  background-color: transparent !important;
+}
+
+/* Dark mode for syntax highlighting */
+[data-theme="dark"] .highlight .c { color: #7c7c7c; } /* Comment */
+[data-theme="dark"] .highlight .k { color: #ff7b72; } /* Keyword */
+[data-theme="dark"] .highlight .s { color: #a5d6ff; } /* String */
+[data-theme="dark"] .highlight .m { color: #79c0ff; } /* Number */
+[data-theme="dark"] .highlight .n { color: #f0f6fc; } /* Name */
