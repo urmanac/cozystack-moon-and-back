@@ -18,26 +18,8 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 - ✅ Netboots Talos Linux with custom extensions (Spin + Tailscale subnet router)
 - ✅ Demonstrates WebAssembly on ARM64 in production-like conditions
 - ✅ Proves when cloud makes sense vs. efficient home lab hardware
-- ✅ Maintains zero GDPR risk (private networking only)
 
 **Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
-
-### 🧪 TDG Test Status (Current)
-
-**✅ Working Tests**:
-- Patch validation (upstream conformance)
-- GitHub Actions workflow syntax
-- Dependency verification (crane, skopeo, jq)
-
-**🚧 Needs Update**:
-- Container image tests (outdated image names)
-- Asset extraction (expecting wrong format)
-- Cost tracking (missing test file)
-
-**🎯 Conformance Achieved**:
-- Upstream CozyStack integration ✅
-- Separate repository strategy ✅
-- ARM64 native builds ✅
 
 ### 🧪 TDG Test Status (Current)
 
