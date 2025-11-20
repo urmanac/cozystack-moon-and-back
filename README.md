@@ -21,22 +21,27 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 
 **Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
 
-### 🧪 TDG Test Status (Current)
+### 🧪 TDG Test Status (Updated: November 19, 2025)
 
-**✅ Working Tests**:
-- Patch validation (upstream conformance)
-- GitHub Actions workflow syntax
-- Dependency verification (crane, skopeo, jq)
+**✅ Working Tests (4/5)**:
+- ✅ Patch validation (upstream conformance) - **FIXED**
+- ✅ GitHub Actions workflow syntax
+- ✅ Dependency verification (crane, skopeo, jq)
+- ✅ Patch directory cleanliness (3 patches) - **FIXED**
 
-**🚧 Needs Update**:
-- Container image tests (outdated image names)
-- Asset extraction (expecting wrong format)
-- Cost tracking (missing test file)
+**❌ Failing Tests (1/5)**:
+- ❌ ADR-003 documentation validation - Missing file expected by test
+
+**🚧 Image Build Tests (1/3 passing)**:
+- ❌ Container image pulls (need actual published images)
+- ❌ OCI manifest validation (images not yet published)
+- ✅ Cost tracking validation
 
 **🎯 Conformance Achieved**:
 - Upstream CozyStack integration ✅
-- Separate repository strategy ✅
+- Separate repository strategy ✅  
 - ARM64 native builds ✅
+- Test suite reality alignment ✅ **NEW**
 
 ---
 
