@@ -1,0 +1,120 @@
+---
+---
+
+@import "minima";
+
+/* CSS-only Dark Mode using prefers-color-scheme with maximum specificity */
+@media (prefers-color-scheme: dark) {
+  /* Nuclear option: Use ID-level specificity to override everything */
+  html body,
+  html body.minima-theme,
+  body {
+    background-color: #0d1117 !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Override any potential minima body classes */
+  .minima body,
+  html.no-js body,
+  html body {
+    background-color: #0d1117 !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Header with maximum specificity */
+  html body .site-header,
+  body .site-header,
+  .site-header {
+    background-color: #161b22 !important;
+    border-bottom: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Site title and navigation */
+  html body .site-title,
+  body .site-title,
+  html body .page-link,
+  body .page-link,
+  .site-nav .page-link {
+    color: #f0f6fc !important;
+  }
+  
+  html body .page-link:hover,
+  body .page-link:hover {
+    color: #58a6ff !important;
+  }
+  
+  /* Links with nuclear specificity */
+  html body a,
+  body a,
+  a {
+    color: #58a6ff !important;
+  }
+  
+  html body a:visited,
+  body a:visited {
+    color: #bd93f9 !important;
+  }
+  
+  /* Code blocks - target all possible selectors */
+  html body pre,
+  body pre,
+  html body code,
+  body code,
+  .highlight pre,
+  .highlight code {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* Blockquotes */
+  html body blockquote,
+  body blockquote {
+    border-left: 4px solid #30363d !important;
+    background-color: #161b22 !important;
+    color: #8b949e !important;
+  }
+  
+  /* Tables */
+  html body table th,
+  body table th,
+  html body table td,
+  body table td {
+    border: 1px solid #30363d !important;
+  }
+  
+  html body table th,
+  body table th {
+    background-color: #161b22 !important;
+    color: #f0f6fc !important;
+  }
+  
+  /* HR */
+  html body hr,
+  body hr {
+    border-color: #30363d !important;
+  }
+  
+  /* Footer */
+  html body .site-footer,
+  body .site-footer {
+    background-color: #161b22 !important;
+    border-top: 1px solid #30363d !important;
+    color: #8b949e !important;
+  }
+  
+  html body .footer-heading,
+  body .footer-heading {
+    color: #f0f6fc !important;
+  }
+  
+  /* Navigation menu items */
+  body .site-nav .page-link {
+    color: #f0f6fc !important;
+  }
+  
+  body .site-nav .page-link:hover {
+    color: #58a6ff !important;
+  }
+}

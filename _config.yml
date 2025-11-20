@@ -1,4 +1,4 @@
-# GitHub Pages Configuration
+# GitHub Pages Configuration  
 theme: minima
 title: "Moon and Back"
 description: "Validating ARM64 CozyStack in the cloud before committing to bare-metal hardware"
@@ -19,10 +19,8 @@ header_pages:
   - docs/LATEST-BUILD.md
 
 # Enable dark mode support
-minima:
-  skin: auto
-  social_links:
-    - { platform: github, user_url: "https://github.com/urmanac/cozystack-moon-and-back" }
+# Note: Using CSS prefers-color-scheme instead of manual toggle
+# Automatically respects user's OS/browser preference
 
 # Plugins (GitHub Pages compatible)
 plugins:

@@ -1,0 +1,9 @@
+# Local development overrides
+# This file overrides _config.yml for local development
+
+baseurl: ""
+url: "http://127.0.0.1:4000"
+
+# Keep other settings from _config.yml but override URLs
+github_username: urmanac
+repository: urmanac/cozystack-moon-and-back
