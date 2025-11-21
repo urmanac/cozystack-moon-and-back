@@ -63,7 +63,7 @@ on:
 
 # Source: https://github.com/cozystack/cozystack/blob/main/packages/core/installer/Makefile
 env:
-  REGISTRY: ghcr.io/urmanac
+  REGISTRY: ghcr.io/urmanac/cozystack-assets
 
 jobs:
   build-cozystack-upstream:
@@ -178,7 +178,7 @@ jobs:
       - name: Update upstream dependencies and build with Makefile targets
         id: build
         env:
-          REGISTRY: ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}
+          REGISTRY: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
           PUSH: 1
           LOAD: 0
         run: |
@@ -367,14 +367,26 @@ jobs:
           EOF
           
           # Output validation results
-          if [ -f "boot/vmlinuz" ]; then
+          if [ -f "usr/install/arm64/vmlinuz.efi" ]; then
+            KERNEL_DIGEST=$(sha256sum usr/install/arm64/vmlinuz.efi | cut -d' ' -f1)
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "talos/arm64/boot/vmlinuz" ]; then
+            KERNEL_DIGEST=$(sha256sum talos/arm64/boot/vmlinuz | cut -d' ' -f1)
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "boot/vmlinuz" ]; then
             KERNEL_DIGEST=$(sha256sum boot/vmlinuz | cut -d' ' -f1)
-            echo "kernel-digest=sha256:$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
           fi
           
-          if [ -f "boot/initramfs.xz" ]; then
+          if [ -f "usr/install/arm64/systemd-boot.efi" ]; then
+            INITRAMFS_DIGEST=$(sha256sum usr/install/arm64/systemd-boot.efi | cut -d' ' -f1)
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "talos/arm64/boot/initramfs.xz" ]; then
+            INITRAMFS_DIGEST=$(sha256sum talos/arm64/boot/initramfs.xz | cut -d' ' -f1)
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "boot/initramfs.xz" ]; then
             INITRAMFS_DIGEST=$(sha256sum boot/initramfs.xz | cut -d' ' -f1)
-            echo "initramfs-digest=sha256:$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
           fi
           
           echo "asset-count=$ASSET_COUNT" >> $GITHUB_OUTPUT
@@ -411,7 +423,7 @@ jobs:
           # Only test container images (not OS filesystem images like Talos)
           if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
             echo "🔍 Testing matchbox container image architecture and functionality..."
-            MATCHBOX_IMAGE="${{ env.REGISTRY }}/matchbox:latest"
+            MATCHBOX_IMAGE="${{ env.REGISTRY }}/matchbox/cozystack-${{ matrix.extension_variant }}:latest"
             
             # First check if the image actually exists
             echo "Checking if matchbox image exists in registry..."
@@ -491,7 +503,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}
+          images: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
           tags: |
             # Clean Talos version (variant is in repo name now)
             type=raw,value=${{ steps.build.outputs.talos-version }}
@@ -591,9 +603,9 @@ jobs:
           VARIANT="${{ matrix.extension_variant }}"
           REGISTRY="${{ env.REGISTRY }}"
           
-          # Test the talos repository (correct path with /talos suffix)
+          # Test the talos repository (correct path with new hierarchy)
           echo "Testing $VARIANT variant..."
-          TALOS_REPO="$REGISTRY/talos-cozystack-$VARIANT/talos"
+          TALOS_REPO="$REGISTRY/talos/cozystack-$VARIANT"
           
           echo "Checking for available tags in: $TALOS_REPO"
           if crane ls "$TALOS_REPO" 2>/dev/null; then
@@ -698,46 +710,44 @@ jobs:
           
           | Asset | Digest |
           |-------|--------|
-          | **Kernel** | \`${KERNEL_DIGEST:-'pending'}\` |
-          | **Initramfs** | \`${INITRAMFS_DIGEST:-'pending'}\` |
+          | **Kernel** | \`${KERNEL_DIGEST:-'not found'}\` |
+          | **Boot Loader** | \`${INITRAMFS_DIGEST:-'not found'}\` |
           
           ## Container Images
           
           Two variants are built for different use cases:
           
-          ### spin-tailscale (Full Stack)
+          ### talos/cozystack-spin-tailscale (Full Stack)
           Includes Spin runtime + Tailscale networking for complete demo environment.
           
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos-cozystack-spin-tailscale:demo-stable
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:demo-stable
           \`\`\`
           
-          ### spin-only (Minimal)
+          ### talos/cozystack-spin-only (Minimal)
           Includes only Spin runtime for lightweight deployments.
           
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos-cozystack-spin-only:demo-stable
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only:demo-stable
           \`\`\`
           
           ## Asset Extraction
           
-          Extract complete ARM64 asset bundle with validation:
+          Extract complete Talos installer assets:
           
           \`\`\`bash
-          # Create asset directory
-          mkdir -p /opt/cozystack-assets
+          # Create local assets directory
+          mkdir -p ./cozystack-assets
           
-          # Extract from spin-tailscale image
-          docker create --name temp-extract ${{ env.REGISTRY }}/talos-cozystack-spin-tailscale:demo-stable
-          docker cp temp-extract:/assets/. /opt/cozystack-assets/
+          # Extract from talos/cozystack-spin-tailscale image (recommended)
+          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:demo-stable
+          docker cp temp-extract:/. ./cozystack-assets
           docker rm temp-extract
           
-          # Verify integrity
-          cd /opt/cozystack-assets/talos/arm64
-          sha256sum -c checksums.sha256
-          
-          # View build report
-          cat validation/build-report.txt
+          # Key assets are located at:
+          # ./cozystack-assets/usr/install/arm64/vmlinuz.efi
+          # ./cozystack-assets/usr/install/arm64/systemd-boot.efi
+          # ./cozystack-assets/usr/bin/installer
           \`\`\`
           EOF
 
