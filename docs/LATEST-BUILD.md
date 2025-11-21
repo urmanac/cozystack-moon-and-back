@@ -2,7 +2,7 @@
 
 **Built:** 2025-11-20 14:08:37 UTC  
 **Talos Version:** `v1.11.5`  
-**CozyStack Commit:** ``  
+**CozyStack Commit:** `pending`  
 **Build Target:** `upstream-images`  
 **Total Assets:** 2  
 
@@ -10,44 +10,42 @@
 
 | Asset | Digest |
 |-------|--------|
-| **Kernel** | `'pending'` |
-| **Initramfs** | `'pending'` |
+| **Kernel** | `not found` |
+| **Boot Loader** | `not found` |
 
 ## Container Images
 
 Two variants are built for different use cases:
 
-### spin-tailscale (Full Stack)
+### talos/cozystack-spin-tailscale (Full Stack)
 Includes Spin runtime + Tailscale networking for complete demo environment.
 
 ```bash
-docker pull ghcr.io/urmanac/talos-cozystack-spin-tailscale:demo-stable
+docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:demo-stable
 ```
 
-### spin-only (Minimal)
+### talos/cozystack-spin-only (Minimal)
 Includes only Spin runtime for lightweight deployments.
 
 ```bash
-docker pull ghcr.io/urmanac/talos-cozystack-spin-only:demo-stable
+docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only:demo-stable
 ```
 
 ## Asset Extraction
 
-Extract complete ARM64 asset bundle with validation:
+Extract complete Talos installer assets:
 
 ```bash
-# Create asset directory
-mkdir -p /opt/cozystack-assets
+# Create local assets directory
+mkdir -p ./cozystack-assets
 
-# Extract from spin-tailscale image
-docker create --name temp-extract ghcr.io/urmanac/talos-cozystack-spin-tailscale:demo-stable
-docker cp temp-extract:/assets/. /opt/cozystack-assets/
+# Extract from talos/cozystack-spin-tailscale image (recommended)
+docker create --name temp-extract ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:demo-stable
+docker cp temp-extract:/. ./cozystack-assets
 docker rm temp-extract
 
-# Verify integrity
-cd /opt/cozystack-assets/talos/arm64
-sha256sum -c checksums.sha256
-
-# View build report
-cat validation/build-report.txt
+# Key assets are located at:
+# ./cozystack-assets/usr/install/arm64/vmlinuz.efi
+# ./cozystack-assets/usr/install/arm64/systemd-boot.efi
+# ./cozystack-assets/usr/bin/installer
 ```
