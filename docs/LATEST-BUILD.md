@@ -1,8 +1,8 @@
 # Latest CozyStack ARM64 Talos Build
 
-**Built:** 2025-11-20 14:08:37 UTC  
+**Built:** 2025-11-21 19:01:22 UTC  
 **Talos Version:** `v1.11.5`  
-**CozyStack Commit:** `pending`  
+**CozyStack Commit:** ``  
 **Build Target:** `upstream-images`  
 **Total Assets:** 2  
 
@@ -10,8 +10,8 @@
 
 | Asset | Digest |
 |-------|--------|
-| **Kernel** | `not found` |
-| **Boot Loader** | `not found` |
+| **Kernel** | `'not found'` |
+| **Boot Loader** | `'not found'` |
 
 ## Container Images
 
@@ -21,14 +21,14 @@ Two variants are built for different use cases:
 Includes Spin runtime + Tailscale networking for complete demo environment.
 
 ```bash
-docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:demo-stable
+docker pull ghcr.io/urmanac/talos/cozystack-spin-tailscale:demo-stable
 ```
 
 ### talos/cozystack-spin-only (Minimal)
 Includes only Spin runtime for lightweight deployments.
 
 ```bash
-docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only:demo-stable
+docker pull ghcr.io/urmanac/talos/cozystack-spin-only:demo-stable
 ```
 
 ## Asset Extraction
@@ -40,7 +40,7 @@ Extract complete Talos installer assets:
 mkdir -p ./cozystack-assets
 
 # Extract from talos/cozystack-spin-tailscale image (recommended)
-docker create --name temp-extract ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:demo-stable
+docker create --name temp-extract ghcr.io/urmanac/talos/cozystack-spin-tailscale:demo-stable
 docker cp temp-extract:/. ./cozystack-assets
 docker rm temp-extract
 
