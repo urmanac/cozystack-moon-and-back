@@ -7,7 +7,7 @@ You are receiving this handoff to implement the AWS infrastructure for the "Home
 **Your role**: Implement AWS infrastructure to support custom ARM64 Talos netboot
 **My role**: Custom Talos image building, GitHub Actions, documentation
 **Budget**: Stay under $0.10/month (AWS free tier only)
-**Timeline**: Demo on December 4, 2025 (18 days)
+**Timeline**: Demo on December 3, 2025 (12 days)
 
 ## Infrastructure Requirements (Ready to Implement)
 

@@ -18,7 +18,7 @@
   - **Compute nodes**: `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only:demo-stable`
   - **Gateway nodes**: `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:demo-stable`
 - **Network Setup**: Private subnet with Tailscale subnet routing
-- **Demo Environment**: Optimized for live presentation on December 4, 2025
+- **Demo Environment**: Optimized for live presentation on December 3, 2025
 
 ### Key Features to Demonstrate
 1. **Automated Discovery**: Show talm discovering ARM64 hardware details
@@ -269,5 +269,5 @@ kubectl get ns | grep cozy
 ---
 
 **Status**: 📋 Planning Phase  
-**Target**: CozySummit Virtual 2025 - December 4, 2025  
+**Target**: CozySummit Virtual 2025 - December 3, 2025  
 **Goal**: Demonstrate GitOps Talos management with role-based ARM64 deployment

@@ -19,7 +19,7 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 - ✅ Demonstrates WebAssembly on ARM64 in production-like conditions
 - ✅ Proves when cloud makes sense vs. efficient home lab hardware
 
-**Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025**
+**Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 3, 2025**
 
 ### 🧪 TDG Test Status (Updated: November 19, 2025)
 
@@ -293,7 +293,7 @@ This project integrates with 8+ repositories:
 
 ## 🎬 The Demo
 
-### What You'll See (December 4)
+### What You'll See (December 3)
 
 1. **Home Lab Reality Check** 🔥
    - Temperature monitoring
@@ -403,7 +403,7 @@ This project demonstrates:
 
 ## 🏆 Success Metrics
 
-### Demo Day (December 4)
+### Demo Day (December 3)
 - [ ] Tests 1-6 passing (Network → Demo workload)
 - [ ] Live netboot < 5 minutes
 - [ ] SpinKube demo runs on ARM64
@@ -447,7 +447,7 @@ This project demonstrates:
 | Nov 16 | 🎬 Project kickoff, TDG tests defined |
 | Nov 23 | 🏗️ Network foundation + bastion deployed |
 | Nov 30 | 🐧 First Talos node netboots successfully |
-| Dec 4 | 🎤 Live demo at CozySummit Virtual 2025 |
+| Dec 3 | 🎤 Live demo at CozySummit Virtual 2025 |
 | Dec 31 | 🏠 Home lab transitions to Raspberry Pi |
 
 **Free tier expires**: December 2025 (t4g instances)

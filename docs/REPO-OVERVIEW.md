@@ -2,7 +2,7 @@
 
 ## Purpose of This Document
 
-This document maps the constellation of repositories that support the "Home Lab to the Moon and Back" talk and demo for CozySummit Virtual 2025 (December 4). It follows the **Test-Driven Generation (TDG)** methodology created by Chanwit Kaewkasi.
+This document maps the constellation of repositories that support the "Home Lab to the Moon and Back" talk and demo for CozySummit Virtual 2025 (December 3). It follows the **Test-Driven Generation (TDG)** methodology created by Chanwit Kaewkasi.
 
 **For the next Claude agent**: Use this as a reference map. Don't rebuild what exists - integrate it. Each repo serves a specific purpose in the ecosystem.
 
@@ -46,7 +46,7 @@ This document maps the constellation of repositories that support the "Home Lab 
 - **Contains**: Terraform, tests, slides, SpinKube demos
 - **Audience**: CozySummit attendees, CozyStack community
 - **Integration point**: References all other repos as dependencies
-- **Status**: Active development for December 4 deadline
+- **Status**: Active development for December 3 deadline
 
 ---
 
@@ -308,7 +308,7 @@ test_noclaude_alternative_backend() {
   # WHEN: Need AI assistance but can't rely solely on Anthropic
   # THEN: noclaude provides OpenAI/self-hosted alternative
   
-  # This isn't critical for December 4 demo
+  # This isn't critical for December 3 demo
   # But represents future direction:
   # "If you're running a cluster, host your own models"
   
@@ -619,7 +619,7 @@ test_readme_in_each_repo && test_cross_references_documented
 2. **Import aws-accounts modules** - Don't duplicate Terraform
 3. **Study talm presets** - Understand cozystack preset structure
 
-### Near-term (Before December 4)
+### Near-term (Before December 3)
 4. **Create custom talm chart** - Based on cozystack preset, optimized for demo
 5. **Plan Flux 2.7 ExternalArtifact demo** - Show off new features!
 6. **Document custom Talos image usage** - With talm deployment
@@ -633,7 +633,7 @@ test_readme_in_each_repo && test_cross_references_documented
 
 ## Success Criteria
 
-**For December 4 demo:**
+**For December 3 demo:**
 - [ ] All repos properly credited in slides
 - [ ] No duplicated code between repos
 - [ ] Clear README.md in cozystack-moon-and-back explaining constellation
@@ -694,4 +694,4 @@ test_readme_in_each_repo && test_cross_references_documented
 *Document created: 2025-11-16*  
 *Methodology: Test-Driven Generation (TDG) by Chanwit Kaewkasi*  
 *Purpose: Map repository constellation for CozySummit talk*  
-*Target: December 4, 2025 - 18 days remaining*
+*Target: December 3, 2025 - 12 days remaining*

@@ -2,7 +2,7 @@
 
 ## Context for Next Agent
 
-Hi there! I'm Claude Desktop (Sonnet 4.5), and I've been helping Kingdon design the "Home Lab to the Moon and Back" project for CozySummit Virtual 2025 (December 4). You'll be implementing this in GitHub Copilot. Here's what you need to know that I learned the hard way.
+Hi there! I'm Claude Desktop (Sonnet 4.5), and I've been helping Kingdon design the "Home Lab to the Moon and Back" project for CozySummit Virtual 2025 (December 3). You'll be implementing this in GitHub Copilot. Here's what you need to know that I learned the hard way.
 
 ---
 
@@ -97,7 +97,7 @@ Realistic production:           $25-70/month
 - Break-even comparison: "Home lab power: $40/month, Cloud experiments: $12/month"
 - Decision framework: "When to use cloud vs. home"
 
-### For the Talk (December 4):
+### For the Talk (December 3):
 
 **Don't lead with:** "You can run this for $0.08/month!"
 **DO lead with:** "I wanted to validate ARM64 CozyStack before buying Raspberry Pis"
@@ -271,7 +271,7 @@ test_break_even_documented
 **Cost expectation**: $0.50-1.00 per session, 2-3 sessions = $1.50-3.00
 
 ### Pre-talk: Documentation & Slides
-**Goal**: Honest cost story for December 4
+**Goal**: Honest cost story for December 3
 
 1. Update README with real costs
 2. Create COST-ANALYSIS.md with break-even math
@@ -373,7 +373,7 @@ Don't jump to 3-node cluster:
 **Why**: Validate cost model before committing to full demo
 
 ### 3. Update README Progressively
-Don't wait until December 4 to fix messaging:
+Don't wait until December 3 to fix messaging:
 - Week 1: Add "Baseline cost only" caveat
 - Week 2: Update with first experiment real costs
 - Week 3: Show trajectory toward validation budget
@@ -388,7 +388,7 @@ If experiments exceed budget:
 - Plan C: Home lab demo (works either way!)
 - Plan D: Accept higher cost, adjust messaging
 
-**Why**: December 4 deadline doesn't move
+**Why**: December 3 deadline doesn't move
 
 ### 5. Focus on the Value Proposition
 The real story isn't "$0.08/month":
@@ -404,7 +404,7 @@ The real story isn't "$0.08/month":
 
 1. **TDG Methodology** - Tests defined first, code follows
 2. **Repository constellation** - Don't duplicate, integrate
-3. **Honest timeline** - 18 days to December 4 is tight but doable
+3. **Honest timeline** - 12 days to December 3 is tight but doable
 4. **Architecture design** - Private network, exact home lab replica
 5. **Integration tests** - Cross-repo dependencies documented
 
@@ -452,7 +452,7 @@ After free tier expires: Scale appropriately or return to home (now on efficient
 
 ---
 
-## 🎤 Suggested Talk Structure (December 4)
+## 🎤 Suggested Talk Structure (December 3)
 
 **Slide 1-5: The Problem**
 - Home lab = space heater
@@ -499,7 +499,7 @@ After free tier expires: Scale appropriately or return to home (now on efficient
 
 ## ✅ Final Checklist for You
 
-Before December 4:
+Before December 3:
 - [ ] Implement cost tracking (first!)
 - [ ] Run at least 2 experiments with real cost data
 - [ ] Update README with honest cost expectations

@@ -30,7 +30,7 @@ Baseline cost:                      $0.08/month ✅
 ```
 Session duration:                   2-3 hours
 Frequency:                          2-3 sessions/week
-Total validation period:            3 weeks (Dec 4 deadline)
+Total validation period:            3 weeks (Dec 3 deadline)
 
 Per Session:
 - 3x t4g.small nodes:              $0.00 (under free tier limit)

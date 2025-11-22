@@ -63,7 +63,7 @@ All the planning is complete! The `AWS-INFRASTRUCTURE-HANDOFF.md` document conta
 1. **You pass the handoff document** to AWS-capable Claude
 2. **They implement infrastructure** (4 phases, ~2-3 hours)
 3. **We test end-to-end** netboot with custom images
-4. **You build slides & demo script** for December 4th
+4. **You build slides & demo script** for December 3rd
 
 ## The Cozystack Speed Run Connection 🏃‍♂️
 
@@ -92,7 +92,7 @@ Yes, I found references to your **Cozystack Speed Runs** in the docs! The YouTub
 
 ## Success Criteria ✨
 
-**For December 4 Demo:**
+**For December 3 Demo:**
 - [ ] Custom ARM64 images build in GitHub Actions
 - [ ] AWS bastion netboots Talos nodes successfully  
 - [ ] SpinKube demo runs on ARM64

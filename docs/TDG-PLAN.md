@@ -9,7 +9,7 @@ This document follows the **Test-Driven Generation (TDG)** methodology introduce
 ## Project Repositories Overview
 
 ### Primary Presentation Repo (NEW)
-- **urmanac/cozystack-moon-and-back**: Conference talk demo, December 4, 2025
+- **urmanac/cozystack-moon-and-back**: Conference talk demo, December 3, 2025
   - Purpose: Live demo + slides for CozySummit Virtual 2025
   - Content: Terraform for AWS infrastructure, talk materials, demo scripts
   - Audience: CozyStack community
@@ -678,7 +678,7 @@ Is it infrastructure (VPC, EC2, IAM)?
 
 ## Success Criteria (TDG-Style)
 
-**Minimum Viable Demo (December 4):**
+**Minimum Viable Demo (December 3):**
 - [ ] Test 1-3 passing (Network + Bastion)
 - [ ] Test 4 passing (At least 1 Talos node netboots)
 - [ ] Test 5 partial (CozyStack installed, even if not production-ready)
@@ -831,7 +831,7 @@ The `validate-complete.sh` script now ensures:
 - Home lab generates significant heat and power consumption
 - Already has working home lab with Talos + CozyStack
 - Needs cloud replica for talk demo + to prove economics
-- Conference: CozySummit Virtual 2025, December 4 (~18 days)
+- Conference: CozySummit Virtual 2025, December 3 (~12 days)
 - Budget: Stay within AWS free tier (<$0.10/month)
 
 **Technical state:**
@@ -1025,7 +1025,7 @@ test_unified_cluster_visibility
 
 *Document created: 2025-11-16*  
 *TDG methodology: Write tests first, generate code to make them pass*  
-*Target: CozySummit Virtual 2025, December 4, 2025*  
+*Target: CozySummit Virtual 2025, December 3, 2025*  
 *For talk: "Home Lab to the Moon and Back" by Kingdon Barrett*
 
 ---

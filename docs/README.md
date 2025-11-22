@@ -7,7 +7,7 @@ layout: page
 
 Welcome to the comprehensive documentation for the **Home Lab to the Moon and Back** project - validating ARM64 architecture in the cloud before committing to bare-metal hardware.
 
-> 🎯 **Mission**: Develop a cloud-validated, ARM64-first Kubernetes deployment for [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 4, 2025** to replace traditional high-power AMD64 home lab setups.
+> 🎯 **Mission**: Develop a cloud-validated, ARM64-first Kubernetes deployment for [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 3, 2025** to replace traditional high-power AMD64 home lab setups.
 
 ---
 
@@ -113,7 +113,7 @@ terraform apply
 - [ ] Performance benchmarking on AWS t4g instances
 - [ ] Cost optimization and monitoring setup
 
-### 🎯 **December 4, 2025 Demo Targets**
+### 🎯 **December 3, 2025 Demo Targets**
 - [ ] Live SpinKube demonstration on ARM64
 - [ ] Role-based cluster formation showcase
 - [ ] Tailscale subnet router demonstration
@@ -181,7 +181,7 @@ yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
 ## 🏷️ Project Meta
 
 - **License**: Apache 2.0
-- **Status**: Active Development (Demo: Dec 4, 2025)
+- **Status**: Active Development (Demo: Dec 3, 2025)
 - **Architecture**: ARM64-first with cloud validation
 - **Methodology**: Test-Driven Generation (TDG)
 

@@ -20,7 +20,7 @@ Transform a **128°F office space heater** into an **ARM64-first cloud deploymen
 - ✅ **Talos Linux** with WebAssembly + Tailscale subnet router
 - ✅ **AWS validation** before hardware purchase  
 - ✅ **Budget-conscious**: <$0.10/month baseline, <$15/month testing
-- ✅ **Live demo** at CozySummit Virtual 2025 (December 4)
+- ✅ **Live demo** at CozySummit Virtual 2025 (December 3)
 
 ---
 
@@ -60,7 +60,7 @@ Architectural decisions documented in ADRs:
 
 **⚠️ Pre-Demo Development Phase**
 
-This project is under active development for CozySummit Virtual 2025 (December 4). A complete quick start guide will be available after the demo.
+This project is under active development for CozySummit Virtual 2025 (December 3). A complete quick start guide will be available after the demo.
 
 ### Available Now
 
@@ -92,7 +92,7 @@ These are pure "matchbox" and "talos" OCI images compatible with:
 **✅ Completed (November 2025)**:
 ARM64 Talos builds, CI/CD pipeline, container images, TDG methodology, ADR documentation
 
-**🎯 Demo Goals (December 4, 2025)**:
+**🎯 Demo Goals (December 3, 2025)**:
 Live WebAssembly demo, VPC subnet router access, cost transparency, home lab transition strategy
 
 ---

@@ -17,7 +17,7 @@ Choose ARM64 as the target architecture for CozyStack deployment instead of the 
 - Limited ability to test ARM64 workloads like SpinKube
 
 **Business Context:**
-- CozySummit Virtual 2025 demo on December 4, 2025
+- CozySummit Virtual 2025 demo on December 3, 2025
 - Need to demonstrate ARM64 CozyStack capabilities
 - Budget constraints: <$0.10/month baseline, <$15/month validation
 - Risk of buying wrong hardware for home lab requirements

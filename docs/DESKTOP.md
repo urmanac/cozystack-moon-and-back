@@ -675,7 +675,7 @@ Update Test 5 (CozyStack Operational):
 - **Bastion ASG**: Scale 0→1 for 5 hrs/day
 - **t4g free tier**: 750 hrs/month covers 5 hrs/day usage
 - **Manual EC2 launch**: No ASG for Talos (avoids unwanted scaling)
-- **Temporary infrastructure**: Delete everything after demo (Dec 4)
+- **Temporary infrastructure**: Delete everything after demo (Dec 3)
 
 ## Critical Technical Details
 

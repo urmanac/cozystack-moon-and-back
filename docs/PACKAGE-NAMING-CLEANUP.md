@@ -64,4 +64,4 @@ cozystack/netboot-server   # Role: Home lab PXE/DHCP
 
 ---
 
-*Proposal: Fix the package names before December 4 demo!* 🚀
+*Proposal: Fix the package names before December 3 demo!* 🚀
