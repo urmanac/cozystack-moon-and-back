@@ -72,7 +72,7 @@ These role-based OCI images solve cluster formation issues by preventing Tailsca
 
 These are pure "matchbox" and "talos" OCI images compatible with:
 - Docker/Podman for local testing
-- `talm` (Talos lifecycle manager)  
+- [`talm`](https://github.com/cozystack/talm) (Helm-like for Talos Linux)  
 - `talos-bootstrap` from CozyStack project
 
 ### Development Validation

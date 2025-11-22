@@ -280,7 +280,7 @@ This project integrates with 8+ repositories:
 |------|---------|--------|
 | [urmanac/aws-accounts](https://github.com/urmanac/aws-accounts) | Infrastructure Terraform | ✅ Active |
 | [kingdon-ci/cozy-fleet](https://github.com/kingdon-ci/cozy-fleet) | Flux GitOps | ✅ Active |
-| [kingdonb/cozystack-talm-demo](https://github.com/kingdonb/cozystack-talm-demo) | HelmReleases & Speed Runs | 📺 Reference |
+| [cozystack/talm](https://github.com/cozystack/talm) | GitOps Talos Management | 🎯 Core Tool |
 | [kingdon-ci/kaniko-builder](https://github.com/kingdon-ci/kaniko-builder) | Custom image builds | 🔧 Tool |
 | [kingdon-ci/time-tracker](https://github.com/kingdon-ci/time-tracker) | Session tracking | ⚙️ Optional |
 | [kingdonb/mecris](https://github.com/kingdonb/mecris) | MCP server patterns | 🐕 Reference |

@@ -254,7 +254,7 @@ docker run -d \
 mkdir -p /opt/talos-netboot/assets/talos/arm64
 
 # Use current unified image (contains Spin + Tailscale extensions)
-# Later: switch to spin-only image for multi-node, use Talm for Tailscale config
+# Later: switch to spin-only image for multi-node, use talm for Tailscale config
 CONTAINER_ID=$(docker create ghcr.io/urmanac/talos-cozystack-demo:latest)
 docker cp $CONTAINER_ID:/usr/install/arm64/vmlinuz /opt/talos-netboot/assets/talos/arm64/
 docker cp $CONTAINER_ID:/usr/install/arm64/initramfs.xz /opt/talos-netboot/assets/talos/arm64/
@@ -336,9 +336,9 @@ export TS_AUTHKEY="tskey-auth-REDACTED"           # Provided at runtime
 export TS_ROUTES="10.20.13.0/24"                 # Subnet to expose via Tailscale
 export TS_USERSPACE="true"                       # Use userspace networking
 
-# Apply Tailscale configuration to single node via Talm
+# Apply Tailscale configuration to single node via talm
 # This makes the cluster accessible through Tailscale network
-# Reference: https://github.com/kingdonb/cozystack-talm-demo/blob/main/configs/tailscale-config.yaml
+# Reference: https://github.com/cozystack/talm/tree/main/presets/cozystack/templates
 
 echo "Manual step: Apply Tailscale config to node via 'make tailscale'"
 echo "TS_AUTHKEY must be provided securely (not committed to repo)"
@@ -450,7 +450,7 @@ aws ce get-cost-and-usage \
 - **Home Access**: Requires IPv6 address for security group (provided when ready)
 - **Asset Pipeline**: GHCR unified image (ghcr.io/urmanac/talos-cozystack-demo:latest)
 - **CozyStack Docs**: https://cozystack.io/docs/install/talos/pxe/
-- **Tailscale Config**: https://github.com/kingdonb/cozystack-talm-demo/blob/main/configs/tailscale-config.yaml
+- **Talm Documentation**: https://github.com/cozystack/talm#readme
 
 ### Related Repositories (Reference)
 - **aws-accounts**: https://github.com/urmanac/aws-accounts (Terraform modules)

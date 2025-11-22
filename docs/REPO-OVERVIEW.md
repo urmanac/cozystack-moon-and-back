@@ -387,9 +387,9 @@ cozystack-moon-and-back (MAIN)
 │   └── clusters/demo/
 │       └── HelmReleases
 │
-├── cozystack-talm-demo (reference configs)
-│   └── Speed Run examples
-│       └── YouTube: @yebyen/streams
+├── cozystack/talm (GitOps tool)
+│   ├── presets/cozystack/
+│   └── templates/ & Go templating
 │
 ├── kaniko-builder (image building)
 │   └── Build custom Talos images
@@ -507,7 +507,7 @@ test_all_repos_referenced_in_slides() {
   repos=(
     "aws-accounts"
     "cozy-fleet"
-    "cozystack-talm-demo"
+    "cozystack/talm"
     "kaniko-builder"
     "noclaude"
     "chanwit/tdg"
@@ -572,7 +572,6 @@ test_readme_in_each_repo() {
   repos=(
     "../aws-accounts"
     "../cozy-fleet"
-    "../cozystack-talm-demo"
     "../kaniko-builder"
     "../time-tracker"
     "../mecris"
@@ -601,10 +600,10 @@ test_readme_in_each_repo && test_cross_references_documented
 ## Priority Integration Matrix
 
 | Repository | Critical for Demo? | Integration Effort | Status |
-|------------|-------------------|-------------------|---------|
+|------------|-------------------|-------------------|----------|
 | aws-accounts | ✅ YES | Medium (modify existing) | Active |
 | cozy-fleet | ✅ YES | Low (bootstrap only) | Need to confirm canonical |
-| cozystack-talm-demo | ⚠️ HELPFUL | Low (reference only) | Reference |
+| cozystack/talm | ✅ YES | Medium (custom chart) | Planning |
 | kaniko-builder | ⚠️ HELPFUL | Medium (custom image) | Stretch goal |
 | time-tracker | ❌ OPTIONAL | Low | Nice to have |
 | mecris | ❌ REFERENCE | None | Inspiration only |
@@ -616,14 +615,14 @@ test_readme_in_each_repo && test_cross_references_documented
 ## Next Actions for Claude Agent
 
 ### Immediate (This Week)
-1. **Confirm canonical Flux repo** - Is it cozy-fleet or fleet-infra?
+1. **Plan talm chart for demo** - Custom values.yaml for ARM64 role-based deployment
 2. **Import aws-accounts modules** - Don't duplicate Terraform
-3. **Reference talm-demo configs** - Don't rebuild HelmReleases from scratch
+3. **Study talm presets** - Understand cozystack preset structure
 
 ### Near-term (Before December 4)
-4. **Plan Flux 2.7 ExternalArtifact demo** - Show off new features!
-5. **Document custom Talos image build** - Using kaniko-builder
-6. **Create demo script** - With fallback to home lab
+4. **Create custom talm chart** - Based on cozystack preset, optimized for demo
+5. **Plan Flux 2.7 ExternalArtifact demo** - Show off new features!
+6. **Document custom Talos image usage** - With talm deployment
 
 ### Post-demo (Future)
 7. **Operationalize noclaude** - Run in CozyStack cluster
