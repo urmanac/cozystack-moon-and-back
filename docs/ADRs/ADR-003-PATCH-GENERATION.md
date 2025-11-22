@@ -168,4 +168,7 @@ index bbe932d7..9f798c42 100755  # <-- Correct Git hashes
 
 ---
 
+**Previous ADR:** [ADR-002: Test-Driven Generation Methodology](ADR-002-TDG-METHODOLOGY.md)  
+**Next ADR:** [ADR-004: Role-Based Talos Image Architecture](ADR-004-ROLE-BASED-IMAGES.md)
+
 > **TL;DR**: Use `git diff` to generate patches, not manual string concatenation. The computer is better at calculating line numbers than humans. 🤖✨

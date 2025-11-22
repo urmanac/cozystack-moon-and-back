@@ -20,6 +20,7 @@ Welcome to the comprehensive documentation for the **Home Lab to the Moon and Ba
 | [ADR-001](ADRs/ADR-001-ARM64-ARCHITECTURE.md) | ARM64 Architecture Choice | ✅ Accepted |
 | [ADR-002](ADRs/ADR-002-TDG-METHODOLOGY.md) | Test-Driven Generation Methodology | ✅ Accepted |
 | [ADR-003](ADRs/ADR-003-PATCH-GENERATION.md) | Patch Generation Best Practices | ✅ Accepted |
+| [ADR-004](ADRs/ADR-004-ROLE-BASED-IMAGES.md) | Role-Based Talos Image Architecture | ✅ Accepted |
 
 ---
 
