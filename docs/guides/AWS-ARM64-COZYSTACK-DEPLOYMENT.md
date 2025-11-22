@@ -263,13 +263,75 @@ echo "Instance details saved to: cluster-instances.txt"
 - `80,443/tcp`: Ingress HTTP/HTTPS
 - `30000-32767/tcp`: NodePort services
 
+### 2.2 Bastion Host OCI Pull-through Cache Configuration
+
+**Critical Dependency**: GHCR access from private VPC requires registry cache
+
+```bash
+#!/bin/bash
+# bastion-registry-cache-setup.sh - Configure OCI pull-through cache
+
+# Install Docker registry on bastion host
+sudo docker run -d \
+  --name registry-cache \
+  --restart=always \
+  -p 5000:5000 \
+  -e REGISTRY_PROXY_REMOTEURL=https://ghcr.io \
+  -e REGISTRY_PROXY_USERNAME="$GHCR_USERNAME" \
+  -e REGISTRY_PROXY_PASSWORD="$GHCR_TOKEN" \
+  -v /opt/registry-cache:/var/lib/registry \
+  registry:2
+
+# Configure DNS or host entries for cluster nodes to use cache
+# cluster-nodes should resolve ghcr.io -> bastion-host:5000
+# Or configure docker daemon.json with registry mirrors
+```
+
+**IPv6 Considerations**:
+- GHCR IPv6 capability unknown
+- Pull-through cache ensures reliable access
+- Custom Talos image cached before cluster deployment
+
 ### 3. Talos Cluster Bootstrap
 
-**Target**: Use talm with AWS-specific configurations
+**Target**: Boot-to-Talos from Ubuntu base with custom image
 
+**Process Overview**:
+1. **Ubuntu Boot**: EC2 instances start with Ubuntu 22.04 ARM64
+2. **Early Transition**: cloud-init downloads custom Talos image via registry cache
+3. **Kexec to Talos**: System transitions to custom Talos image early in boot
+4. **Talos Initialization**: Standard talm workflow begins with custom image
+
+**Boot-to-Talos Implementation**:
+```bash
+#!/bin/bash
+# Expanded boot-to-talos.sh script
+set -euo pipefail
+
+REGISTRY_CACHE="${BASTION_HOST}:5000"
+TALOS_IMAGE="ghcr.io/your-org/talos:v1.10.5-cozy-spin"
+
+# Configure Docker to use registry cache
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json << EOF
+{
+  "registry-mirrors": ["http://${REGISTRY_CACHE}"]
+}
+EOF
+
+# Pull custom Talos image
+docker pull "${REGISTRY_CACHE}/$(echo ${TALOS_IMAGE} | cut -d'/' -f2-)"
+
+# Extract kernel and initrd for kexec
+# Mount image, extract /boot files
+# Execute kexec with Talos kernel and initrd
+# System transitions to Talos immediately
+```
+
+**Standard talm Workflow** (post-transition):
 - Initialize talm with CozyStack preset
-- Generate ARM64-specific node configurations
-- Apply configurations to EC2 instances
+- Generate ARM64-specific node configurations  
+- Apply configurations to Talos instances
 - Bootstrap cluster with HA control plane
 - Validate cluster connectivity
 
@@ -368,6 +430,7 @@ curl http://localhost:8080
 1. **Tailscale for Development**: Fast setup, secure access for testing
 2. **ALB for Production**: Once ingress patterns are validated
 3. **CloudFlare for Demo**: Clean URLs for conference presentation
+4. **Registry Cache for Reliability**: Bastion-hosted cache for GHCR access
 
 ### DNS Strategy
 
@@ -385,12 +448,55 @@ approaches:
   cloudflare:
     pattern: "service-name.demo.example.com"
     ssl: "automatic via CloudFlare"
+    
+  registry_cache:
+    pattern: "bastion-host:5000"
+    ssl: "HTTP only (internal VPC)"
+    purpose: "GHCR proxy for image pulls"
+```
+
+## Networking Architecture
+
+### Network Architecture Layers
+
+**Layer 1: AWS VPC Network (Terraform-managed)**
+- AWS VPC with subnets for control plane and workers
+- Security groups for Kubernetes and Talos communication
+- Bastion host with public IP and registry cache
+- Private subnets with NAT Gateway for outbound access
+
+**Layer 2: CozyStack Talos CNI Network**
+- Pod subnet: 10.244.0.0/16 (default Flannel/CNI)
+- Service subnet: 10.96.0.0/16 (ClusterIP services)
+- Node-to-node communication via VPC private IPs
+- Integration with AWS VPC routing
+
+**Layer 3: kube-ovn-cilium-cni Mesh (KubeVirt Clusters)**
+- Overlay network for tenant KubeVirt clusters
+- Inter-cluster communication and isolation
+- Integration with CozyStack multi-tenancy
+- ARM64 compatibility to be validated
+
+### Registry Cache Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ GHCR (IPv6?)    │────▶│ Bastion Registry │────▶│ Cluster Nodes   │
+│ ghcr.io         │     │ Cache :5000      │     │ (private VPC)   │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                               │
+                        ┌─────────────────┐
+                        │ Custom Talos    │
+                        │ Image Storage   │
+                        └─────────────────┘
 ```
 
 ### Questions for Investigation:
 1. Does Talos ARM64 support Tailscale natively?
 2. What's the minimal ingress configuration for CozyStack?
 3. Can we use AWS ELB/ALB with CozyStack's ingress controller?
+4. How does kube-ovn-cilium-cni integrate with Talos CNI on ARM64?
+5. Does GHCR require IPv6, and how reliable is the registry cache approach?
 
 ## Cleanup and Resource Management
 
