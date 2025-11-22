@@ -2,15 +2,15 @@
 
 ## Overview
 
-This guide provides a straightforward approach to deploying CozyStack on ARM64 EC2 instances using AWS CLI. The process is designed for Claude Desktop automation using filesystem, Kubernetes MCP, and AWS API connectors.
+This guide provides a straightforward approach to deploying CozyStack on ARM64 EC2 instances using AWS CLI and dynamic resource lookup. The process is designed for Claude Desktop automation using filesystem, Kubernetes MCP, and AWS API connectors with pre-configured IAM admin access.
 
 ## Prerequisites
 
 ### AWS Environment
-- AWS CLI configured with appropriate permissions
-- VPC with subnets already configured
-- Security groups allowing Kubernetes traffic
-- MFA token capability for session authorization
+- AWS CLI configured with MFA'd session token (Admin access)
+- VPC with subnets configured via existing Terraform (bastion + security groups)
+- Bastion host with OCI pull-through cache for GHCR access
+- Claude Desktop will identify any missing IAM requirements during execution
 
 ### Local Tools
 - `talm` CLI tool
@@ -62,10 +62,18 @@ spec:
         subnet: subnet-zzzzzzzzz
         privateIP: 10.0.3.11
         availabilityZone: us-west-2c
-  talos:
-    image: ami-xxxxxxxxx  # ARM64 Talos AMI for region
+  baseImage:
+    filter:
+      name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-*"  # Dynamic lookup for latest Ubuntu ARM64
+      architecture: arm64
+      virtualizationType: hvm
+    bootToTalos:
+      enabled: true
+      customImage: "ghcr.io/your-org/talos:v1.10.5-cozy-spin"  # Your custom Talos image
+      registryCache: "bastion-host:5000"  # Pull-through cache endpoint
     userData: |
-      # Talos userdata configuration placeholder
+      #cloud-config
+      # Boot-to-Talos configuration - downloads custom image and kexecs early in boot
   cluster:
     name: cozystack-arm64
     endpoint: https://10.0.1.100:6443  # Load balancer VIP
