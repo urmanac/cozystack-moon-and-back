@@ -8,15 +8,29 @@ This guide outlines testing Crossplane v2 on ARM64 CozyStack infrastructure, wit
 
 ### Multi-Layer Cluster Access Pattern
 
+### Multi-Layer Architecture with Network Alignment
+
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Bastion Host (OIDC + kubelogin)                        │
+│ Bastion Host (Terraform-managed, public IP)            │
+│ - OIDC + kubelogin                                      │
+│ - Access to all cluster layers                         │
 ├─────────────────────────────────────────────────────────┤
-│ Layer 1: Talos Root Cluster (Static kubeconfig)        │
+│ Layer 1: AWS VPC Network (Terraform-managed)           │
+│ - Security groups, subnets, routing                    │
+├─────────────────────────────────────────────────────────┤
+│ Layer 2: Talos Root Cluster + CozyStack CNI            │
+│ - Pod subnet: 10.244.0.0/16                           │
+│ - Service subnet: 10.96.0.0/16                        │
+│ - Static kubeconfig access                             │
 ├─────────────────────────────────────────────────────────┤  
-│ Layer 2: KubeVirt Tenant Clusters (Keycloak OIDC)     │
+│ Layer 3: KubeVirt Tenant Clusters (if ARM64 works)    │
+│ - kube-ovn-cilium-cni mesh overlay                    │
+│ - Keycloak OIDC integration                            │
 ├─────────────────────────────────────────────────────────┤
-│ Layer 3: vcluster (GitHub + Dex OIDC)                 │
+│ Layer 4: vcluster (GitHub + Dex OIDC)                 │
+│ - Runs inside KubeVirt or fallback namespace          │
+│ - Crossplane v2 deployment target                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -41,6 +55,106 @@ This guide outlines testing Crossplane v2 on ARM64 CozyStack infrastructure, wit
 - OIDC client credentials
 - kubelogin CLI tool available
 - kubectl with OIDC plugins
+
+## Phase 0: Critical Path Validation
+
+### 0.1 KubeVirt ARM64 Compatibility Investigation
+
+**Critical Question**: Does KubeVirt work reliably on ARM64 architecture?
+
+**This investigation blocks all subsequent phases** - if KubeVirt doesn't work on ARM64, the entire multi-tenancy strategy requires redesign.
+
+```bash
+#!/bin/bash
+# kubevirt-arm64-test.sh - Sprint to validate KubeVirt on ARM64
+
+set -euo pipefail
+
+echo "=== KubeVirt ARM64 Compatibility Test ==="
+
+# Test 1: Install KubeVirt on ARM64 cluster
+test_kubevirt_installation() {
+  echo "Installing KubeVirt on ARM64 cluster..."
+  
+  # Check if ARM64 KubeVirt images are available
+  kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.0.0/kubevirt-operator.yaml
+  kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.0.0/kubevirt-cr.yaml
+  
+  # Wait for KubeVirt to be ready
+  kubectl wait --for=condition=Available kubevirt/kubevirt -n kubevirt --timeout=600s
+  
+  # Check if all pods are running on ARM64 nodes
+  kubectl get pods -n kubevirt -o wide
+  echo "✅ KubeVirt installation completed"
+}
+
+# Test 2: Create minimal VM to test virtualization
+test_vm_creation() {
+  echo "Testing VM creation on ARM64..."
+  
+  cat <<EOF | kubectl apply -f -
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: arm64-test-vm
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: arm64-test-vm
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        memory:
+          guest: 1Gi
+        devices:
+          disks:
+          - name: containerdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+      volumes:
+      - name: containerdisk
+        containerDisk:
+          image: quay.io/kubevirt/cirros-container-disk-demo:latest
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userDataBase64: c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCQVFEakxVZU9+
+EOF
+  
+  kubectl wait --for=condition=Ready vm/arm64-test-vm --timeout=300s
+  echo "✅ VM creation successful on ARM64"
+}
+
+# Test 3: Validate CPU architecture inside VM
+test_vm_architecture() {
+  echo "Validating VM architecture..."
+  
+  # Get the VM pod
+  VM_POD=$(kubectl get pod -l kubevirt.io/vm=arm64-test-vm -o jsonpath='{.items[0].metadata.name}')
+  
+  # Check architecture inside VM
+  kubectl exec "$VM_POD" -c compute -- sh -c 'uname -m'
+  echo "✅ Architecture validation completed"
+}
+
+# Run sprint test
+test_kubevirt_installation
+test_vm_creation
+test_vm_architecture
+
+echo "🎉 KubeVirt ARM64 sprint test completed!"
+echo "📊 Results determine feasibility of multi-tenant KubeVirt strategy"
+```
+
+**If KubeVirt ARM64 fails**: 
+- Fallback to namespace-based multi-tenancy
+- Reconsider vcluster deployment strategy
+- Adjust Crossplane testing approach
 
 ## Phase 1: Identity and Access Foundation
 
@@ -378,24 +492,33 @@ echo "🎉 Crossplane v2 test suite completed!"
 └─────────────────────┴──────────────┴─────────────┴──────────────┘
 ```
 
-## Phase 5: KubeVirt ARM64 Investigation
+## Phase 5: Integration Validation
 
-### 5.1 Compatibility Assessment
+### 5.1 End-to-End Workflow Testing
 
-**Critical Question**: Does KubeVirt work on ARM64?
+**Goal**: Validate complete Crossplane v2 workflow across all authentication layers
 
-**Testing Approach**:
-1. Deploy minimal KubeVirt on ARM64 cluster
-2. Create simple VM test workload
-3. Validate virtualization capabilities
-4. Document limitations or blockers
+**Test Scenarios**:
+1. **AWS Resource Provisioning**: Create VPC, subnets, security groups via Crossplane
+2. **Cross-Cluster Resource Management**: Manage Kubernetes resources across tenant clusters
+3. **Multi-Tenancy Validation**: Deploy applications in different tenant contexts
+4. **OIDC Authentication Chain**: Test access patterns through all authentication layers
 
-### 5.2 Fallback Scenarios
+### 5.2 Performance and Scalability Assessment
 
-**If KubeVirt fails on ARM64**:
-- Use native Kubernetes namespaces for tenant isolation
-- Explore alternative virtualization solutions
-- Assess impact on multi-tenancy architecture
+**Metrics to Collect**:
+- Resource provisioning time across providers
+- Cross-cluster communication latency
+- Authentication token refresh behavior
+- ARM64-specific performance characteristics
+
+### 5.3 Documentation and Handoff
+
+**Deliverables**:
+- ARM64 compatibility matrix with findings
+- Network architecture documentation
+- Authentication flow diagrams
+- Troubleshooting guides for discovered issues
 
 ## Networking Strategy Investigation
 
@@ -522,6 +645,48 @@ dns_structure:
 - [ ] Validate cross-cluster scenarios
 - [ ] Document findings and recommendations
 
+## Claude Desktop Integration Assessment
+
+### Current Document Coverage Analysis
+
+**Document 1 (AWS ARM64 CozyStack Deployment)**: 
+- ✅ Covers infrastructure creation with Claude Desktop automation
+- ✅ Provides AWS CLI scripts and validation procedures  
+- ✅ Includes cleanup and resource management
+- ✅ Specifies MCP connector integration points
+
+**Document 2 (Crossplane v2 Testing)**:
+- ✅ Covers application deployment and validation
+- ✅ Provides testing frameworks and compatibility assessment
+- ✅ Includes multi-layer authentication setup
+- ✅ Specifies human intervention points
+
+### Third Document Necessity Evaluation
+
+**Potential Third Document**: "Claude Desktop Automation Instructions"
+
+**Arguments Against Third Document**:
+1. **Redundancy**: Both existing documents already include Claude Desktop integration points
+2. **Workflow Clarity**: The two-phase approach (infrastructure → testing) is naturally sequential
+3. **Maintenance Overhead**: Additional document increases complexity without clear value
+4. **Audience Confusion**: Claude Desktop needs clear, consolidated instructions, not fragmented guidance
+
+**Arguments For Third Document**:
+1. **Consolidation**: Could provide high-level orchestration across both phases
+2. **Error Handling**: Centralized troubleshooting for cross-phase issues
+3. **Session Management**: MFA token refresh and credential handling
+
+### Recommendation: No Third Document Required
+
+**Justification**: 
+- Document 1 provides complete infrastructure automation guidance for Claude Desktop
+- Document 2 provides complete testing and validation automation guidance  
+- Cross-document dependencies are minimal and clearly stated
+- Claude Desktop can consume both documents sequentially without additional orchestration layer
+
+**Alternative Approach**:
+Add cross-references between documents to clarify dependencies and handoff points.
+
 ---
 
-*This guide provides the testing framework for validating Crossplane v2 and multi-layer OIDC authentication on ARM64 CozyStack infrastructure.*
+*Evaluation complete: Two documents provide sufficient coverage for Claude Desktop automation without requiring additional orchestration documentation.*
