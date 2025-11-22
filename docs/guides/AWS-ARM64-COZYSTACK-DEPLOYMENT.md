@@ -86,7 +86,9 @@ spec:
 - [ ] AWS credentials and MFA configured
 - [ ] VPC and subnets available
 - [ ] Security groups configured for Kubernetes ports
-- [ ] ARM64 Talos AMI identified for target region
+- [ ] Bastion host OCI pull-through cache operational
+- [ ] Ubuntu ARM64 AMI identified for target region
+- [ ] Custom Talos image accessible via registry cache
 - [ ] Instance type availability verified
 
 ### 2. Infrastructure Creation Script
@@ -103,8 +105,37 @@ REGION=$(yq '.spec.vpc.region // "us-west-2"' "$MANIFEST_FILE")
 
 echo "Creating CozyStack ARM64 cluster from manifest: $MANIFEST_FILE"
 
+# Dynamic Ubuntu ARM64 AMI lookup - base image for boot-to-Talos
+AMI_ID=$(aws ec2 describe-images \
+  --owners 099720109477 \
+  --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-*" \
+            "Name=state,Values=available" \
+            "Name=architecture,Values=arm64" \
+  --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+  --output text)
+echo "Using Ubuntu ARM64 AMI: $AMI_ID (will boot-to-Talos)"
+
 # Parse manifest and extract node definitions
 NODES=$(yq '.spec.nodes.controlPlane[], .spec.nodes.workers[]' "$MANIFEST_FILE")
+
+# Generate boot-to-Talos user data
+CUSTOM_TALOS_IMAGE=$(yq '.spec.baseImage.bootToTalos.customImage' "$MANIFEST_FILE")
+REGISTRY_CACHE=$(yq '.spec.baseImage.bootToTalos.registryCache' "$MANIFEST_FILE")
+
+cat > boot-to-talos-userdata.yaml << EOF
+#cloud-config
+write_files:
+- path: /opt/boot-to-talos.sh
+  permissions: '0755'
+  content: |
+    #!/bin/bash
+    # Download custom Talos image via registry cache
+    docker pull ${REGISTRY_CACHE}/$(echo ${CUSTOM_TALOS_IMAGE} | cut -d'/' -f2-)
+    # Extract and kexec into Talos
+    # Implementation details for early boot transition
+runcmd:
+- /opt/boot-to-talos.sh
+EOF
 
 # Create security group for cluster if not exists
 SECURITY_GROUP_ID=$(aws ec2 describe-security-groups \
@@ -118,7 +149,23 @@ if [[ "$SECURITY_GROUP_ID" == "None" ]]; then
     --group-name cozystack-cluster \
     --description "CozyStack ARM64 cluster security group" \
     --vpc-id "$(yq '.spec.vpc.id' "$MANIFEST_FILE")" \
-    --query 'GroupId' --output text)
+  # Check if instance profile is needed for node operations
+  INSTANCE_PROFILE_ARG=""
+  if aws iam get-instance-profile --instance-profile-name CozyStackNodeRole 2>/dev/null; then
+    INSTANCE_PROFILE_ARG="--iam-instance-profile Name=CozyStackNodeRole"
+  fi
+  
+  INSTANCE_ID=$(aws ec2 run-instances \
+    --image-id "$AMI_ID" \
+    --instance-type "$INSTANCE_TYPE" \
+    --subnet-id "$SUBNET_ID" \
+    --private-ip-address "$PRIVATE_IP" \
+    --security-group-ids "$SECURITY_GROUP_ID" \
+    --user-data file://boot-to-talos-userdata.yaml \
+    $INSTANCE_PROFILE_ARG \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NODE_NAME},{Key=Cluster,Value=cozystack-arm64}]" \
+    --query 'Instances[0].InstanceId' \
+    --output text)
   
   # Configure security group rules for Kubernetes
   aws ec2 authorize-security-group-ingress \
@@ -127,8 +174,47 @@ if [[ "$SECURITY_GROUP_ID" == "None" ]]; then
   aws ec2 authorize-security-group-ingress \
     --group-id "$SECURITY_GROUP_ID" \
     --protocol tcp --port 50000 --source-group "$SECURITY_GROUP_ID"  
-  # Add other necessary Kubernetes + Talos ports
+  # Configure security group rules for Kubernetes
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$SECURITY_GROUP_ID" \
+    --protocol tcp --port 6443 --source-group "$SECURITY_GROUP_ID"
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$SECURITY_GROUP_ID" \
+    --protocol tcp --port 50000 --source-group "$SECURITY_GROUP_ID"  
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$SECURITY_GROUP_ID" \
+    --protocol tcp --port 2379-2380 --source-group "$SECURITY_GROUP_ID"
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$SECURITY_GROUP_ID" \
+    --protocol tcp --port 10250 --source-group "$SECURITY_GROUP_ID"
+  # Add registry cache access from cluster nodes to bastion
+  aws ec2 authorize-security-group-ingress \
+    --group-id "$SECURITY_GROUP_ID" \
+    --protocol tcp --port 5000 --cidr "10.0.0.0/16"
 fi
+
+### 2.1 Security Group Configuration
+
+**Required Ports for CozyStack**:
+- `6443/tcp`: Kubernetes API server
+- `50000/tcp`: Talos API
+- `2379-2380/tcp`: etcd client/peer communication  
+- `10250/tcp`: kubelet API
+- `10251/tcp`: kube-scheduler
+- `10252/tcp`: kube-controller-manager
+- `80,443/tcp`: Ingress HTTP/HTTPS
+- `30000-32767/tcp`: NodePort services
+- `5000/tcp`: Registry cache access to bastion
+
+# Create EC2 instances with specified private IPs
+while IFS= read -r node; do
+  NODE_NAME=$(echo "$node" | yq '.name')
+  INSTANCE_TYPE=$(echo "$node" | yq '.instanceType')
+  SUBNET_ID=$(echo "$node" | yq '.subnet')
+  PRIVATE_IP=$(echo "$node" | yq '.privateIP')
+  AZ=$(echo "$node" | yq '.availabilityZone')
+  
+  echo "Creating instance: $NODE_NAME ($INSTANCE_TYPE) in $AZ"
 
 # Create EC2 instances with specified private IPs
 while IFS= read -r node; do
