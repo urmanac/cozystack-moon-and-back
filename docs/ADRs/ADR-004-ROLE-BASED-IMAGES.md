@@ -163,4 +163,7 @@ tests/cluster-formation/
 
 ---
 
+**Previous ADR:** [ADR-003: Patch Generation Best Practices](ADR-003-PATCH-GENERATION.md)  
+**Next ADR:** [ADR-005: TBD](ADR-005-TBD.md) *(placeholder)*
+
 **Next Steps:** Implement matrix build strategy in CI workflow, create TDG tests for cluster formation validation, document node role selection guidance.
