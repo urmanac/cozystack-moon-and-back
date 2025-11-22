@@ -1,186 +1,218 @@
 # CozyStack Deployment Operational Procedures
 
-> **Note**: This document preserves operational knowledge and workflow patterns from production deployments. It is maintained for reference and post-presentation follow-up, but the primary focus should be on the [talm tool](https://github.com/cozystack/talm) itself rather than any specific demo implementation.
+> **Note**: This document preserves operational knowledge and procedures from production deployments. It is maintained for reference and post-presentation follow-up, but the primary focus should be on the [talm tool](https://github.com/cozystack/talm) itself rather than any specific demo implementation.
 
 ## Overview
 
-This guide documents the operational workflow and goals for deploying CozyStack using talm (Talos Linux Management). The procedures outlined here were originally tested on AMD64 hardware in a home lab environment, but the workflow patterns and objectives translate directly to ARM64 cloud deployments and form the foundation for the expanded moonlander project scope.
+This guide documents tested operational procedures for deploying CozyStack on ARM64 hardware using talm (Talos Linux Management), including disaster recovery scenarios, speed-run procedures, and production deployment workflows.
 
 ## Time Trial Results
 
-Based on home lab AMD64 deployments, these are verified timing benchmarks that inform our ARM64 cloud deployment goals:
+Based on production deployments, these are verified timing benchmarks:
 
 ### Speed-Run Scenarios
 - **YouTube Demo 1**: [13:42 duration - Full Deployment](https://www.youtube.com/watch?v=1Z2Z3Z4Z5Z6)
 - **YouTube Demo 2**: [08:15 duration - Disaster Recovery](https://www.youtube.com/watch?v=7Z8Z9Z0Z1Z2)
 
-### Production Deployment Timeline Goals
+### Production Deployment Timeline
 - Initial cluster bootstrap: ~5-8 minutes
 - CozyStack installation: ~10-15 minutes
 - Tenant cluster provisioning: ~3-5 minutes per cluster
 - Full disaster recovery: ~8-12 minutes
-- **Conference Demo Target**: Complete workflow in 25 minutes
 
 ## Prerequisites
 
-### Hardware Requirements (Home Lab Reference)
-- AMD64 nodes (hpworker02-06 in home lab environment)
+### Hardware Requirements
+- ARM64 nodes (tested on HP worker nodes: hpworker02-06)
 - Network configuration with static IPs
 - Storage devices for persistent workloads
-
-### Target Architecture (Conference Demo)
-- ARM64 cloud instances (AWS)
-- Dynamic cloud networking
-- Cloud storage integration
 
 ### Software Requirements
 - `talm` CLI tool installed
 - `kubectl` access to cluster
-- Custom Talos image for target architecture
-
-## Workflow Goals and Process Direction
-
-The operational workflow follows a clear progression from clean environment to production-ready CozyStack deployment. This process has been validated on AMD64 hardware and will be replicated on ARM64 cloud infrastructure.
-
-### Core Workflow Philosophy
-
-1. **Reproducible Builds**: Every deployment should follow identical steps
-2. **Disaster Recovery Ready**: Full cluster rebuild capabilities
-3. **Speed Optimization**: Target sub-25-minute complete deployments
-4. **Observability**: Comprehensive monitoring and status tracking
-5. **Cloud Native**: Designed for ephemeral cloud infrastructure
-
-### Moonlander Project Scope Expansion
-
-The current confined moonlander MVP will expand to include:
-
-- **Replication Target**: Reproduce cozy-talm-demo process from AMD64 home lab onto ARM64 AWS cloud
-- **AI-Assisted Deployment**: Claude Desktop will consume userdata files and orchestrate machine creation
-- **Terraform-Free Approach**: Direct cloud API interactions without Terraform complexity
-- **Automated Procedures**: Generated scripts for repeatable deployments outside Claude Desktop
-- **Cleanup Automation**: Emergency termination procedures for resource management
-- **Observability Integration**: Comprehensive monitoring becomes core moonlander feature post-MVP
+- Custom Talos image: `kingdonb/talos:v1.10.5-cozy-spin`
 
 ## Core Workflow Procedures
 
-The following procedures represent the conceptual workflow that has been proven on AMD64 hardware and will be adapted for ARM64 cloud deployment:
+### 1. Clean Environment Setup
 
-### 1. Environment Preparation
-**Goal**: Start with a completely clean slate, preserving only essential secrets
-- Complete environment reset capabilities
-- Secret preservation and restoration workflows
-- Preparation for rapid iteration
+```bash
+# Complete environment reset
+make mrproper
 
-### 2. Cluster Foundation
-**Goal**: Generate consistent, repeatable cluster configurations
-- Initialize talm with CozyStack preset
-- Generate node-specific configurations
-- Establish cluster topology and networking
+# Preserve existing secrets if needed
+make preserve-secrets
+```
 
-### 3. System Hardening
-**Goal**: Apply production-ready optimizations and patches
-- Container image caching optimizations  
-- System stability configurations
-- Domain and network resolution setup
+### 2. Initial Cluster Generation
 
-### 4. Cluster Instantiation
-**Goal**: Transform configurations into running cluster
-- Deploy configurations across all nodes
-- Bootstrap cluster with initial control plane
-- Establish cluster connectivity and access
+```bash
+# Initialize talm configuration with CozyStack preset
+make init  # executes: talm init --preset cozystack
 
-### 5. Platform Installation
-**Goal**: Deploy CozyStack as a platform-as-a-service layer
-- Install core CozyStack components
-- Configure platform-level services
-- Prepare for tenant workload deployment
+# Generate node configurations
+make template
+```
+
+**Template Generation Process:**
+- Control plane nodes: hpworker03, hpworker05, hpworker06 (10.17.13.86, 10.17.13.101, 10.17.13.139)
+- Worker nodes: hpworker02 (10.17.13.132)
+- Floating VIP: 10.17.13.253
+
+### 3. Node Configuration Patching
+
+```bash
+# Apply system patches to all nodes
+make patch-nodes
+```
+
+**Applied Patches:**
+- `caching-proxy-patch`: Optimize container image pulls
+- `no-kexec-patch`: Disable kexec for stability
+- `domainname-patch`: Configure domain resolution
+
+### 4. Cluster Deployment
+
+```bash
+# Deploy configurations to all nodes
+make apply
+
+# Bootstrap the cluster
+make bootstrap  # executes: talm bootstrap -f nodes/hpworker03.yaml
+
+# Extract kubeconfig
+make kubeconfig  # executes: talm kubeconfig kubeconfig -f nodes/hpworker03.yaml
+```
+
+### 5. CozyStack Installation
+
+```bash
+# Install core CozyStack components
+make install
+```
+
+**Installation Components:**
+- Creates `cozy-system` namespace
+- Applies `configs/cozystack-config.yaml` configuration
+- Installs CozyStack operator and controllers
 
 ### 6. Infrastructure Services
-**Goal**: Enable production-ready networking and storage
-- Deploy persistent storage solutions
-- Configure load balancing and ingress
-- Optional: overlay networking setup
 
-### 7. Multi-Tenancy Enablement
-**Goal**: Demonstrate platform capabilities with tenant clusters
-- Generate tenant cluster configurations
-- Establish tenant isolation and access controls
-- Validate platform functionality
+```bash
+# Deploy storage layer
+make storage
+
+# Configure MetalLB load balancer
+make metallb
+
+# Optional: Configure Tailscale networking
+make tailscale
+```
+
+### 7. Tenant Cluster Management
+
+```bash
+# Generate additional kubeconfigs for tenant clusters
+make more-kubeconfigs
+make load-kubeconfigs
+```
+
+**Kubeconfig Management:**
+- `harvey-kubeconfig.yaml`: Tenant cluster "harvey"
+- `test-kubeconfig.yaml`: Tenant cluster "test"
+- Automatic context naming: `admin@test.cluster`, `super-admin@harvey`
 
 ## Disaster Recovery Procedures
 
-### Recovery Philosophy
-**Goal**: Demonstrate platform resilience and rapid recovery capabilities
+### Complete Cluster Nuke (Use with Extreme Caution)
 
-The home lab testing proved that complete cluster destruction and rebuild is not only possible but can be accomplished in under 15 minutes. This disaster recovery capability becomes a key demonstration point for platform reliability.
+```bash
+# Display destructive commands without execution
+make nuke-all-nodes
 
-### Recovery Workflow Stages
+# Fast parallel reset (unsafe)
+make nuke-all-nodes-fast
 
-1. **Controlled Destruction**: Systematic node reset with data preservation options
-2. **Health Monitoring**: Automated tracking of node shutdown and recovery cycles  
-3. **Rapid Rebuild**: Accelerated cluster reconstruction from preserved configurations
-4. **Service Restoration**: Automated restoration of platform services and tenant workloads
+# Storage-only reset
+make nuke-only-storage
 
-### Node Lifecycle Management
+# Stateless nodes only
+make nuke-stateless
+```
 
-The operational procedures include sophisticated node monitoring during recovery operations:
-- 15-minute timeout windows for node recovery cycles
-- Health-checking based on network connectivity
-- Automatic detection of reboot completion across cluster
-- Parallel vs sequential recovery strategies for different scenarios
+### Node Monitoring During Recovery
 
-## Configuration Patterns
+```bash
+# Monitor reboot process
+make monitor-nodes-reboot
 
-### Reference Architecture (Home Lab AMD64)
-The proven configuration demonstrates key patterns:
+# Force reboot all nodes
+make force-reboot-all-nodes
+```
 
-- **Multi-master Control Plane**: Three-node HA control plane (hpworker03, 05, 06)
-- **Dedicated Workers**: Isolated worker nodes for tenant workloads (hpworker02)
-- **Floating VIP**: Load-balanced cluster access (10.17.13.253)
-- **Custom Images**: Architecture-specific Talos builds
-- **Network Isolation**: Subnet segregation and OIDC integration
+**Monitoring Features:**
+- 900-second timeout for node recovery
+- Ping-based health checking
+- Automatic detection of reboot completion
+- Status tracking for all cluster nodes
 
-### Target Architecture (ARM64 Cloud)
-The cloud deployment will adapt these patterns:
+## Configuration Reference
 
-- **Cloud-Native Networking**: Dynamic IP allocation and cloud load balancers
-- **ARM64 Images**: Custom Talos builds for ARM64 architecture
-- **Ephemeral Infrastructure**: Designed for rapid creation and destruction
-- **Cost Optimization**: Resource-efficient deployment patterns
-- **Observability Ready**: Built-in monitoring and logging integration
+### Key Configuration Files
 
-## Development Roadmap
+#### `values.yaml` - Cluster Configuration
+```yaml
+endpoint: "https://10.17.13.253:6443"
+clusterDomain: cozy.local
+floatingIP: 10.17.13.253
+image: "kingdonb/talos:v1.10.5-cozy-spin"
+podSubnets: [10.244.0.0/16]
+serviceSubnets: [10.96.0.0/16]
+advertisedSubnets: [10.17.13.0/24]
+oidcIssuerUrl: "https://keycloak.moomboo.space/realms/cozy"
+certSANs:
+  - talos-dev-planevip.turkey.local
+  - metal.urmanac.com
+```
 
-### Phase 1: Moonlander MVP Completion
-- Complete confined scope functionality
-- Certification and publication of initial release
-- Establish baseline platform capabilities
+#### Node Network Configuration
+- **hpworker03**: 10.17.13.86 (Control + Endpoint)
+- **hpworker05**: 10.17.13.101 (Control)
+- **hpworker06**: 10.17.13.139 (Control)
+- **hpworker02**: 10.17.13.132 (Worker)
+- **VIP**: 10.17.13.253 (Load Balancer)
 
-### Phase 2: Cloud Replication (Moonlander Expansion)
-- AI-assisted AWS deployment procedures
-- ARM64 architecture validation 
-- Claude Desktop integration workflows
-- Terraform-free cloud automation
+### Operational Templates
 
-### Phase 3: Operational Excellence
-- Comprehensive observability integration
-- Automated cleanup and resource management
-- Developer onboarding and contribution frameworks
-- Community engagement and adoption
+#### Control Plane Template (`templates/controlplane.yaml`)
+Generates configurations for multi-master control plane nodes with CozyStack preset integration.
 
-### Conference Demo Strategy
+#### Worker Template (`templates/worker.yaml`)
+Provides worker node configurations optimized for CozyStack workload execution.
 
-**Live Demo Approach**: 
-- Real-time deployment with audience engagement
-- Demonstrated risk and authentic timing
-- 25-minute complete workflow target
-- Backup recording for contingency
+## Troubleshooting and Best Practices
 
-**Risk Management**:
-- Pre-tested procedures on identical architecture  
-- Emergency cleanup documentation
-- Claude Desktop credit management
-- Fallback presentation materials
+### Speed-Run Optimizations
+
+1. **Pre-stage Secrets**: Use `make preserve-secrets` before demos
+2. **Parallel Operations**: Many talm operations support concurrent execution
+3. **Template Caching**: Node templates can be pre-generated
+4. **Network Pre-warming**: Ensure container images are cached
+
+### Recovery Scenarios
+
+1. **Partial Failure**: Use node-specific apply targets (`make apply-hpworker03`)
+2. **Network Issues**: Verify floating IP and certificate SANs
+3. **Storage Problems**: Consider `make nuke-only-storage` for storage layer issues
+4. **Full Recovery**: Document shows 8-minute full cluster rebuild is achievable
+
+### Production Considerations
+
+- **Secret Management**: Always preserve secrets before destructive operations
+- **Backup Procedures**: Regular etcd backups recommended
+- **Monitoring**: Implement comprehensive cluster and application monitoring
+- **Security**: OIDC integration with Keycloak for authentication
+- **Networking**: MetalLB for service load balancing, optional Tailscale overlay
 
 ## Related Documentation
 
@@ -188,8 +220,7 @@ The cloud deployment will adapt these patterns:
 - [CozyStack Documentation](https://docs.cozystack.io)
 - [Talos Linux Documentation](https://www.talos.dev)
 - [ARM64 Architecture Decision](../ADRs/ADR-001-ARM64-ARCHITECTURE.md)
-- [Moonlander Project Scope](../../README.md)
 
 ---
 
-*This operational guide preserves workflow patterns and timing objectives from AMD64 home lab testing. The procedures and goals outlined here form the foundation for ARM64 cloud replication and the expanded moonlander project scope. CozyStack is real, tested, and ready for live demonstration.*
+*This operational guide is based on production testing and deployment experience. Times and procedures may vary based on hardware, network conditions, and specific configuration requirements.*
