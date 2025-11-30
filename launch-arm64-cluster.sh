@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # launch-arm64-cluster.sh - Launch CozyStack ARM64 cluster with real infrastructure values
-set -euo pipefail
+set -eo pipefail  # Removed -u flag to avoid issues with associative array iteration
 
 # Real infrastructure values from November 30th Terraform deployment
 VPC_ID="vpc-04af837e642c001c6"
@@ -46,12 +46,12 @@ write_files:
     
     # Configure Docker to use registry caches (critical - no direct internet from private subnets)
     mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json << DOCKER_EOF
-{
-  "registry-mirrors": ["http://${REGISTRY_CACHE}"],
-  "insecure-registries": ["${REGISTRY_CACHE}"]
-}
-DOCKER_EOF
+    cat > /etc/docker/daemon.json << 'DOCKER_EOF'
+    {
+      "registry-mirrors": ["http://${REGISTRY_CACHE}"],
+      "insecure-registries": ["${REGISTRY_CACHE}"]
+    }
+    DOCKER_EOF
     systemctl restart docker
     
     # Pull custom Talos image via GHCR registry cache (port 5054)
@@ -90,11 +90,11 @@ EOF
 
 # Define cluster nodes with real subnet IDs
 declare -A NODES=(
-  ["control-01"]="c7g.large subnet-0ef9817bc457d9d76 10.10.2.10 eu-west-1a"
-  ["control-02"]="c7g.large subnet-0b68a5b909d77cb4c 10.10.3.10 eu-west-1b" 
-  ["control-03"]="c7g.large subnet-0ef9817bc457d9d76 10.10.2.11 eu-west-1a"
-  ["worker-01"]="c7g.xlarge subnet-0b68a5b909d77cb4c 10.10.3.20 eu-west-1b"
-  ["worker-02"]="c7g.xlarge subnet-0ef9817bc457d9d76 10.10.2.20 eu-west-1a"
+  ["control-01"]="c7g.large subnet-0ef9817bc457d9d76 10.10.10.10 eu-west-1a"
+  ["control-02"]="c7g.large subnet-0b68a5b909d77cb4c 10.10.11.10 eu-west-1b" 
+  ["control-03"]="c7g.large subnet-0ef9817bc457d9d76 10.10.10.11 eu-west-1a"
+  ["worker-01"]="c7g.xlarge subnet-0b68a5b909d77cb4c 10.10.11.20 eu-west-1b"
+  ["worker-02"]="c7g.xlarge subnet-0ef9817bc457d9d76 10.10.10.20 eu-west-1a"
 )
 
 echo "🏗️ Creating ARM64 Talos cluster nodes..."

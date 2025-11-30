@@ -1,0 +1,4 @@
+NODE_NAME:INSTANCE_ID:PRIVATE_IP:TYPE
+worker-01:i-073bc154d732a18c1:10.10.11.20:c7g.xlarge
+worker-02:i-08fd79259f77a9764:10.10.10.20:c7g.xlarge
+control-01:i-07859f9468c6f8c41:10.10.10.10:c7g.large

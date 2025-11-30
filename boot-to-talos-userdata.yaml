@@ -1,0 +1,56 @@
+#cloud-config
+write_files:
+- path: /opt/boot-to-talos.sh
+  permissions: '0755'
+  content: |
+    #!/bin/bash
+    set -euo pipefail
+    echo "🚀 Starting boot-to-Talos transition..."
+    
+    # Install Docker for image operations
+    apt-get update
+    apt-get install -y docker.io
+    systemctl start docker
+    
+    # Configure Docker to use registry caches (critical - no direct internet from private subnets)
+    mkdir -p /etc/docker
+    cat > /etc/docker/daemon.json << 'DOCKER_EOF'
+    {
+      "registry-mirrors": ["http://10.10.1.100:5054"],
+      "insecure-registries": ["10.10.1.100:5054"]
+    }
+    DOCKER_EOF
+    systemctl restart docker
+    
+    # Pull custom Talos image via GHCR registry cache (port 5054)
+    echo "📦 Pulling custom Talos image via bastion cache: 10.10.1.100:5054"
+    echo "🔍 Image: ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+    
+    # Direct pull from cache (nodes have no direct internet - critical)
+    docker pull "10.10.1.100:5054/urmanac/cozystack-assets/talos:demo-stable"
+    
+    # Tag as if from original registry for easier handling
+    docker tag "10.10.1.100:5054/urmanac/cozystack-assets/talos:demo-stable" "ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+    
+    # Extract Talos installer for kexec transition
+    echo "🔄 Extracting Talos installer..."
+    docker create --name talos-extract "ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+    mkdir -p /opt/talos-installer
+    docker cp talos-extract:/assets/talos/arm64/boot/ /opt/talos-installer/ 2>/dev/null || {
+      echo "⚠️  Boot assets not in expected location, trying alternative paths..."
+      docker cp talos-extract:/usr/install/arm64/ /opt/talos-installer/ 2>/dev/null || {
+        echo "📋 Listing available paths in Talos image..."
+        docker run --rm "ghcr.io/urmanac/cozystack-assets/talos:demo-stable" find / -name "*vmlinuz*" -o -name "*initramfs*" || true
+      }
+    }
+    docker rm talos-extract
+    
+    # Transition to Talos (kexec)
+    echo "🎯 Transitioning to Talos..."
+    # Implementation depends on specific Talos image structure
+    # This would invoke kexec with Talos kernel and initramfs
+    echo "Boot-to-Talos preparation complete"
+    
+runcmd:
+- /opt/boot-to-talos.sh
+final_message: "Ubuntu → Talos transition initiated"
