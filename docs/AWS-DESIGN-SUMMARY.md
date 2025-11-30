@@ -81,6 +81,6 @@ VPC: 10.10.0.0/16 (sandbox-eu-vpc)
 **Demo Week** (full-time Dec 1-4): ~$40-50
 
 **References**:
-- Full design: [DESKTOP.md](../DESKTOP.md)
+- Full design: [DESKTOP.md](DESKTOP-4-CONTEXT.md)
 - TDG tests: [TDG-PLAN.md](TDG-PLAN.md)  
 - ADR-004: [Role-Based Images](ADRs/ADR-004-ROLE-BASED-IMAGES.html)
