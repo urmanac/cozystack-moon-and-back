@@ -46,23 +46,30 @@ write_files:
     
     # Configure Docker to use registry caches (critical - no direct internet from private subnets)
     mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json << 'DOCKER_EOF'
-    {
-      "registry-mirrors": ["http://${REGISTRY_CACHE}"],
-      "insecure-registries": ["${REGISTRY_CACHE}"]
-    }
-    DOCKER_EOF
+    cat > /etc/docker/daemon.json << DOCKER_EOF
+{
+  "registry-mirrors": ["http://${REGISTRY_CACHE}"],
+  "insecure-registries": ["${REGISTRY_CACHE}"]
+}
+DOCKER_EOF
     systemctl restart docker
     
     # Pull custom Talos image via GHCR registry cache (port 5054)
     echo "📦 Pulling custom Talos image via bastion cache: ${REGISTRY_CACHE}"
     echo "🔍 Image: ${CUSTOM_TALOS_IMAGE}"
     
-    # Direct pull from cache (nodes have no direct internet - critical)
-    docker pull "${REGISTRY_CACHE}/urmanac/cozystack-assets/talos:demo-stable"
+    # Pull from registry cache (nodes have no direct internet - critical)
+    echo "🔍 Testing registry cache access..."
+    curl -f http://${REGISTRY_CACHE}/v2/ || {
+      echo "❌ Registry cache not accessible at ${REGISTRY_CACHE}"
+      exit 1
+    }
     
-    # Tag as if from original registry for easier handling
-    docker tag "${REGISTRY_CACHE}/urmanac/cozystack-assets/talos:demo-stable" "${CUSTOM_TALOS_IMAGE}"
+    echo "📦 Pulling custom Talos image..."
+    docker pull ${CUSTOM_TALOS_IMAGE} || {
+      echo "❌ Failed to pull ${CUSTOM_TALOS_IMAGE}"
+      exit 1
+    }
     
     # Extract Talos installer for kexec transition
     echo "🔄 Extracting Talos installer..."
