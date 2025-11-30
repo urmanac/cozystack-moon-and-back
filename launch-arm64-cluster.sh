@@ -47,11 +47,11 @@ write_files:
     # Configure Docker to use registry caches (critical - no direct internet from private subnets)
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json << DOCKER_EOF
-{
-  "registry-mirrors": ["http://${REGISTRY_CACHE}"],
-  "insecure-registries": ["${REGISTRY_CACHE}"]
-}
-DOCKER_EOF
+    {
+      "registry-mirrors": ["http://${REGISTRY_CACHE}"],
+      "insecure-registries": ["${REGISTRY_CACHE}"]
+    }
+    DOCKER_EOF
     systemctl restart docker
     
     # Pull custom Talos image via GHCR registry cache (port 5054)
