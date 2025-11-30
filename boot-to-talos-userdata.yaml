@@ -26,22 +26,25 @@ write_files:
     echo "📦 Pulling custom Talos image via bastion cache: 10.10.1.100:5054"
     echo "🔍 Image: ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
     
-    # Direct pull from cache (nodes have no direct internet - critical)
-    docker pull "10.10.1.100:5054/urmanac/cozystack-assets/talos:demo-stable"
+    # Test if image is accessible
+    docker pull "ghcr.io/urmanac/cozystack-assets/talos:demo-stable" || {
+      echo "❌ Failed to pull ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+      echo "🔍 Testing registry cache connectivity..."
+      curl -v http://10.10.1.100:5054/v2/ || true
+      exit 1
+    }
     
-    # Tag as if from original registry for easier handling
-    docker tag "10.10.1.100:5054/urmanac/cozystack-assets/talos:demo-stable" "ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+    echo "✅ Successfully pulled ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
     
-    # Extract Talos installer for kexec transition
-    echo "🔄 Extracting Talos installer..."
+    # Extract Talos kernel and initramfs for kexec
+    echo "🔍 Extracting Talos kernel and initramfs..."
     docker create --name talos-extract "ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
-    mkdir -p /opt/talos-installer
-    docker cp talos-extract:/assets/talos/arm64/boot/ /opt/talos-installer/ 2>/dev/null || {
-      echo "⚠️  Boot assets not in expected location, trying alternative paths..."
-      docker cp talos-extract:/usr/install/arm64/ /opt/talos-installer/ 2>/dev/null || {
-        echo "📋 Listing available paths in Talos image..."
-        docker run --rm "ghcr.io/urmanac/cozystack-assets/talos:demo-stable" find / -name "*vmlinuz*" -o -name "*initramfs*" || true
-      }
+    
+    # Find and extract boot files from the Talos image
+    # This is a simplified approach - actual implementation may vary
+    docker cp talos-extract:/boot /tmp/talos-boot/ 2>/dev/null || {
+      echo "⚠️  /boot not found, looking for kernel files elsewhere..."
+      docker run --rm "ghcr.io/urmanac/cozystack-assets/talos:demo-stable" find / -name "*vmlinuz*" -o -name "*initramfs*" || true
     }
     docker rm talos-extract
     
