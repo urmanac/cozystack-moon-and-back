@@ -29,39 +29,41 @@ metadata:
   region: us-west-2
 spec:
   vpc:
-    id: vpc-xxxxxxxxx
+    id: vpc-04af837e642c001c6
+    region: eu-west-1
     subnets:
-      - subnet-xxxxxxxxx  # Control plane subnet 1
-      - subnet-yyyyyyyyy  # Control plane subnet 2  
-      - subnet-zzzzzzzzz  # Worker subnet
+      - subnet-0ef9817bc457d9d76  # Private subnet 1 (AZ-A)
+      - subnet-0b68a5b909d77cb4c  # Private subnet 2 (AZ-B)
+      - subnet-0fb2c632ccc6d99e5  # Public subnet 1 (AZ-A) 
+      - subnet-07a140ab2b20bf89b  # Public subnet 2 (AZ-B)
   nodes:
     controlPlane:
       - name: control-01
         instanceType: c7g.large
-        subnet: subnet-xxxxxxxxx
-        privateIP: 10.0.1.10
-        availabilityZone: us-west-2a
+        subnet: subnet-0ef9817bc457d9d76  # Private AZ-A
+        privateIP: 10.10.2.10
+        availabilityZone: eu-west-1a
       - name: control-02
         instanceType: c7g.large
-        subnet: subnet-yyyyyyyyy
-        privateIP: 10.0.2.10
-        availabilityZone: us-west-2b
+        subnet: subnet-0b68a5b909d77cb4c  # Private AZ-B
+        privateIP: 10.10.3.10
+        availabilityZone: eu-west-1b
       - name: control-03
         instanceType: c7g.large
-        subnet: subnet-xxxxxxxxx
-        privateIP: 10.0.1.11
-        availabilityZone: us-west-2a
+        subnet: subnet-0ef9817bc457d9d76  # Private AZ-A
+        privateIP: 10.10.2.11
+        availabilityZone: eu-west-1a
     workers:
       - name: worker-01
         instanceType: c7g.xlarge
-        subnet: subnet-zzzzzzzzz
-        privateIP: 10.0.3.10
-        availabilityZone: us-west-2c
+        subnet: subnet-0b68a5b909d77cb4c  # Private AZ-B
+        privateIP: 10.10.3.20
+        availabilityZone: eu-west-1b
       - name: worker-02
         instanceType: c7g.xlarge
-        subnet: subnet-zzzzzzzzz
-        privateIP: 10.0.3.11
-        availabilityZone: us-west-2c
+        subnet: subnet-0ef9817bc457d9d76  # Private AZ-A  
+        privateIP: 10.10.2.20
+        availabilityZone: eu-west-1a
   baseImage:
     filter:
       name: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-*"  # Dynamic lookup for latest Ubuntu ARM64
@@ -69,18 +71,31 @@ spec:
       virtualizationType: hvm
     bootToTalos:
       enabled: true
-      customImage: "ghcr.io/your-org/talos:v1.10.5-cozy-spin"  # Your custom Talos image
-      registryCache: "bastion-host:5000"  # Pull-through cache endpoint
+      customImage: "ghcr.io/urmanac/cozystack-assets/talos:demo-stable"  # Real custom Talos image
+      registryCache: "10.10.1.100:5000"  # Bastion registry cache endpoint
     userData: |
       #cloud-config
       # Boot-to-Talos configuration - downloads custom image and kexecs early in boot
   cluster:
     name: cozystack-arm64
-    endpoint: https://10.0.1.100:6443  # Load balancer VIP
+    endpoint: https://10.10.1.200:6443  # Control plane load balancer VIP
     domain: cluster.local
+    securityGroupId: sg-0e6b4a78092854897  # Talos cluster security group
 ```
 
-## Deployment Procedure
+## 🎉 **Infrastructure Ready for Launch!**
+
+Based on Terraform outputs, we have everything needed for ARM64 Talos deployment:
+
+### **Real Infrastructure Values (Updated November 30th)**
+- **VPC**: `vpc-04af837e642c001c6` (eu-west-1, 10.10.0.0/16)
+- **Private Subnets**: `subnet-0ef9817bc457d9d76` (AZ-A), `subnet-0b68a5b909d77cb4c` (AZ-B)
+- **Registry Cache**: `10.10.1.100:5000` (GHCR pull-through on bastion)
+- **Security Group**: `sg-0e6b4a78092854897` (Kubernetes + Talos ports)
+- **Custom Talos Image**: `ghcr.io/urmanac/cozystack-assets/talos:demo-stable`
+
+### **OIDC Authentication Bonus** 🎯
+The aws-accounts Claude also implemented GitHub Actions OIDC authentication, enabling serverless CI/CD pipelines!
 
 ### 1. Pre-flight Validation
 - [ ] AWS credentials and MFA configured
