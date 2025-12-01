@@ -1,0 +1,43 @@
+#cloud-config
+write_files:
+- path: /opt/boot-to-talos.sh
+  permissions: '0755'
+  content: |
+    #!/bin/bash
+    set -euo pipefail
+    echo "🚀 Starting boot-to-Talos transition..." | tee -a /var/log/boot-to-talos.log
+    
+    # Install Docker for image operations
+    apt-get update | tee -a /var/log/boot-to-talos.log
+    apt-get install -y docker.io | tee -a /var/log/boot-to-talos.log
+    systemctl start docker | tee -a /var/log/boot-to-talos.log
+    
+    # Configure Docker to use registry caches - CRITICAL: JSON must be indented in YAML
+    mkdir -p /etc/docker
+    cat > /etc/docker/daemon.json << DOCKER_EOF
+    {
+      "registry-mirrors": ["http://10.10.1.100:5054"],
+      "insecure-registries": ["10.10.1.100:5054"]
+    }
+    DOCKER_EOF
+    systemctl restart docker | tee -a /var/log/boot-to-talos.log
+    
+    # Test registry connectivity
+    echo "📦 Testing registry cache connectivity..." | tee -a /var/log/boot-to-talos.log
+    curl -v http://10.10.1.100:5054/v2/ 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    
+    # Pull custom Talos image via registry cache
+    echo "🔍 Pulling: ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest" | tee -a /var/log/boot-to-talos.log
+    docker pull 10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    
+    # Tag for reference
+    docker tag 10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    
+    # List what we got
+    docker images | tee -a /var/log/boot-to-talos.log
+    
+    echo "✅ Boot-to-Talos test complete" | tee -a /var/log/boot-to-talos.log
+
+runcmd:
+- /opt/boot-to-talos.sh
+final_message: "Ubuntu → Talos transition test initiated"
