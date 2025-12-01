@@ -35,6 +35,15 @@ machine:
       10.10.1.100:5054:
         tls:
           insecureSkipVerify: true
+      gcr.io:
+        tls:
+          insecureSkipVerify: true
+      registry.k8s.io:
+        tls:
+          insecureSkipVerify: true
+      quay.io:
+        tls:
+          insecureSkipVerify: true
   install:
     image: ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest
   features:
