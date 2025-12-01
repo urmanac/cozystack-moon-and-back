@@ -14,24 +14,37 @@ write_files:
     
     # Configure Docker to use registry caches
     mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json << 'DOCKER_EOF'
+    cat > /etc/docker/daemon.json << DOCKER_EOF
     {
-      "registry-mirrors": ["http://10.10.1.100:5054"],
-      "insecure-registries": ["10.10.1.100:5054"]
+      "registry-mirrors": ["http://${REGISTRY_CACHE}"],
+      "insecure-registries": ["${REGISTRY_CACHE}"]
     }
     DOCKER_EOF
     systemctl restart docker | tee -a /var/log/boot-to-talos.log
     
     # Test registry connectivity
     echo "📦 Testing registry cache connectivity..." | tee -a /var/log/boot-to-talos.log
+    echo "🔍 Testing ping to bastion..." | tee -a /var/log/boot-to-talos.log
+    ping -c 3 10.10.1.100 2>&1 | tee -a /var/log/boot-to-talos.log
     curl -v http://10.10.1.100:5054/v2/ 2>&1 | tee -a /var/log/boot-to-talos.log || true
     
     # Pull custom Talos image via registry cache
-    echo "🔍 Pulling: ghcr.io/urmanac/cozystack-assets/talos:demo-stable" | tee -a /var/log/boot-to-talos.log
-    docker pull "ghcr.io/urmanac/cozystack-assets/talos:demo-stable" 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    echo "🔍 Pulling: ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest" | tee -a /var/log/boot-to-talos.log
+    # Use registry cache path since nodes have no direct internet
+    docker pull 10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    
+    # Tag for reference
+    docker tag 10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest 2>&1 | tee -a /var/log/boot-to-talos.log || true
     
     # List what we got
     docker images | tee -a /var/log/boot-to-talos.log
+    
+    # Now actually boot to Talos!
+    echo "🚀 Installing boot-to-talos..." | tee -a /var/log/boot-to-talos.log
+    curl -sSL https://github.com/cozystack/boot-to-talos/raw/refs/heads/main/hack/install.sh | sh -s 2>&1 | tee -a /var/log/boot-to-talos.log
+    
+    echo "🔄 Booting to Talos..." | tee -a /var/log/boot-to-talos.log
+    boot-to-talos -yes -disk /dev/sda -image ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest -image-size-gib 4 -extra-kernel-arg "console=ttyS0" 2>&1 | tee -a /var/log/boot-to-talos.log
     
     echo "Boot-to-Talos test complete" | tee -a /var/log/boot-to-talos.log
 

@@ -6,7 +6,7 @@ set -eo pipefail  # Removed -u flag to avoid issues with associative array itera
 VPC_ID="vpc-04af837e642c001c6"
 SECURITY_GROUP_ID="sg-0e6b4a78092854897"
 REGISTRY_CACHE="10.10.1.100:5054"  # GHCR pull-through cache on bastion (port 5054)
-CUSTOM_TALOS_IMAGE="ghcr.io/urmanac/cozystack-assets/talos:demo-stable"
+CUSTOM_TALOS_IMAGE="ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
 REGION="eu-west-1"
 
 echo "🚀 Launching CozyStack ARM64 cluster in $REGION..."
@@ -66,10 +66,14 @@ write_files:
     }
     
     echo "📦 Pulling custom Talos image..."
-    docker pull ${CUSTOM_TALOS_IMAGE} || {
-      echo "❌ Failed to pull ${CUSTOM_TALOS_IMAGE}"
+    # Pull via registry cache since nodes have no direct internet
+    docker pull ${REGISTRY_CACHE}/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest || {
+      echo "❌ Failed to pull from registry cache"
       exit 1
     }
+    
+    # Tag for easier reference
+    docker tag ${REGISTRY_CACHE}/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest ${CUSTOM_TALOS_IMAGE}
     
     # Extract Talos installer for kexec transition
     echo "🔄 Extracting Talos installer..."
@@ -97,11 +101,11 @@ EOF
 
 # Define cluster nodes with real subnet IDs
 declare -A NODES=(
-  ["control-01"]="c7g.large subnet-0ef9817bc457d9d76 10.10.10.10 eu-west-1a"
-  ["control-02"]="c7g.large subnet-0b68a5b909d77cb4c 10.10.11.10 eu-west-1b" 
-  ["control-03"]="c7g.large subnet-0ef9817bc457d9d76 10.10.10.11 eu-west-1a"
-  ["worker-01"]="c7g.xlarge subnet-0b68a5b909d77cb4c 10.10.11.20 eu-west-1b"
-  ["worker-02"]="c7g.xlarge subnet-0ef9817bc457d9d76 10.10.10.20 eu-west-1a"
+  ["control-01"]="c7g.large subnet-07a140ab2b20bf89b 10.10.1.110 eu-west-1b"
+  ["control-02"]="c7g.large subnet-07a140ab2b20bf89b 10.10.1.111 eu-west-1b" 
+  ["control-03"]="c7g.large subnet-07a140ab2b20bf89b 10.10.1.112 eu-west-1b"
+  ["worker-01"]="c7g.xlarge subnet-07a140ab2b20bf89b 10.10.1.120 eu-west-1b"
+  ["worker-02"]="c7g.xlarge subnet-07a140ab2b20bf89b 10.10.1.121 eu-west-1b"
 )
 
 echo "🏗️ Creating ARM64 Talos cluster nodes..."
@@ -123,6 +127,7 @@ for node_name in "${!NODES[@]}"; do
     --instance-type "$instance_type" \
     --subnet-id "$subnet_id" \
     --private-ip-address "$private_ip" \
+    --ipv6-address-count 1 \
     --security-group-ids "$SECURITY_GROUP_ID" \
     --user-data file://boot-to-talos-userdata.yaml \
     $INSTANCE_PROFILE_ARG \
