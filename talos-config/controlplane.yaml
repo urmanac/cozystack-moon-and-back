@@ -1,0 +1,108 @@
+version: v1alpha1
+debug: false
+persist: true
+machine:
+  type: controlplane
+  token: 4fl561HiGJj6kOQrOoysTpiLx69fKE1NbMGexakxmI0=
+  ca:
+    crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...  # Generate real cert
+    key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVkt...  # Generate real key
+  certSANs:
+    - 2a05:d018:106c:7801:295:6957:b303:1d7b
+    - 10.10.1.108
+  kubelet:
+    image: ghcr.io/siderolabs/kubelet:v1.31.3
+    defaultRuntimeSeccompProfileEnabled: true
+    disableManifestsDirectory: true
+    registerWithTaints:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+  network:
+    hostname: talos-direct-01
+    interfaces:
+      - interface: eth0
+        dhcp: true
+        dhcpOptions:
+          ipv4: true
+          ipv6: true
+  install:
+    disk: /dev/xvda
+    image: ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest
+    wipe: false
+  registries:
+    mirrors:
+      docker.io:
+        endpoints:
+          - http://10.10.1.100:5054
+      ghcr.io:
+        endpoints:
+          - http://10.10.1.100:5054
+    config:
+      10.10.1.100:5054:
+        tls:
+          insecureSkipVerify: true
+  features:
+    rbac: true
+    stableHostname: true
+    apidCheckExtKeyUsage: true
+    diskQuotaSupport: true
+    kubernetesTalosAPIAccess:
+      enabled: true
+      allowedRoles:
+        - os:admin
+      allowedKubernetesNamespaces:
+        - kube-system
+  sysctls:
+    net.bridge.bridge-nf-call-iptables: "1"
+    net.bridge.bridge-nf-call-ip6tables: "1"
+    net.ipv4.ip_forward: "1"
+    net.ipv6.conf.all.forwarding: "1"
+  disks:
+    - device: /dev/xvdb
+      partitions:
+        - mountpoint: /var/lib/longhorn
+cluster:
+  id: EC1E4735-5334-4154-BA51-CD79FA082630
+  secret: Rsj9cpbUYYynkMJ0RSrhm2Fp12J0GucykSrq8mNo+e4=
+  controlPlane:
+    endpoint: https://[2a05:d018:106c:7801:295:6957:b303:1d7b]:6443
+  clusterName: talos-direct-cluster
+  network:
+    dnsDomain: cluster.local
+    podSubnets:
+      - 10.244.0.0/16
+      - fd40:10:244::/56
+    serviceSubnets:
+      - 10.96.0.0/12
+      - fd40:10:96::/112
+  proxy:
+    disabled: false
+  apiServer:
+    image: registry.k8s.io/kube-apiserver:v1.31.3
+    certSANs:
+      - 2a05:d018:106c:7801:295:6957:b303:1d7b
+      - 10.10.1.108
+    auditPolicy:
+      rules:
+        - level: Metadata
+  controllerManager:
+    image: registry.k8s.io/kube-controller-manager:v1.31.3
+  scheduler:
+    image: registry.k8s.io/kube-scheduler:v1.31.3
+  discovery:
+    enabled: true
+    registries:
+      kubernetes:
+        disabled: false
+      service:
+        disabled: false
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.16
+    ca:
+      crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...  # Generate real cert
+      key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVkt...  # Generate real key
+  coreDNS:
+    disabled: false
+    image: registry.k8s.io/coredns/coredns:v1.11.3
+  extraManifests:
+    - https://raw.githubusercontent.com/alex-shpak/longhorn/main/deploy/longhorn.yaml

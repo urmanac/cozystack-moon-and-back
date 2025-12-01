@@ -1,0 +1,29 @@
+machine:
+  time:
+    servers:
+      - 169.254.169.123
+  registries:
+    mirrors:
+      docker.io:
+        endpoints:
+          - http://10.10.1.100:5054
+      ghcr.io:
+        endpoints:
+          - http://10.10.1.100:5054
+    config:
+      10.10.1.100:5054:
+        tls:
+          insecureSkipVerify: true
+  install:
+    image: ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest
+  features:
+    kubernetesTalosAPIAccess:
+      enabled: true
+      allowedRoles:
+        - os:admin
+      allowedKubernetesNamespaces:
+        - kube-system
+  disks:
+    - device: /dev/xvdb
+      partitions:
+        - mountpoint: /var/lib/longhorn
