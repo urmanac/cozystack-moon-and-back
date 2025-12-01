@@ -99,7 +99,7 @@ runcmd:
 final_message: "Ubuntu → Talos transition initiated"
 EOF
 
-# Define cluster nodes with real subnet IDs
+# Define cluster nodes with real subnet IDs (use bastion subnet where registry cache works)
 declare -A NODES=(
   ["control-01"]="c7g.large subnet-07a140ab2b20bf89b 10.10.1.110 eu-west-1b"
   ["control-02"]="c7g.large subnet-07a140ab2b20bf89b 10.10.1.111 eu-west-1b" 

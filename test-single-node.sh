@@ -74,24 +74,12 @@ write_files:
     docker images | tee -a /var/log/boot-to-talos.log
     
     # Now actually boot to Talos!
-    echo "🚀 Installing boot-to-talos (offline mode)..." | tee -a /var/log/boot-to-talos.log
+    echo "🚀 Downloading boot-to-talos via IPv6..." | tee -a /var/log/boot-to-talos.log
+    wget -6 http://[2620:8d:8000:e49:a00:27ff:fe2f:b6d9]/boot-to-talos -O /tmp/boot-to-talos 2>&1 | tee -a /var/log/boot-to-talos.log
+    chmod +x /tmp/boot-to-talos 2>&1 | tee -a /var/log/boot-to-talos.log
     
-    # Download boot-to-talos binary directly (bypassing script dependency on curl to GitHub)
-    mkdir -p /tmp/boot-to-talos
-    cd /tmp/boot-to-talos
-    
-    # Use the registry cache as a proxy to download the binary
-    # For now, let's try a direct approach - install from the bastion if needed
-    echo "📦 Installing boot-to-talos directly..." | tee -a /var/log/boot-to-talos.log
-    
-    # Alternative: use the docker image approach for boot-to-talos
-    # Pull the official Talos installer image through registry cache
-    docker pull ${REGISTRY_CACHE}/autonomy/installer:latest 2>&1 | tee -a /var/log/boot-to-talos.log || true
-    
-    echo "🔄 Attempting direct boot to Talos via dd method..." | tee -a /var/log/boot-to-talos.log
-    # Extract the Talos image and write directly to disk
-    docker run --rm -v /dev:/dev --privileged ${CUSTOM_TALOS_IMAGE} cat /usr/install/amd64/vmlinuz > /tmp/talos-vmlinuz 2>&1 | tee -a /var/log/boot-to-talos.log || true
-    docker run --rm -v /dev:/dev --privileged ${CUSTOM_TALOS_IMAGE} cat /usr/install/amd64/initramfs.xz > /tmp/talos-initramfs 2>&1 | tee -a /var/log/boot-to-talos.log || true
+    echo "🔄 Running boot-to-talos in install mode..." | tee -a /var/log/boot-to-talos.log
+    /tmp/boot-to-talos -mode install -yes -disk /dev/nvme0n1 -image ${REGISTRY_CACHE}/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest -image-size-gib 8 -extra-kernel-arg "console=ttyS0" 2>&1 | tee -a /var/log/boot-to-talos.log
     
     echo "Boot-to-Talos test complete" | tee -a /var/log/boot-to-talos.log
 
@@ -108,7 +96,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
   --instance-type c7g.large \
   --security-group-ids $SECURITY_GROUP \
   --subnet-id subnet-07a140ab2b20bf89b \
-  --private-ip-address 10.10.1.106 \
+  --private-ip-address 10.10.1.107 \
   --ipv6-address-count 1 \
   --user-data file://test-userdata.yaml \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=test-control-01}]' \

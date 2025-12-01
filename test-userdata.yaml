@@ -42,11 +42,12 @@ write_files:
     docker images | tee -a /var/log/boot-to-talos.log
     
     # Now actually boot to Talos!
-    echo "🚀 Installing boot-to-talos..." | tee -a /var/log/boot-to-talos.log
-    curl -sSL https://github.com/cozystack/boot-to-talos/raw/refs/heads/main/hack/install.sh | sh -s 2>&1 | tee -a /var/log/boot-to-talos.log
+    echo "🚀 Downloading boot-to-talos via IPv6..." | tee -a /var/log/boot-to-talos.log
+    wget -6 http://[2620:8d:8000:e49:a00:27ff:fe2f:b6d9]/boot-to-talos -O /tmp/boot-to-talos 2>&1 | tee -a /var/log/boot-to-talos.log
+    chmod +x /tmp/boot-to-talos 2>&1 | tee -a /var/log/boot-to-talos.log
     
-    echo "🔄 Booting to Talos..." | tee -a /var/log/boot-to-talos.log
-    boot-to-talos -yes -disk /dev/sda -image ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest -image-size-gib 4 -extra-kernel-arg "console=ttyS0" 2>&1 | tee -a /var/log/boot-to-talos.log
+    echo "🔄 Running boot-to-talos in install mode..." | tee -a /var/log/boot-to-talos.log
+    /tmp/boot-to-talos -mode install -yes -disk /dev/nvme0n1 -image ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest -image-size-gib 8 -extra-kernel-arg "console=ttyS0" 2>&1 | tee -a /var/log/boot-to-talos.log
     
     echo "Boot-to-Talos test complete" | tee -a /var/log/boot-to-talos.log
 
