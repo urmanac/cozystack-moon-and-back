@@ -1,4 +1,6 @@
 #cloud-config
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFAJEwbe8ZuresTTfBGXSmpFKDcAkd6584qaA3y/3uVQ yebyen@Kingdons-MacBook-Pro-2.local
 write_files:
 - path: /opt/boot-to-talos.sh
   permissions: '0755'
@@ -16,8 +18,8 @@ write_files:
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json << DOCKER_EOF
     {
-      "registry-mirrors": ["http://${REGISTRY_CACHE}"],
-      "insecure-registries": ["${REGISTRY_CACHE}"]
+      "registry-mirrors": ["http://10.10.1.100:5054"],
+      "insecure-registries": ["10.10.1.100:5054"]
     }
     DOCKER_EOF
     systemctl restart docker | tee -a /var/log/boot-to-talos.log
