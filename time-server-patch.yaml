@@ -6,11 +6,32 @@ machine:
     mirrors:
       docker.io:
         endpoints:
-          - http://10.10.1.100:5054
+          - http://10.10.1.100:5050
       ghcr.io:
         endpoints:
           - http://10.10.1.100:5054
+      gcr.io:
+        endpoints:
+          - http://10.10.1.100:5053
+      registry.k8s.io:
+        endpoints:
+          - http://10.10.1.100:5051
+      quay.io:
+        endpoints:
+          - http://10.10.1.100:5052
     config:
+      10.10.1.100:5050:
+        tls:
+          insecureSkipVerify: true
+      10.10.1.100:5051:
+        tls:
+          insecureSkipVerify: true
+      10.10.1.100:5052:
+        tls:
+          insecureSkipVerify: true
+      10.10.1.100:5053:
+        tls:
+          insecureSkipVerify: true
       10.10.1.100:5054:
         tls:
           insecureSkipVerify: true
@@ -23,7 +44,3 @@ machine:
         - os:admin
       allowedKubernetesNamespaces:
         - kube-system
-  disks:
-    - device: /dev/xvdb
-      partitions:
-        - mountpoint: /var/lib/longhorn
