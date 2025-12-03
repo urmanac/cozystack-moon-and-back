@@ -18,7 +18,7 @@ AL2023_AMI=$(aws ec2 describe-images \
 echo "📀 Using Amazon Linux 2023 AMI: $AL2023_AMI"
 
 # Fixed IP for consistency
-IPV4_ADDRESS="10.10.1.120"
+IPV4_ADDRESS="10.10.1.101"
 COZYSTACK_IMAGE="ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
 
 # Create cloud-init that uses boot-to-talos to kexec into CozyStack
