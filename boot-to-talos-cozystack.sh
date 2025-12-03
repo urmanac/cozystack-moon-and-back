@@ -18,7 +18,7 @@ UBUNTU_AMI=$(aws ec2 describe-images \
 echo "📀 Using Ubuntu ARM64 AMI: $UBUNTU_AMI"
 
 # Fixed IP for consistency
-IPV4_ADDRESS="10.10.1.103"
+IPV4_ADDRESS="10.10.1.105"
 COZYSTACK_IMAGE="10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
 
 # Create cloud-init that uses boot-to-talos to kexec into CozyStack
@@ -30,11 +30,17 @@ packages:
   - curl
   - tar
 
-# Add SSH key for debugging access
+# Add SSH key for debugging access with sudo password
 users:
   - name: ubuntu
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    passwd: '$6$rounds=4096$saltsalt$HIqhv2Pt2TG8WJ6UKxWGFJa0wJpCQKFdyNMZSLAhGCa6TIxPi1yCLaE36w.RsxPAPrLNOSjsZ0pMKt15QnqLQ.'  # password is 'cozystack'
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFAJEwbe8ZuresTTfBGXSmpFKDcAkd6584qaA3y/3uVQ yebyen@Kingdons-MacBook-Pro-2.local
+
+# Disable password authentication for SSH
+ssh_pwauth: false
+disable_root: true
 
 runcmd:
   # Download boot-to-talos from IPv6 mirror (now with IPv6 configured)
@@ -43,9 +49,9 @@ runcmd:
   - mv boot-to-talos /usr/local/bin/boot-to-talos
   - chmod +x /usr/local/bin/boot-to-talos
   
-  # Boot into CozyStack Talos image via kexec (using registry cache)
+  # Install CozyStack Talos to disk (explicit install mode)
   - sleep 30  # Give network time to stabilize
-  - /usr/local/bin/boot-to-talos -image $COZYSTACK_IMAGE -yes
+  - /usr/local/bin/boot-to-talos -m install -image $COZYSTACK_IMAGE -disk /dev/nvme0n1 -yes
 
 power_state:
   delay: "+1"
@@ -69,6 +75,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --private-ip-address $IPV4_ADDRESS \
     --ipv6-address-count 1 \
     --no-associate-public-ip-address \
+    --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":30,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
     --user-data file://cloud-init.yaml \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=cozystack-boot-to-talos}]' \
     --query 'Instances[0].InstanceId' \
@@ -84,11 +91,12 @@ echo "🥾 Instance is running and executing boot-to-talos..."
 echo "⌛ Wait ~5-10 minutes for:"
 echo "   1. Ubuntu to boot and setup"
 echo "   2. boot-to-talos to download CozyStack image"
-echo "   3. kexec into Talos maintenance mode"
+echo "   3. Install Talos to disk (install mode)"
 echo ""
 echo "🔍 Then check serial console for Talos maintenance mode"
 echo "💻 Instance: $INSTANCE_ID"
 echo "📍 IP: $IPV4_ADDRESS"
+echo "🔑 SSH: ssh ubuntu@<ipv6> (sudo password: 'cozystack')"
 echo "🌐 Once in maintenance mode, you can use Talm discovery!"
 
 rm -f cloud-init.yaml

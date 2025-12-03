@@ -172,6 +172,28 @@ Modify launch script to deploy maintenance-mode nodes that Talm can discover.
 
 **Recommendation**: Use Path A for tomorrow's demo, document Path B for future proper Talm workflow.
 
+### **CRITICAL BREAKTHROUGH ATTEMPT**: Direct Talos AMI in Maintenance Mode
+
+**Problem**: boot-to-talos kexec failing due to memfd_create userspace/kernel mismatch
+**Solution**: Deploy official Talos AMI directly in maintenance mode
+
+**New Strategy**:
+1. **Skip boot-to-talos entirely** - use official Talos ARM64 AMI  
+2. **Boot into maintenance mode** by default
+3. **Use Talm to configure with CozyStack image** via machine configs
+4. **Apply custom install image** through Talm templates
+
+**Commands for immediate attempt**:
+```bash
+# Find official Talos ARM64 AMI  
+aws ec2 describe-images --region eu-west-1 --owners 540036508848 \
+  --filters "Name=name,Values=talos-v1.11.5-arm64" \
+  --query 'Images[0].ImageId' --output text
+
+# Deploy directly into maintenance mode (no custom image needed initially)
+# Then use Talm to configure the custom CozyStack image
+```
+
 ### Next Steps for Bastion (10.10.1.100):
 
 1. **Install Talm**:
