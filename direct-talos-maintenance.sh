@@ -5,15 +5,9 @@ set -e
 
 echo "🎯 Launching official Talos ARM64 AMI in maintenance mode..."
 
-# Find latest official Talos ARM64 AMI
-echo "🔍 Finding official Talos v1.11.5 ARM64 AMI..."
-TALOS_AMI=$(aws ec2 describe-images \
-    --region eu-west-1 \
-    --owners 540036508848 \
-    --filters "Name=name,Values=talos-v1.11.5-arm64" \
-              "Name=state,Values=available" \
-    --query 'Images[0].ImageId' \
-    --output text)
+# Find latest official Talos ARM64 AMI (use v1.11.1)
+echo "🔍 Using official Talos v1.11.1 ARM64 AMI..."
+TALOS_AMI="ami-0d0b5ac770722d15e"
 
 echo "📀 Using official Talos ARM64 AMI: $TALOS_AMI"
 
