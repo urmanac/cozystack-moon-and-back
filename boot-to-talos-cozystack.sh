@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# boot-to-talos-cozystack.sh - Deploy CozyStack image via kexec
+set -e
+
+echo "🥾 Launching ARM64 instance with boot-to-talos to CozyStack image..."
+
+# Get latest Amazon Linux 2023 ARM64 AMI (has kexec support!)
+echo "🔍 Finding latest Amazon Linux 2023 ARM64 AMI..."
+AL2023_AMI=$(aws ec2 describe-images \
+    --region eu-west-1 \
+    --owners amazon \
+    --filters "Name=name,Values=al2023-ami-*-arm64" \
+              "Name=state,Values=available" \
+    --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+    --output text)
+
+echo "📀 Using Amazon Linux 2023 AMI: $AL2023_AMI"
+
+# Fixed IP for consistency
+IPV4_ADDRESS="10.10.1.120"
+COZYSTACK_IMAGE="ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
+
+# Create cloud-init that uses boot-to-talos to kexec into CozyStack
+cat > cloud-init.yaml << EOF
+#cloud-config
+package_update: true
+packages:
+  - kexec-tools
+
+runcmd:
+  # Download boot-to-talos from IPv6 mirror (now with IPv6 configured)
+  - curl -L http://[2620:8d:8000:e49:a00:27ff:fe2f:b6d9]/boot-to-talos-linux-arm64.tar.gz -o /tmp/boot-to-talos.tar.gz
+  - cd /tmp && tar -xzf boot-to-talos.tar.gz
+  - mv boot-to-talos-linux-arm64 /usr/local/bin/boot-to-talos
+  - chmod +x /usr/local/bin/boot-to-talos
+  
+  # Registry cache configuration for boot-to-talos
+  - |
+    cat > /tmp/registries.yaml << 'REGISTRIES'
+    mirrors:
+      docker.io:
+        endpoints:
+          - http://10.10.1.100:5050
+      registry.k8s.io:
+        endpoints:
+          - http://10.10.1.100:5051
+      quay.io:
+        endpoints:
+          - http://10.10.1.100:5052
+      gcr.io:
+        endpoints:
+          - http://10.10.1.100:5053
+      ghcr.io:
+        endpoints:
+          - http://10.10.1.100:5054
+    REGISTRIES
+  
+  # Boot into CozyStack Talos image via kexec
+  - sleep 30  # Give network time to stabilize
+  - /usr/local/bin/boot-to-talos --image $COZYSTACK_IMAGE --registries-config /tmp/registries.yaml
+
+power_state:
+  delay: "+1"
+  mode: reboot
+  message: Rebooting to complete boot-to-talos setup
+  timeout: 30
+  condition: True
+EOF
+
+echo "📝 Created cloud-init with boot-to-talos to CozyStack image"
+
+# Launch instance with Amazon Linux 2023 
+echo "🚀 Launching instance..."
+INSTANCE_ID=$(aws ec2 run-instances \
+    --region eu-west-1 \
+    --image-id $AL2023_AMI \
+    --count 1 \
+    --instance-type t4g.small \
+    --security-group-ids sg-0e6b4a78092854897 \
+    --subnet-id subnet-07a140ab2b20bf89b \
+    --private-ip-address $IPV4_ADDRESS \
+    --ipv6-address-count 1 \
+    --associate-public-ip-address \
+    --user-data file://cloud-init.yaml \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=cozystack-boot-to-talos}]' \
+    --query 'Instances[0].InstanceId' \
+    --output text)
+
+echo "✅ Created instance: $INSTANCE_ID at $IPV4_ADDRESS"
+
+# Wait for instance to be running
+echo "⏳ Waiting for instance to be running..."
+aws ec2 wait instance-running --region eu-west-1 --instance-ids $INSTANCE_ID
+
+echo "🥾 Instance is running and executing boot-to-talos..."
+echo "⌛ Wait ~5-10 minutes for:"
+echo "   1. Amazon Linux to boot and setup"
+echo "   2. boot-to-talos to download CozyStack image"
+echo "   3. kexec into Talos maintenance mode"
+echo ""
+echo "🔍 Then check serial console for Talos maintenance mode"
+echo "💻 Instance: $INSTANCE_ID"
+echo "📍 IP: $IPV4_ADDRESS"
+echo "🌐 Once in maintenance mode, you can use Talm discovery!"
+
+rm -f cloud-init.yaml

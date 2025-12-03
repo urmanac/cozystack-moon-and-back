@@ -3,3 +3,4 @@ jekyll.log
 controlplane.yaml
 talosconfig
 worker.yaml
+/talm-chart/**
