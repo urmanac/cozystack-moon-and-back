@@ -5,17 +5,17 @@ set -e
 
 echo "🥾 Launching ARM64 instance with boot-to-talos to CozyStack image..."
 
-# Get latest Amazon Linux 2023 ARM64 AMI (has kexec support!)
-echo "🔍 Finding latest Amazon Linux 2023 ARM64 AMI..."
-AL2023_AMI=$(aws ec2 describe-images \
+# Get latest Ubuntu 24.04 ARM64 AMI (should have good kexec support!)
+echo "🔍 Finding latest Ubuntu 24.04 ARM64 AMI..."
+UBUNTU_AMI=$(aws ec2 describe-images \
     --region eu-west-1 \
-    --owners amazon \
-    --filters "Name=name,Values=al2023-ami-*-arm64" \
+    --owners 099720109477 \
+    --filters "Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-*" \
               "Name=state,Values=available" \
     --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
     --output text)
 
-echo "📀 Using Amazon Linux 2023 AMI: $AL2023_AMI"
+echo "📀 Using Ubuntu ARM64 AMI: $UBUNTU_AMI"
 
 # Fixed IP for consistency
 IPV4_ADDRESS="10.10.1.103"
@@ -27,10 +27,12 @@ cat > cloud-init.yaml << EOF
 package_update: true
 packages:
   - kexec-tools
+  - curl
+  - tar
 
 # Add SSH key for debugging access
 users:
-  - name: ec2-user
+  - name: ubuntu
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFAJEwbe8ZuresTTfBGXSmpFKDcAkd6584qaA3y/3uVQ yebyen@Kingdons-MacBook-Pro-2.local
 
@@ -39,31 +41,11 @@ runcmd:
   - curl -L http://[2620:8d:8000:e49:a00:27ff:fe2f:b6d9]/boot-to-talos-linux-arm64.tar.gz -o /tmp/boot-to-talos.tar.gz
   - cd /tmp && tar -xzf boot-to-talos.tar.gz
   - mv boot-to-talos /usr/local/bin/boot-to-talos
+  - chmod +x /usr/local/bin/boot-to-talos
   
-  # Registry cache configuration for boot-to-talos
-  - |
-    cat > /tmp/registries.yaml << 'REGISTRIES'
-    mirrors:
-      docker.io:
-        endpoints:
-          - http://10.10.1.100:5050
-      registry.k8s.io:
-        endpoints:
-          - http://10.10.1.100:5051
-      quay.io:
-        endpoints:
-          - http://10.10.1.100:5052
-      gcr.io:
-        endpoints:
-          - http://10.10.1.100:5053
-      ghcr.io:
-        endpoints:
-          - http://10.10.1.100:5054
-    REGISTRIES
-  
-  # Boot into CozyStack Talos image via kexec
+  # Boot into CozyStack Talos image via kexec (using registry cache)
   - sleep 30  # Give network time to stabilize
-  - /usr/local/bin/boot-to-talos --image $COZYSTACK_IMAGE --registries-config /tmp/registries.yaml
+  - /usr/local/bin/boot-to-talos -image $COZYSTACK_IMAGE -yes
 
 power_state:
   delay: "+1"
@@ -79,7 +61,7 @@ echo "📝 Created cloud-init with boot-to-talos to CozyStack image"
 echo "🚀 Launching instance..."
 INSTANCE_ID=$(aws ec2 run-instances \
     --region eu-west-1 \
-    --image-id $AL2023_AMI \
+    --image-id $UBUNTU_AMI \
     --count 1 \
     --instance-type t4g.small \
     --security-group-ids sg-0e6b4a78092854897 \
@@ -100,7 +82,7 @@ aws ec2 wait instance-running --region eu-west-1 --instance-ids $INSTANCE_ID
 
 echo "🥾 Instance is running and executing boot-to-talos..."
 echo "⌛ Wait ~5-10 minutes for:"
-echo "   1. Amazon Linux to boot and setup"
+echo "   1. Ubuntu to boot and setup"
 echo "   2. boot-to-talos to download CozyStack image"
 echo "   3. kexec into Talos maintenance mode"
 echo ""
