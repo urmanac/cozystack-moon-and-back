@@ -18,8 +18,8 @@ AL2023_AMI=$(aws ec2 describe-images \
 echo "📀 Using Amazon Linux 2023 AMI: $AL2023_AMI"
 
 # Fixed IP for consistency
-IPV4_ADDRESS="10.10.1.101"
-COZYSTACK_IMAGE="ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
+IPV4_ADDRESS="10.10.1.103"
+COZYSTACK_IMAGE="10.10.1.100:5054/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest"
 
 # Create cloud-init that uses boot-to-talos to kexec into CozyStack
 cat > cloud-init.yaml << EOF
@@ -28,12 +28,17 @@ package_update: true
 packages:
   - kexec-tools
 
+# Add SSH key for debugging access
+users:
+  - name: ec2-user
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFAJEwbe8ZuresTTfBGXSmpFKDcAkd6584qaA3y/3uVQ yebyen@Kingdons-MacBook-Pro-2.local
+
 runcmd:
   # Download boot-to-talos from IPv6 mirror (now with IPv6 configured)
   - curl -L http://[2620:8d:8000:e49:a00:27ff:fe2f:b6d9]/boot-to-talos-linux-arm64.tar.gz -o /tmp/boot-to-talos.tar.gz
   - cd /tmp && tar -xzf boot-to-talos.tar.gz
-  - mv boot-to-talos-linux-arm64 /usr/local/bin/boot-to-talos
-  - chmod +x /usr/local/bin/boot-to-talos
+  - mv boot-to-talos /usr/local/bin/boot-to-talos
   
   # Registry cache configuration for boot-to-talos
   - |
@@ -81,7 +86,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --subnet-id subnet-07a140ab2b20bf89b \
     --private-ip-address $IPV4_ADDRESS \
     --ipv6-address-count 1 \
-    --associate-public-ip-address \
+    --no-associate-public-ip-address \
     --user-data file://cloud-init.yaml \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=cozystack-boot-to-talos}]' \
     --query 'Instances[0].InstanceId' \
