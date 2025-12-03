@@ -33,6 +33,8 @@ if [ "$SECURITY_GROUP_ID" = "None" ] || [ "$SECURITY_GROUP_ID" = "null" ]; then
     
     # Add required rules for Talos
     # Allow Talos API (50000) from VPC (for bastion access)
+    # NOTE: Originally used CIDR 10.10.0.0/16 but needed security group reference for bastion
+    # Fixed with: aws ec2 authorize-security-group-ingress --group-id sg-083a002a99bb912ac --protocol tcp --port 50000 --source-group sg-0f9cb1bf403ae7dd1
     aws ec2 authorize-security-group-ingress \
         --region "$REGION" \
         --group-id "$SECURITY_GROUP_ID" \

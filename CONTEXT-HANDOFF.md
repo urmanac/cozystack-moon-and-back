@@ -18,11 +18,21 @@
 ✅ **Upstream Integration:** Complete integration using CozyStack upstream Makefile targets 
 ✅ **Container Testing:** Fixed FROM scratch container testing using crane export methodology
 ✅ **Visual Polish:** Fixed GitHub Pages navigation header wrapping and container extraction commands
+✅ **AWS Talos Maintenance Mode:** Successfully achieved maintenance mode on AWS using three different user-data approaches
 
-## 🎯 Current Status: PRODUCTION READY + MATRIX STRATEGY COMPLETE
+## 🎯 Current Status: PRODUCTION READY + MAINTENANCE MODE BREAKTHROUGH
 **All Core Objectives Achieved:** The project successfully delivers ARM64 Talos images with Spin WebAssembly + Tailscale networking using proper upstream CozyStack build system integration.
 
-**Latest Achievement - Matrix Strategy Success:**
+**Latest Achievement - AWS Talos Maintenance Mode Success:**
+- ✅ **Three working approaches** for achieving maintenance mode on official Talos AMI
+- ✅ **No user-data approach** (cleanest method) 
+- ✅ **Empty user-data approach** (also clean)
+- ✅ **Invalid YAML approach** (works but generates errors)
+- ✅ **Confirmed ChatGPT insight** that AWS doesn't "nerf" Talos maintenance mode
+- ✅ **Successful Talm discovery** generating proper node configurations
+- ✅ **Registry cache integration** requiring HTTP configuration for mirrors
+
+**Previous Achievement - Matrix Strategy Success:**
 - ✅ **Dual image variants** implemented with parallel matrix builds
 - ✅ **Role-based architecture** with compute vs gateway node separation  
 - ✅ **Clean tagging** resolved (no more duplicate tag issues)
@@ -31,6 +41,15 @@
 **Working Results:**
 - `ghcr.io/urmanac/talos-cozystack-spin-only/talos:v1.11.5` (compute nodes)
 - `ghcr.io/urmanac/talos-cozystack-spin-tailscale/talos:v1.11.5` (gateway nodes)
+- AWS Talos instances in maintenance mode ready for CozyStack Talm discovery
+
+**AWS Infrastructure Status:**
+- VPC vpc-04af837e642c001c6 with private subnet subnet-07a140ab2b20bf89b
+- Official Talos AMI ami-0d0b5ac770722d15e successfully entering maintenance mode
+- Registry cache on bastion host 10.10.1.100 for private subnet deployments
+- Three test instances confirmed in maintenance mode: 10.10.1.32, 10.10.1.24, 10.10.1.114
+- **IPv6 Networking Required:** CozyStack Talos configs expect IPv6 connectivity for time servers
+- **Current Issue:** Need IPv6-enabled subnet or IPv4-only time server configuration
 
 **What Was Completed:**
 - ✅ Full upstream CozyStack Makefile targets integration (`make image`, `make assets`, `make talos-kernel`, `make talos-initramfs`)
@@ -83,6 +102,13 @@
 - **Fixes Applied:** Navigation header wrapping, Jekyll front matter, container extraction commands
 - **Documentation Added:** ABOUT-LATEST-BUILD.md explaining auto-generated build status file
 - **Result:** Clean, professional presentation suitable for CozySummit Virtual 2025
+
+### 5. **AWS Talos Maintenance Mode Discovery** (BREAKTHROUGH)
+- **Achievement:** Successfully achieved maintenance mode on official AWS Talos AMI using three different approaches
+- **Problem Solved:** Official AMI ami-0d0b5ac770722d15e enters maintenance mode when config fetch fails
+- **Key Discovery:** No user-data (or empty user-data) allows clean maintenance mode entry
+- **Validation:** Console output confirms proper Talos API on port 50000 with certificate fingerprints
+- **Result:** Ready for CozyStack Talm discovery workflow with proper --insecure connections
 
 ## 🔧 Technical Architecture
 
@@ -231,17 +257,42 @@ navigation:
 - ✅ **Correct Approach:** Testing that ARM64 + extensions work properly with upstream structure
 - **Result:** Clean integration that maintains upstream compatibility
 
-### 2. **Container Architecture & FROM Scratch Testing**
+### 3. **Container Architecture & FROM Scratch Testing**
 **Critical Discovery:** FROM scratch containers require different testing approach
 - ❌ **Wrong:** `docker run` (fails on scratch containers)
 - ✅ **Correct:** `docker create → docker cp → docker rm` or `crane export`
 - **Impact:** All asset extraction commands now work correctly
 
-### 3. **Upstream Compatibility Strategy** 
+### 4. **AWS Talos Maintenance Mode Achievement**
+**Critical Discovery:** Official Talos AMI enters maintenance mode when config fetch fails
+- ✅ **Method 1 (Best):** Launch with no user-data → clean maintenance mode
+- ✅ **Method 2:** Launch with empty user-data → clean maintenance mode  
+- ✅ **Method 3:** Launch with invalid YAML → eventual maintenance mode after errors
+- **Key Insight:** AWS doesn't "nerf" maintenance mode, it's triggered by config failures
+- **Evidence:** Console output shows proper Talos API ready on port 50000
+- **Console Indicators:**
+  ```
+  [talos] entering maintenance service
+  [talos] this machine is reachable at: 10.10.1.32
+  [talos] server certificate issued
+  [talos] upload configuration using talosctl:
+  [talos]  talosctl apply-config --insecure --nodes 10.10.1.32 --file <config.yaml>
+  ```
+- **Impact:** CozyStack Talm discovery now possible with `talm template -e <IP> -n <IP> --insecure`
+
+### 4. **Upstream Compatibility Strategy** 
 **Philosophy:** Enhance upstream, don't replace it
 - **Patches:** Minimal, targeted changes for ARM64 + extensions
 - **Build System:** Use upstream Makefile targets, don't reinvent
 - **Result:** Maintainable codebase that benefits from upstream improvements
+
+### 5. **AWS Talos Maintenance Mode for CozyStack Talm**
+**Discovery:** Official Talos AMI can enter maintenance mode for CozyStack Talm discovery
+- **Working Approach:** Launch instances without user-data or with empty user-data
+- **Mechanism:** AWS metadata config fetch fails → automatic fallback to maintenance mode
+- **Validation:** Three test instances confirmed working (10.10.1.32, 10.10.1.24, 10.10.1.114)
+- **Requirements:** Security group allowing port 50000 access for Talm discovery
+- **CozyStack Integration:** Enables proper `talm template -e <IP> -n <IP> --insecure` workflow
 
 ## 🎯 Current Status: PRODUCTION READY
 
