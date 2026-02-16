@@ -41,7 +41,8 @@ on:
       cozystack_commit:
         description: 'CozyStack upstream commit (for reproducible builds)'
         required: false
-        default: 'HEAD'  # Use latest main
+        default: '6098e2a'  # Use latest main
+        # Auto-updated 2026-02-16 to upstream 6098e2a
       extension_variant:
         description: 'Extension variant to build'
         required: false
