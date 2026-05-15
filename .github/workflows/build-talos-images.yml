@@ -212,7 +212,19 @@ jobs:
           # Use upstream Makefile target based on workflow input
           BUILD_TARGET="${{ github.event.inputs.build_targets || 'upstream-images' }}"
           echo "Building with upstream target: make $BUILD_TARGET"
-          
+
+          # After the upstream Makefile pushes the operator it tags it with the upstream
+          # source version (e.g. v1.3.3). Retag to :latest so validation and consumers can
+          # use a stable reference regardless of which cozystack version was built.
+          tag_operator_latest() {
+            if [ "$PUSH" != "1" ]; then return; fi
+            local src_ref="${{ github.event.inputs.cozystack_commit || 'v1.3.3' }}"
+            echo "Retagging $OPERATOR_REGISTRY/cozystack-operator:$src_ref → :latest"
+            crane tag "$OPERATOR_REGISTRY/cozystack-operator:$src_ref" latest 2>/dev/null || \
+              crane tag "$OPERATOR_REGISTRY/cozystack-operator:${src_ref#v}" latest 2>/dev/null || \
+              echo "⚠️ Could not retag operator to :latest (tried :$src_ref and :${src_ref#v})"
+          }
+
           case "$BUILD_TARGET" in
             "upstream-images")
               echo "Building upstream-compatible images: image-operator + image-talos + image-matchbox..."
@@ -220,6 +232,7 @@ jobs:
                 echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
                 cd ../installer
                 make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                tag_operator_latest
                 cd ../talos
               else
                 echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
@@ -236,6 +249,7 @@ jobs:
                 echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
                 cd ../../installer
                 make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                tag_operator_latest
                 cd ../talos
               fi
               make image
@@ -262,6 +276,7 @@ jobs:
                 echo "Building shared cozystack operator image (PUSH=$PUSH)..."
                 cd ../../installer
                 make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                tag_operator_latest
                 echo "build-outputs=operator" >> $GITHUB_OUTPUT
               else
                 echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
