@@ -18,15 +18,15 @@ git checkout main
 echo ""
 echo "=== 2. CHECKING FILE STATE BEFORE PATCH ==="
 echo "gen-profiles.sh EXTENSIONS line:"
-grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh
+grep -n "EXTENSIONS=" packages/core/talos/hack/gen-profiles.sh
 
 echo ""
 echo "gen-profiles.sh arch line:"
-grep -n "arch:" packages/core/installer/hack/gen-profiles.sh
+grep -n "arch:" packages/core/talos/hack/gen-profiles.sh
 
 echo ""
 echo "gen-versions.sh EXTENSIONS line:"
-grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh
+grep -n "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh
 
 echo ""
 echo "=== 3. APPLYING ALL PATCHES ==="
@@ -112,23 +112,23 @@ if [ ${#FAILED_PATCHES[@]} -eq 0 ]; then
     
     echo ""
     echo "gen-profiles.sh EXTENSIONS line (should show 'spin tailscale'):"
-    grep -n "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh
+    grep -n "EXTENSIONS=" packages/core/talos/hack/gen-profiles.sh
     
     echo ""
     echo "gen-profiles.sh arch line (should show 'arm64'):"
-    grep -n "arch:" packages/core/installer/hack/gen-profiles.sh
+    grep -n "arch:" packages/core/talos/hack/gen-profiles.sh
     
     echo ""
     echo "gen-versions.sh EXTENSIONS line (should show 'spin tailscale'):"
-    grep -n "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh
+    grep -n "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh
     
     echo ""
     echo "System extensions in profile (should include SPIN and TAILSCALE):"
-    grep -A10 "systemExtensions:" packages/core/installer/hack/gen-profiles.sh
+    grep -A10 "systemExtensions:" packages/core/talos/hack/gen-profiles.sh
     
     echo ""
     echo "Makefile asset references (should show arm64):"
-    grep -n "installer-.*\.tar\|kernel-.*\|initramfs-.*\.xz" packages/core/installer/Makefile
+    grep -n "installer-.*\.tar\|kernel-.*\|initramfs-.*\.xz" packages/core/talos/Makefile
     
     echo ""
     echo "✅ ALL PATCHES VALIDATION SUCCESSFUL!"
