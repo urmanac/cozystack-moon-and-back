@@ -1,4 +1,4 @@
-Built: 2026-05-15 19:46:47 UTC
+Built: 2026-05-15 20:47:01 UTC
 
 - Talos version: `v1.13.2`
 - CozyStack release: `v1.3.3`
@@ -22,6 +22,10 @@ When build target is `upstream-images`:
 - Kernel/boot-loader digests may be shown as `not available`.
 
 Flashable raw disk images for Raspberry Pi CM4 are published from tagged releases.
+
+Tagged release artifacts:
+- `metal-arm64.raw.xz`: flashable bare-metal image for SD/eMMC/NVMe.
+- `nocloud-arm64.raw.xz`: image intended for VM/cloud NoCloud metadata workflows.
 
 ## Container Images
 
