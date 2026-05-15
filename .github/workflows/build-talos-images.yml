@@ -176,18 +176,30 @@ jobs:
         id: build
         env:
           REGISTRY: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
-          PUSH: 1
+          # Shared (un-suffixed) registry for the operator image - one canonical copy.
+          OPERATOR_REGISTRY: ${{ env.REGISTRY }}
           LOAD: 0
         run: |
           cd cozystack-upstream
-          
-          # Authenticate both skopeo and docker to GHCR for upstream Makefile push
+
+          # Build images on every event so PRs catch regressions; only push on main.
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            PUSH=1
+          else
+            PUSH=0
+          fi
+          export PUSH
+          echo "PUSH=$PUSH (event=${{ github.event_name }}, ref=${{ github.ref }})"
+
+          # Authenticate both skopeo and docker to GHCR (login is cheap and lets pushes
+          # work when PUSH=1 on main; reads of upstream images also benefit from auth).
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username ${{ github.actor }} --password-stdin
-          
+
           # Override registry for our build with extension variant
           echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
-          
+          echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"
+
           # Generate ARM64 profiles with dynamic Spin+Tailscale versions using upstream targets
           echo "Updating upstream dependencies and generating profiles..."
           cd packages/core/talos
@@ -204,9 +216,14 @@ jobs:
           case "$BUILD_TARGET" in
             "upstream-images")
               echo "Building upstream-compatible images: image-operator + image-talos + image-matchbox..."
-              cd ../installer
-              make image-operator REGISTRY="${REGISTRY}/operator" PUSH=1
-              cd ../talos
+              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
+                echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
+                cd ../installer
+                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                cd ../talos
+              else
+                echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
+              fi
               echo "Building Talos image first (to establish assets)..."
               make image-talos
               echo "Building matchbox image (reusing same assets)..."
@@ -215,9 +232,12 @@ jobs:
               ;;
             "image")
               echo "Running full build (operator + matchbox + cozystack + talos)..."
-              cd ../../installer
-              make image-operator REGISTRY="${REGISTRY}/operator" PUSH=1
-              cd ../talos
+              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
+                echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
+                cd ../../installer
+                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                cd ../talos
+              fi
               make image
               # Capture all build outputs for complete asset array
               echo "build-outputs=operator,kernel,initramfs,talos-installer,matchbox,cozystack" >> $GITHUB_OUTPUT
@@ -238,10 +258,15 @@ jobs:
               echo "build-outputs=matchbox" >> $GITHUB_OUTPUT
               ;;
             "image-operator")
-              echo "Building cozystack operator image..."
-              cd ../../installer
-              make image-operator REGISTRY="${REGISTRY}/operator" PUSH=1
-              echo "build-outputs=operator" >> $GITHUB_OUTPUT
+              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
+                echo "Building shared cozystack operator image (PUSH=$PUSH)..."
+                cd ../../installer
+                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+                echo "build-outputs=operator" >> $GITHUB_OUTPUT
+              else
+                echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
+                echo "build-outputs=operator-skipped" >> $GITHUB_OUTPUT
+              fi
               ;;
             *)
               echo "Unknown build target: $BUILD_TARGET"
@@ -418,21 +443,28 @@ jobs:
           
           # The upstream Makefile targets already pushed to our registry:
           echo "Images pushed to ${{ env.REGISTRY }}:"
-          echo "  - operator/cozystack-operator:latest (if image-operator target ran)"
-          echo "  - talos:v$TALOS_VERSION (if image-talos target ran)"
-          echo "  - matchbox:latest (if image-matchbox target ran)"
+          echo "  - cozystack-operator:latest (shared; pushed once from spin-only leg if image-operator target ran)"
+          echo "  - talos/cozystack-${{ matrix.extension_variant }}/talos:v$TALOS_VERSION (if image-talos target ran)"
+          echo "  - talos/cozystack-${{ matrix.extension_variant }}/matchbox:latest (if image-matchbox target ran)"
 
       - name: Validate ARM64 image architectures
         id: arm64-validation
         run: |
           echo "🧪 Validating that our container images are actually ARM64..."
-          
+
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
-          
-          # Only test container images (not OS filesystem images like Talos)
-          if [[ "$BUILD_OUTPUTS" == *"operator"* ]]; then
+
+          # Registry validation only applies when images were pushed (push-to-main).
+          if [ "${{ github.event_name }}" != "push" ] || [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "ℹ️ PR / non-main build - images were built locally but not pushed; skipping registry validation."
+            echo "🎯 ARM64 registry validation skipped (PR/non-main build)" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Operator image is only published once from the spin-only matrix leg.
+          if [[ "$BUILD_OUTPUTS" == *"operator"* ]] && [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
             echo "🔍 Testing cozystack-operator container image architecture and functionality..."
-            OPERATOR_IMAGE="${{ env.REGISTRY }}/operator/cozystack-operator:latest"
+            OPERATOR_IMAGE="${{ env.REGISTRY }}/cozystack-operator:latest"
 
             echo "Checking if operator image exists in registry..."
             if ! docker manifest inspect "$OPERATOR_IMAGE" >/dev/null 2>&1; then
@@ -452,6 +484,8 @@ jobs:
               echo "❌ Operator image is not ARM64: $OPERATOR_ARCH"
               exit 1
             fi
+          elif [[ "$BUILD_OUTPUTS" == *"operator"* ]]; then
+            echo "ℹ️ Operator image validation handled by spin-only matrix leg (single shared publish)."
           fi
 
           if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
