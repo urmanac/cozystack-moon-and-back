@@ -225,6 +225,19 @@ jobs:
               echo "⚠️ Could not retag operator to :latest (tried :$src_ref and :${src_ref#v})"
           }
 
+          # The upstream Makefile tags the talos image with the Talos version only.
+          # Also push :latest so consumers can follow the rolling build without knowing
+          # the exact Talos version in advance.
+          tag_talos_latest() {
+            if [ "$PUSH" != "1" ]; then return; fi
+            # TALOS_VERSION is set after the case block; call this function after it's known.
+            # Accept it as $1 to avoid ordering issues.
+            local talos_ver="$1"
+            echo "Retagging $REGISTRY/talos:$talos_ver → :latest"
+            crane tag "$REGISTRY/talos:$talos_ver" latest 2>/dev/null || \
+              echo "⚠️ Could not retag talos to :latest (tried :$talos_ver)"
+          }
+
           case "$BUILD_TARGET" in
             "upstream-images")
               echo "Building upstream-compatible images: image-operator + image-talos + image-matchbox..."
@@ -301,6 +314,10 @@ jobs:
           echo "extension-variant=${{ matrix.extension_variant }}" >> $GITHUB_OUTPUT
           echo "build-target=$BUILD_TARGET" >> $GITHUB_OUTPUT
           echo "Built Talos version: $TALOS_VERSION with ${{ matrix.extension_variant }} using target: $BUILD_TARGET"
+
+          # The upstream Makefile only tags the talos image with the Talos version.
+          # Also push :latest so consumers have a stable rolling reference.
+          tag_talos_latest "$TALOS_VERSION"
 
       - name: Extract and package complete asset array with validation
         id: assets
