@@ -35,9 +35,9 @@ echo "Applying patch..."
 git apply "$SCRIPT_DIR/patches/01-arm64-spin-tailscale.patch"
 
 echo "Verifying expected changes..."
-EXTENSIONS_PROFILES=$(grep "EXTENSIONS=" packages/core/installer/hack/gen-profiles.sh)
-EXTENSIONS_VERSIONS=$(grep "EXTENSIONS=" packages/core/installer/hack/gen-versions.sh)
-ARCH_LINE=$(grep "arch:" packages/core/installer/hack/gen-profiles.sh)
+EXTENSIONS_PROFILES=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-profiles.sh)
+EXTENSIONS_VERSIONS=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh)
+ARCH_LINE=$(grep "arch:" packages/core/talos/hack/gen-profiles.sh)
 
 if [[ "$EXTENSIONS_PROFILES" == *"spin tailscale"* ]]; then
     echo "✓ gen-profiles.sh has spin tailscale extensions"
@@ -64,7 +64,7 @@ else
 fi
 
 # Check for SPIN and TAILSCALE image refs
-if grep -q "SPIN_IMAGE" packages/core/installer/hack/gen-profiles.sh && grep -q "TAILSCALE_IMAGE" packages/core/installer/hack/gen-profiles.sh; then
+if grep -q "SPIN_IMAGE" packages/core/talos/hack/gen-profiles.sh && grep -q "TAILSCALE_IMAGE" packages/core/talos/hack/gen-profiles.sh; then
     echo "✓ SPIN_IMAGE and TAILSCALE_IMAGE references added"
 else
     echo "✗ Missing SPIN_IMAGE or TAILSCALE_IMAGE references"

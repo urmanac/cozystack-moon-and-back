@@ -1,9 +1,33 @@
 name: Deploy GitHub Pages
 
 on:
+  # Rebuild site for content/theme changes.
   push:
     branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'assets/**'
+      - '_config.yml'
+      - '_config-local.yml'
+      - 'index.md'
+      - 'Gemfile'
+      - '.github/workflows/pages.yml'
+
   pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'assets/**'
+      - '_config.yml'
+      - '_config-local.yml'
+      - 'index.md'
+      - 'Gemfile'
+      - '.github/workflows/pages.yml'
+
+  # Rebuild site after the ARM64 build workflow updates docs/LATEST-BUILD.md.
+  workflow_run:
+    workflows: ["Build CozyStack ARM64 Images (Upstream Integration)"]
+    types: [completed]
     branches: [ main ]
   
   # Allow manual trigger
@@ -23,10 +47,16 @@ concurrency:
 jobs:
   # Build job
   build:
+    if: |
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # For workflow_run, build from latest main so docs updates from update-docs are included.
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
         
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -55,7 +85,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name != 'workflow_run' && github.ref == 'refs/heads/main')
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
