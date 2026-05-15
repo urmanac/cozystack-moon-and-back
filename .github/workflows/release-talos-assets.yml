@@ -87,14 +87,20 @@ jobs:
       - name: Collect release artifacts
         run: |
           RELEASE_TAG="${{ github.ref_name }}"
+          # Composite version string: the raw image is a Talos image with the
+          # CozyStack-derived ARM64 patches applied. It contains no CozyStack
+          # itself, so naming it solely by the CozyStack release tag would be
+          # misleading. Encode both: talos-<TALOS_VERSION>-cozy-<RELEASE_TAG>.
+          ARTIFACT_VER="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
+          echo "ARTIFACT_VER=$ARTIFACT_VER" >> $GITHUB_ENV
           mkdir -p release-artifacts
 
           # metal raw image — primary artifact for dd / Raspberry Pi Imager
           # Built with spin-only extensions baked in (Spin runtime, no Tailscale).
           if [ -f cozystack-upstream/_out/assets/metal-arm64.raw.xz ]; then
             cp cozystack-upstream/_out/assets/metal-arm64.raw.xz \
-              "release-artifacts/talos-metal-arm64-spin-only-${RELEASE_TAG}.raw.xz"
-            echo "✅ metal-arm64.raw.xz collected (spin-only variant)"
+              "release-artifacts/talos-metal-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+            echo "✅ metal-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
           else
             echo "❌ metal-arm64.raw.xz not found in _out/assets/"
             ls cozystack-upstream/_out/assets/ || true
@@ -104,8 +110,8 @@ jobs:
           # Optional: nocloud image (useful for cloud/VM testing), also spin-only variant
           if [ -f cozystack-upstream/_out/assets/nocloud-arm64.raw.xz ]; then
             cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
-              "release-artifacts/talos-nocloud-arm64-spin-only-${RELEASE_TAG}.raw.xz"
-            echo "✅ nocloud-arm64.raw.xz collected (spin-only variant)"
+              "release-artifacts/talos-nocloud-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+            echo "✅ nocloud-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
           fi
 
           # Checksums
@@ -170,7 +176,7 @@ jobs:
 
           \`\`\`bash
           # Using dd (replace /dev/sdX with your target device)
-          xz -dc talos-metal-arm64-spin-only-${RELEASE_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
+          xz -dc talos-metal-arm64-spin-only-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
 
           # Or using Raspberry Pi Imager: select the .raw.xz file as a custom image
           \`\`\`
