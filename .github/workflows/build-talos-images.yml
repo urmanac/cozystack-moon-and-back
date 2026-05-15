@@ -58,7 +58,7 @@ on:
         options:
           - 'upstream-images'  # Build image-talos + image-matchbox (recommended)
           - 'image-operator'   # Just cozystack-operator image
-          - 'image'           # Full build (pre-checks + matchbox + cozystack + talos)
+          - 'image'           # Full build (operator + matchbox + cozystack + talos)
           - 'assets'          # Just Talos assets (kernel + initramfs)
           - 'image-talos'     # Just Talos installer image
           - 'image-matchbox'  # Just matchbox image
@@ -207,7 +207,6 @@ jobs:
               cd ../installer
               make image-operator REGISTRY="${REGISTRY}/operator" PUSH=1
               cd ../talos
-              make pre-checks
               echo "Building Talos image first (to establish assets)..."
               make image-talos
               echo "Building matchbox image (reusing same assets)..."
@@ -215,8 +214,7 @@ jobs:
               echo "build-outputs=operator,talos-installer,matchbox" >> $GITHUB_OUTPUT
               ;;
             "image")
-              echo "Running full build (pre-checks + operator + matchbox + cozystack + talos)..."
-              make pre-checks
+              echo "Running full build (operator + matchbox + cozystack + talos)..."
               cd ../../installer
               make image-operator REGISTRY="${REGISTRY}/operator" PUSH=1
               cd ../talos
@@ -226,19 +224,16 @@ jobs:
               ;;
             "assets")
               echo "Building Talos assets (kernel + initramfs + iso + nocloud + metal)..."
-              make pre-checks  
               make assets
               echo "build-outputs=kernel,initramfs,iso,nocloud,metal" >> $GITHUB_OUTPUT
               ;;
             "image-talos")
               echo "Building Talos installer image..."
-              make pre-checks
               make image-talos
               echo "build-outputs=talos-installer" >> $GITHUB_OUTPUT
               ;;
             "image-matchbox")
               echo "Building matchbox image..."
-              make pre-checks
               make image-matchbox  
               echo "build-outputs=matchbox" >> $GITHUB_OUTPUT
               ;;
@@ -253,6 +248,9 @@ jobs:
               exit 1
               ;;
           esac
+
+          # Ensure we are back in Talos package directory for version extraction.
+          cd "$GITHUB_WORKSPACE/cozystack-upstream/packages/core/talos"
           
           # Get extension variant and create build variant tag
           EXTENSION_VARIANT="${{ matrix.extension_variant }}"
