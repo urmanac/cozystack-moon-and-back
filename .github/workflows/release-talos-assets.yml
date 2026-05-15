@@ -61,10 +61,25 @@ jobs:
       - name: Build Talos metal image
         run: |
           cd cozystack-upstream/packages/core/talos
-          make update
+
+          # Pin Talos version to the upstream-committed profile (matches whatever
+          # CozyStack release we're tracking). See build-talos-images.yml for the
+          # rationale — gen-profiles.sh would otherwise pick latest upstream tag.
+          UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
+          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Could not derive Talos version from upstream installer.yaml"
+            exit 1
+          fi
+          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
+          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+
           echo "Generated profile:"
           cat images/talos/profiles/metal.yaml
-          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
+          TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/metal.yaml)
+          if [ "$TALOS_VERSION" != "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Regenerated metal.yaml has $TALOS_VERSION but expected $UPSTREAM_TALOS_VERSION"
+            exit 1
+          fi
           echo "TALOS_VERSION=$TALOS_VERSION" >> $GITHUB_ENV
           # Build raw disk images (metal, nocloud, iso, etc.)
           make assets

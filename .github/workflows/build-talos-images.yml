@@ -203,8 +203,34 @@ jobs:
           # Generate ARM64 profiles with dynamic Spin+Tailscale versions using upstream targets
           echo "Updating upstream dependencies and generating profiles..."
           cd packages/core/talos
-          make update  # Run gen-profiles.sh to generate Talos profiles
-          
+
+          # Pin Talos version to whatever the upstream CozyStack release pinned. The
+          # upstream repo commits pre-generated profile files (installer.yaml etc.) with
+          # an explicit `version:` line. If we let gen-profiles.sh pick its own version
+          # it would grab whatever is newest on ghcr.io/siderolabs/imager today, which
+          # can drift far beyond what the rest of the CozyStack release expects (e.g.
+          # CozyStack v1.3.3 ships Talos v1.12.7, not v1.13.x). Read it from the
+          # committed profile and pass it explicitly to gen-profiles.sh.
+          UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
+          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Could not derive Talos version from upstream installer.yaml"
+            exit 1
+          fi
+          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
+          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+
+          # Verify gen-profiles.sh honored the pin in every regenerated profile.
+          for prof in installer metal nocloud iso kernel initramfs; do
+            f="images/talos/profiles/${prof}.yaml"
+            [ -f "$f" ] || continue
+            got=$(awk '/^version:/ {print $2; exit}' "$f")
+            if [ "$got" != "$UPSTREAM_TALOS_VERSION" ]; then
+              echo "::error::$f has version $got, expected $UPSTREAM_TALOS_VERSION"
+              exit 1
+            fi
+          done
+          echo "✅ All regenerated profiles pinned to $UPSTREAM_TALOS_VERSION"
+
           # Show what profile was generated for debugging
           echo "Generated metal profile:"
           cat images/talos/profiles/metal.yaml
