@@ -781,62 +781,62 @@ jobs:
           DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           cat > docs/LATEST-BUILD.md << EOF
-          # Latest CozyStack ARM64 Talos Build
+          Built: $DATE
 
-          **Built:** $DATE
-          **Talos Version:** \`$TALOS_VERSION\`
-          **CozyStack Release:** \`$COZYSTACK_REF\`
-          **Build Target:** \`$BUILD_TARGET\`
-          **Total Assets:** $ASSET_COUNT
+          - Talos version: \`$TALOS_VERSION\`
+          - CozyStack release: \`$COZYSTACK_REF\`
+          - Build target: \`$BUILD_TARGET\`
+          - Extracted asset count: \`$ASSET_COUNT\`
 
           ## Asset Digests
 
           | Asset | Digest |
           |-------|--------|
-          | **Kernel** | \`${KERNEL_DIGEST:-not available}\` |
-          | **Boot Loader** | \`${INITRAMFS_DIGEST:-not available}\` |
+          | Kernel | \`${KERNEL_DIGEST:-not available}\` |
+          | Boot Loader | \`${INITRAMFS_DIGEST:-not available}\` |
+
+          ## What This Build Contains
+
+          This page reflects the latest successful main branch build.
+
+          When build target is \`upstream-images\`:
+          - OCI images are published to GHCR.
+          - Bootable raw disk assets are not exported in this job.
+          - Kernel/boot-loader digests may be shown as \`not available\`.
+
+          Flashable raw disk images for Raspberry Pi CM4 are published from tagged releases.
 
           ## Container Images
 
-          Two variants are built for different use cases:
-
-          ### talos/cozystack-spin-tailscale (Full Stack)
-          Includes Spin runtime + Tailscale networking for complete demo environment.
+          Spin + Tailscale variant:
 
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:latest
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/talos:latest
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/matchbox:latest
           \`\`\`
 
-          ### talos/cozystack-spin-only (Minimal)
-          Includes only Spin runtime for lightweight deployments.
+          Spin-only variant:
 
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only:latest
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:latest
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only/matchbox:latest
           \`\`\`
 
-          ### CozyStack Operator
+          CozyStack operator:
 
           \`\`\`bash
           docker pull ${{ env.REGISTRY }}/cozystack-operator:latest
           \`\`\`
 
-          ## Asset Extraction
+          ## Extract Assets From OCI
 
-          Extract complete Talos installer assets:
+          You can extract files from the Talos image tar layer if needed:
 
           \`\`\`bash
-          # Create local assets directory
           mkdir -p ./cozystack-assets
-
-          # Extract from talos/cozystack-spin-tailscale image (recommended)
-          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:latest
+          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:latest
           docker cp temp-extract:/. ./cozystack-assets
           docker rm temp-extract
-
-          # Key assets are located at:
-          # ./cozystack-assets/usr/install/arm64/vmlinuz.efi
-          # ./cozystack-assets/usr/install/arm64/systemd-boot.efi
-          # ./cozystack-assets/usr/bin/installer
           \`\`\`
           EOF
 
