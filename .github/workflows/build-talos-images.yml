@@ -806,6 +806,10 @@ jobs:
 
           Flashable raw disk images for Raspberry Pi CM4 are published from tagged releases.
 
+          Tagged release artifacts:
+          - \`metal-arm64.raw.xz\`: flashable bare-metal image for SD/eMMC/NVMe.
+          - \`nocloud-arm64.raw.xz\`: image intended for VM/cloud NoCloud metadata workflows.
+
           ## Container Images
 
           Spin + Tailscale variant:
