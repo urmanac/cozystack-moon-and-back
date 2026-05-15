@@ -37,55 +37,74 @@ jobs:
       - name: Check upstream CozyStack for updates
         id: check-upstream
         run: |
-          # Get latest upstream CozyStack commit
-          UPSTREAM_LATEST=$(curl -s https://api.github.com/repos/cozystack/cozystack/commits/main | jq -r '.sha[0:7]')
-          UPSTREAM_DATE=$(curl -s https://api.github.com/repos/cozystack/cozystack/commits/main | jq -r '.commit.committer.date')
-          
-          echo "upstream-sha=$UPSTREAM_LATEST" >> $GITHUB_OUTPUT
-          echo "upstream-date=$UPSTREAM_DATE" >> $GITHUB_OUTPUT
-          
-          # Check if we already have the latest
-          if grep -q "$UPSTREAM_LATEST" .github/workflows/build-talos-images.yml; then
+          # Fetch all tags, filter to non-prerelease semver (no -alpha/-beta/-rc suffix),
+          # then sort by semver and take the highest.
+          LATEST_TAG=$(curl -s "https://api.github.com/repos/cozystack/cozystack/git/refs/tags" \
+            | jq -r '.[].ref | ltrimstr("refs/tags/")' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ Could not determine latest release tag"
+            exit 1
+          fi
+
+          TAG_DATE=$(curl -s "https://api.github.com/repos/cozystack/cozystack/git/refs/tags/$LATEST_TAG" \
+            | jq -r '.object.sha' \
+            | xargs -I{} curl -s "https://api.github.com/repos/cozystack/cozystack/commits/{}" \
+            | jq -r '.commit.committer.date // "unknown"')
+
+          echo "upstream-tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "upstream-date=$TAG_DATE" >> $GITHUB_OUTPUT
+
+          # Check if we are already pinned to this tag in the build workflow
+          if grep -qF "default: '$LATEST_TAG'" .github/workflows/build-talos-images.yml; then
             echo "already-latest=true" >> $GITHUB_OUTPUT
-            echo "✅ Already using latest upstream commit: $UPSTREAM_LATEST"
+            echo "✅ Already pinned to latest release: $LATEST_TAG"
           else
             echo "already-latest=false" >> $GITHUB_OUTPUT
-            echo "🔄 New upstream commit available: $UPSTREAM_LATEST"
+            echo "🔄 New release available: $LATEST_TAG"
           fi
 
       - name: Clone and analyze upstream changes
         id: analyze-changes
         if: steps.check-upstream.outputs.already-latest == 'false'
         run: |
-          # Clone upstream to analyze recent changes
-          git clone https://github.com/cozystack/cozystack.git upstream-temp
+          # Clone at the new tag and show commits since the previous release tag
+          NEW_TAG="${{ steps.check-upstream.outputs.upstream-tag }}"
+          git clone --branch "$NEW_TAG" --depth 50 https://github.com/cozystack/cozystack.git upstream-temp
           cd upstream-temp
-          
-          # Get recent commits (last 2 weeks)
-          RECENT_COMMITS=$(git log --since="2 weeks ago" --oneline --max-count=10)
-          
+
+          PREV_TAG=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -2 | head -1)
+          LOG_RANGE="${PREV_TAG:+$PREV_TAG..}HEAD"
+          RECENT_COMMITS=$(git log $LOG_RANGE --oneline --max-count=20)
+
           # Write changelog for PR description
-          cat > ../UPSTREAM_CHANGELOG.md << 'EOF'
-          ## Recent Upstream Changes
-          
+          cat > ../UPSTREAM_CHANGELOG.md << EOF
+          ## Changes in $NEW_TAG${PREV_TAG:+ (since $PREV_TAG)}
+
+          \`\`\`
+          $RECENT_COMMITS
+          \`\`\`
           EOF
-          echo '```' >> ../UPSTREAM_CHANGELOG.md
-          echo "$RECENT_COMMITS" >> ../UPSTREAM_CHANGELOG.md
-          echo '```' >> ../UPSTREAM_CHANGELOG.md
-          
+
           # Check for any breaking changes (simple heuristic)
-          BREAKING_CHANGES=$(git log --since="2 weeks ago" --grep="BREAKING" --grep="breaking" --oneline || echo "")
+          BREAKING_CHANGES=$(git log $LOG_RANGE --grep="BREAKING" --grep="breaking" --oneline || echo "")
           if [ -n "$BREAKING_CHANGES" ]; then
             echo "potential-breaking=true" >> $GITHUB_OUTPUT
-            echo "" >> ../UPSTREAM_CHANGELOG.md
-            echo "⚠️ **Potential Breaking Changes Detected:**" >> ../UPSTREAM_CHANGELOG.md
-            echo '```' >> ../UPSTREAM_CHANGELOG.md
-            echo "$BREAKING_CHANGES" >> ../UPSTREAM_CHANGELOG.md
-            echo '```' >> ../UPSTREAM_CHANGELOG.md
+            cat >> ../UPSTREAM_CHANGELOG.md << EOF
+          
+          ⚠️ **Potential Breaking Changes Detected:**
+          
+          \`\`\`
+          $BREAKING_CHANGES
+          \`\`\`
+          EOF
           else
             echo "potential-breaking=false" >> $GITHUB_OUTPUT
           fi
-          
+
           cd ..
           rm -rf upstream-temp
 
@@ -93,41 +112,37 @@ jobs:
         id: create-branch
         if: steps.check-upstream.outputs.already-latest == 'false'
         run: |
-          BRANCH_NAME="auto-update/cozystack-$(date +%Y%m%d)-${{ steps.check-upstream.outputs.upstream-sha }}"
+          BRANCH_NAME="auto-update/cozystack-${{ steps.check-upstream.outputs.upstream-tag }}"
           echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          
-          # Create and checkout new branch
+
           git checkout -b "$BRANCH_NAME"
-          
-          # Configure git user (using GitHub Actions bot)
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Update workflow files with new upstream commit
+      - name: Update workflow files with new upstream release tag
         if: steps.check-upstream.outputs.already-latest == 'false'
         run: |
-          # Update the default commit in build-talos-images.yml
-          sed -i "s/default: 'HEAD'/default: '${{ steps.check-upstream.outputs.upstream-sha }}'/" .github/workflows/build-talos-images.yml
-          
-          # Add comment about when this was updated
-          DATE_COMMENT="        # Auto-updated $(date +%Y-%m-%d) to upstream ${{ steps.check-upstream.outputs.upstream-sha }}"
-          sed -i "/default: '${{ steps.check-upstream.outputs.upstream-sha }}'/a\\$DATE_COMMENT" .github/workflows/build-talos-images.yml
-          
-          echo "✅ Updated workflow file with upstream commit: ${{ steps.check-upstream.outputs.upstream-sha }}"
+          NEW_TAG="${{ steps.check-upstream.outputs.upstream-tag }}"
+
+          # Replace whatever semver tag is currently the default cozystack_commit.
+          # Matches:   default: 'v1.2.3'
+          sed -i -E "s|(default: ')(v[0-9]+\.[0-9]+\.[0-9]+)(')|\1${NEW_TAG}\3|" \
+            .github/workflows/build-talos-images.yml
+
+          echo "✅ Pinned build workflow to release: $NEW_TAG"
 
       - name: Test upstream integration compatibility
         id: test-integration
         if: steps.check-upstream.outputs.already-latest == 'false'
         run: |
-          # Clone upstream at the specific commit to test our patches
-          git clone https://github.com/cozystack/cozystack.git test-upstream
+          git clone --branch "${{ steps.check-upstream.outputs.upstream-tag }}" --depth 1 \
+            https://github.com/cozystack/cozystack.git test-upstream
           cd test-upstream
-          git checkout ${{ steps.check-upstream.outputs.upstream-sha }}
-          
-          # Test if our patches still apply cleanly
-          echo "Testing patch compatibility..."
+
+          echo "Testing patch compatibility with ${{ steps.check-upstream.outputs.upstream-tag }}..."
           PATCH_SUCCESS=true
-          
+
           for patch in ../patches/*.patch; do
             if [ -f "$patch" ]; then
               echo "Testing $(basename "$patch")"
@@ -139,15 +154,15 @@ jobs:
               fi
             fi
           done
-          
+
           if [ "$PATCH_SUCCESS" = "true" ]; then
             echo "test-result=success" >> $GITHUB_OUTPUT
-            echo "✅ All patches compatible with upstream ${{ steps.check-upstream.outputs.upstream-sha }}"
+            echo "✅ All patches compatible with ${{ steps.check-upstream.outputs.upstream-tag }}"
           else
             echo "test-result=failure" >> $GITHUB_OUTPUT
-            echo "❌ Patch conflicts detected with upstream ${{ steps.check-upstream.outputs.upstream-sha }}"
+            echo "❌ Patch conflicts detected with ${{ steps.check-upstream.outputs.upstream-tag }}"
           fi
-          
+
           cd ..
           rm -rf test-upstream
 
@@ -155,12 +170,12 @@ jobs:
         if: steps.check-upstream.outputs.already-latest == 'false'
         run: |
           git add .github/workflows/build-talos-images.yml
-          git commit -m "chore: update CozyStack upstream to ${{ steps.check-upstream.outputs.upstream-sha }}
+          git commit -m "chore: update CozyStack upstream to ${{ steps.check-upstream.outputs.upstream-tag }}
 
-          Auto-updated CozyStack dependency on $(date +%Y-%m-%d)
-          
-          Upstream commit: ${{ steps.check-upstream.outputs.upstream-sha }}
-          Upstream date: ${{ steps.check-upstream.outputs.upstream-date }}
+          Auto-updated CozyStack release pin on $(date +%Y-%m-%d)
+
+          Release: ${{ steps.check-upstream.outputs.upstream-tag }}
+          Release date: ${{ steps.check-upstream.outputs.upstream-date }}
           Patch compatibility: ${{ steps.test-integration.outputs.test-result }}"
 
       - name: Push update branch
@@ -174,70 +189,67 @@ jobs:
           # Prepare PR description
           cat > PR_DESCRIPTION.md << 'EOF'
           ## 🤖 Automated CozyStack Dependency Update
-          
-          This PR automatically updates our CozyStack upstream dependency.
-          
+
+          This PR updates our CozyStack upstream release pin.
+
           **Changes:**
-          - Updated upstream commit to: `${{ steps.check-upstream.outputs.upstream-sha }}`
-          - Upstream date: `${{ steps.check-upstream.outputs.upstream-date }}`
-          - Patch compatibility: **${{ steps.test-integration.outputs.test-result }}** ✅
-          
+          - Release: `${{ steps.check-upstream.outputs.upstream-tag }}`
+          - Released: `${{ steps.check-upstream.outputs.upstream-date }}`
+          - Patch compatibility: **${{ steps.test-integration.outputs.test-result }}**
+
           EOF
-          
+
           # Add changelog if available
           if [ -f UPSTREAM_CHANGELOG.md ]; then
             cat UPSTREAM_CHANGELOG.md >> PR_DESCRIPTION.md
           fi
-          
-          # Add test results
+
           cat >> PR_DESCRIPTION.md << 'EOF'
-          
+
           ## 🧪 Pre-flight Checks
-          - [x] Upstream commit retrieved successfully
+          - [x] Latest non-prerelease release tag identified
           - [x] Patch compatibility tested
           EOF
-          
+
           if [ "${{ steps.test-integration.outputs.test-result }}" = "success" ]; then
-            echo "- [x] All patches apply cleanly ✅" >> PR_DESCRIPTION.md
+            echo "          - [x] All patches apply cleanly ✅" >> PR_DESCRIPTION.md
           else
-            echo "- [ ] ⚠️ **Patch conflicts detected - manual review required**" >> PR_DESCRIPTION.md
+            echo "          - [ ] ⚠️ **Patch conflicts detected - manual review required**" >> PR_DESCRIPTION.md
           fi
-          
+
           cat >> PR_DESCRIPTION.md << 'EOF'
-          
+
           ## 🚀 Next Steps
           1. Review the upstream changes above
           2. Verify CI pipeline passes with new upstream
           3. Test ARM64 build with new CozyStack version
           4. Merge when ready
-          
+
           ---
           *This PR was automatically created by the dependency update workflow*
           EOF
-          
-          # Determine PR labels and draft status
+
           LABELS="dependencies,automated"
           DRAFT_FLAG=""
-          
+
           if [ "${{ steps.analyze-changes.outputs.potential-breaking }}" = "true" ]; then
             LABELS="$LABELS,breaking-change"
             DRAFT_FLAG="--draft"
           fi
-          
+
           if [ "${{ steps.test-integration.outputs.test-result }}" = "failure" ]; then
             LABELS="$LABELS,needs-manual-review"
             DRAFT_FLAG="--draft"
           fi
-          
-          # Create the PR
+
           gh pr create \
-            --title "chore: update CozyStack upstream to ${{ steps.check-upstream.outputs.upstream-sha }}" \
+            --title "chore: update CozyStack upstream to ${{ steps.check-upstream.outputs.upstream-tag }}" \
             --body-file PR_DESCRIPTION.md \
             --head ${{ steps.create-branch.outputs.branch-name }} \
             --base ${{ github.event.inputs.target_branch || 'main' }} \
             --label "$LABELS" \
             $DRAFT_FLAG
-          
+
           echo "✅ Pull request created successfully"
 
       - name: Report status

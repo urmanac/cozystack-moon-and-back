@@ -758,11 +758,11 @@ jobs:
     needs: [build-cozystack-upstream]
     if: github.ref == 'refs/heads/main' && success()
     permissions:
-      contents: write  # Need write permission to push docs
-      pages: write     # Need pages permission for GitHub Pages  
-      id-token: write  # Need for pages deployment
+      contents: write
+      pages: write
+      id-token: write
     env:
-      REGISTRY: ghcr.io/urmanac
+      REGISTRY: ghcr.io/urmanac/cozystack-assets
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -777,55 +777,62 @@ jobs:
           INITRAMFS_DIGEST="${{ needs.build-cozystack-upstream.outputs.initramfs-digest }}"
           ASSET_COUNT="${{ needs.build-cozystack-upstream.outputs.asset-count || 'N/A' }}"
           BUILD_TARGET="${{ needs.build-cozystack-upstream.outputs.build-target }}"
+          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.3.3' }}"
           DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
+
           cat > docs/LATEST-BUILD.md << EOF
           # Latest CozyStack ARM64 Talos Build
-          
-          **Built:** $DATE  
-          **Talos Version:** \`$TALOS_VERSION\`  
-          **CozyStack Commit:** \`$COZYSTACK_COMMIT\`  
-          **Build Target:** \`$BUILD_TARGET\`  
-          **Total Assets:** $ASSET_COUNT  
-          
+
+          **Built:** $DATE
+          **Talos Version:** \`$TALOS_VERSION\`
+          **CozyStack Release:** \`$COZYSTACK_REF\`
+          **Build Target:** \`$BUILD_TARGET\`
+          **Total Assets:** $ASSET_COUNT
+
           ## Asset Digests
-          
+
           | Asset | Digest |
           |-------|--------|
-          | **Kernel** | \`${KERNEL_DIGEST:-'not found'}\` |
-          | **Boot Loader** | \`${INITRAMFS_DIGEST:-'not found'}\` |
-          
+          | **Kernel** | \`${KERNEL_DIGEST:-not available}\` |
+          | **Boot Loader** | \`${INITRAMFS_DIGEST:-not available}\` |
+
           ## Container Images
-          
+
           Two variants are built for different use cases:
-          
+
           ### talos/cozystack-spin-tailscale (Full Stack)
           Includes Spin runtime + Tailscale networking for complete demo environment.
-          
+
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:demo-stable
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:latest
           \`\`\`
-          
+
           ### talos/cozystack-spin-only (Minimal)
           Includes only Spin runtime for lightweight deployments.
-          
+
           \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only:demo-stable
+          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only:latest
           \`\`\`
-          
+
+          ### CozyStack Operator
+
+          \`\`\`bash
+          docker pull ${{ env.REGISTRY }}/cozystack-operator:latest
+          \`\`\`
+
           ## Asset Extraction
-          
+
           Extract complete Talos installer assets:
-          
+
           \`\`\`bash
           # Create local assets directory
           mkdir -p ./cozystack-assets
-          
+
           # Extract from talos/cozystack-spin-tailscale image (recommended)
-          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:demo-stable
+          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale:latest
           docker cp temp-extract:/. ./cozystack-assets
           docker rm temp-extract
-          
+
           # Key assets are located at:
           # ./cozystack-assets/usr/install/arm64/vmlinuz.efi
           # ./cozystack-assets/usr/install/arm64/systemd-boot.efi
