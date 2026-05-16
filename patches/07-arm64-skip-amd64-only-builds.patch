@@ -1,0 +1,20 @@
+diff --git a/Makefile b/Makefile
+index 842a3e7..3251b4b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -26,7 +26,6 @@ build: build-deps
+ 	make -C packages/system/kubeovn image
+ 	make -C packages/system/kubeovn-webhook image
+ 	make -C packages/system/kubeovn-plunger image
+-	make -C packages/system/dashboard image
+ 	make -C packages/system/metallb image
+ 	make -C packages/system/kamaji image
+ 	make -C packages/system/multus image
+@@ -34,7 +33,6 @@ build: build-deps
+ 	make -C packages/system/objectstorage-controller image
+ 	make -C packages/system/grafana-operator image
+ 	make -C packages/core/testing image
+-	make -C packages/core/talos image
+ 	make -C packages/core/platform image
+ 	make -C packages/core/installer image
+ 	make manifests
