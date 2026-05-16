@@ -7,7 +7,7 @@ title: "CozyStack"
 
 > **Validating ARM64 Kubernetes in the cloud before committing to bare-metal hardware**
 
-[![CozySummit Virtual 2025](https://img.shields.io/badge/CozySummit-Dec%204%2C%202025-blue)](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
+[![CozySummit Virtual 2026](https://img.shields.io/badge/CozySummit-May%2026%2C%202026-blue)](https://community2.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2026/)
 [![Built with TDG](https://img.shields.io/badge/built%20with-TDG-purple)](docs/ADRs/ADR-002-TDG-METHODOLOGY.html)
 [![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-green)](https://urmanac.github.io/cozystack-moon-and-back/)
 
@@ -20,7 +20,7 @@ Transform a **128°F office space heater** into an **ARM64-first cloud deploymen
 - ✅ **Talos Linux** with WebAssembly + Tailscale subnet router
 - ✅ **AWS validation** before hardware purchase  
 - ✅ **Budget-conscious**: <$0.10/month baseline, <$15/month testing
-- ✅ **Live demo** at CozySummit Virtual 2025 (December 3)
+- ✅ **Live demo** at CozySummit Virtual 2026 (May 26)
 
 ---
 
@@ -58,9 +58,9 @@ Architectural decisions documented in ADRs:
 
 ## 🚀 Current Status
 
-**⚠️ Pre-Demo Development Phase**
+**⚠️ Pre-Event Validation Phase**
 
-This project is under active development for CozySummit Virtual 2025 (December 3). A complete quick start guide will be available after the demo.
+This project is under active validation for CozySummit Virtual 2026 (May 26). A complete quick start guide will be available after the event.
 
 ### Available Now
 
@@ -83,7 +83,7 @@ These are pure "matchbox" and "talos" OCI images compatible with:
 ./validate-patch.sh
 ```
 
-**Full deployment guide coming post-demo** 🎯
+**Full deployment guide coming post-event** 🎯
 
 ---
 
@@ -92,7 +92,7 @@ These are pure "matchbox" and "talos" OCI images compatible with:
 **✅ Completed (November 2025)**:
 ARM64 Talos builds, CI/CD pipeline, container images, TDG methodology, ADR documentation
 
-**🎯 Demo Goals (December 3, 2025)**:
+**🎯 Event Goals (May 26, 2026)**:
 Live WebAssembly demo, VPC subnet router access, cost transparency, home lab transition strategy
 
 ---

@@ -3,7 +3,7 @@
 > **Validating ARM64 Kubernetes in the cloud before committing to bare-metal**  
 > *Smart validation strategy: Test first, buy hardware second*
 
-[![CozySummit Virtual 2025](https://img.shields.io/badge/CozySummit-Dec%204%2C%202025-blue)](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/)
+[![CozySummit Virtual 2026](https://img.shields.io/badge/CozySummit-May%2026%2C%202026-blue)](https://community2.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2026/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Built with TDG](https://img.shields.io/badge/built%20with-TDG-purple)](https://chanwit.medium.com/i-was-wrong-about-test-driven-generation-and-i-couldnt-be-happier-9942b6f09502)
 
@@ -19,7 +19,7 @@ Transform a **128°F office space heater** (aka home lab) into a **cloud-validat
 - ✅ Demonstrates WebAssembly on ARM64 in production-like conditions
 - ✅ Proves when cloud makes sense vs. efficient home lab hardware
 
-**Target**: Live demo at [CozySummit Virtual 2025](https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/) on **December 3, 2025**
+**Target**: Live demo at [CozySummit Virtual 2026](https://community2.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2026/) on **May 26, 2026**
 
 ### 🧪 TDG Test Status (Updated: November 19, 2025)
 
@@ -403,14 +403,14 @@ This project demonstrates:
 
 ## 🏆 Success Metrics
 
-### Demo Day (December 3)
+### Event Day (May 26)
 - [ ] Tests 1-6 passing (Network → Demo workload)
 - [ ] Live netboot < 5 minutes
 - [ ] SpinKube demo runs on ARM64
 - [ ] Cost stays under $0.10/month
 - [ ] Audience can replicate in their own AWS account
 
-### Post-Demo
+### Post-Event
 - [ ] Home lab transitions to Raspberry Pi CM3 modules
 - [ ] Office temperature drops 15°F
 - [ ] Power bill decreases measurably

@@ -1,0 +1,32 @@
+diff --git a/Makefile b/Makefile
+index 5041ac6..842a3e7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -23,6 +23,7 @@ build: build-deps
+ 	make -C packages/system/cilium image
+ 	make -C packages/system/linstor image
+ 	make -C packages/system/linstor-gui image
++	make -C packages/system/kubeovn image
+ 	make -C packages/system/kubeovn-webhook image
+ 	make -C packages/system/kubeovn-plunger image
+ 	make -C packages/system/dashboard image
+diff --git a/packages/system/kubeovn/Makefile b/packages/system/kubeovn/Makefile
+index 4562904..0434f83 100644
+--- a/packages/system/kubeovn/Makefile
++++ b/packages/system/kubeovn/Makefile
+@@ -3,6 +3,15 @@ export NAMESPACE=cozy-$(NAME)
+ 
+ include ../../../hack/common-envs.mk
+ include ../../../hack/package.mk
++KUBEOVN_VERSION=$(shell yq e '.global.images.kubeovn.tag' values.yaml | cut -d@ -f1)
++
++image:
++	crane copy --all docker.io/kubeovn/kube-ovn:$(KUBEOVN_VERSION) $(REGISTRY)/kubeovn:$(call settag,$(KUBEOVN_VERSION))
++	REPOSITORY="$(REGISTRY)" \
++		yq -i '.global.registry.address = strenv(REPOSITORY)' values.yaml
++	TAG="$(call settag,$(KUBEOVN_VERSION))" \
++		yq -i '.global.images.kubeovn.tag = strenv(TAG)' values.yaml
++
+ 
+ update:
+ 	rm -rf charts values.yaml Chart.yaml
