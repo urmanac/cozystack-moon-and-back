@@ -15,7 +15,101 @@ env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
 
 jobs:
+  # Build OCI images (talos installer, matchbox, operator) for both extension
+  # variants before the metal image job fires. This makes the release workflow
+  # fully self-contained: canonical GHCR tags are guaranteed to exist when the
+  # retag step runs, regardless of whether build-talos-images.yml ran recently
+  # on main. Without this job, tagging without a prior push to main would
+  # produce a release where the composite/latest tags are absent or stale.
+  build-oci-images:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        extension_variant: [spin-tailscale, spin-only]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
+          curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz \
+            | sudo tar xz -C /usr/local/bin crane
+          if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          crane version && yq --version
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
+            --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+            --username ${{ github.actor }} --password-stdin
+
+      - name: Clone upstream CozyStack
+        run: |
+          COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
+            .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
+          echo "Building OCI images from CozyStack $COZYSTACK_REF (variant: ${{ matrix.extension_variant }})"
+          echo "COZYSTACK_REF=$COZYSTACK_REF" >> $GITHUB_ENV
+          git clone --branch "$COZYSTACK_REF" --depth 1 \
+            https://github.com/cozystack/cozystack.git cozystack-upstream
+
+      - name: Apply ARM64 patches
+        run: |
+          cd cozystack-upstream
+          EXTENSION_VARIANT="${{ matrix.extension_variant }}"
+          git apply ../patches/04-arm64-default-platform.patch
+          if [ "$EXTENSION_VARIANT" = "spin-only" ]; then
+            git apply ../patches/03-arm64-spin-only.patch
+          else
+            git apply ../patches/01-arm64-spin-tailscale.patch
+          fi
+          git apply ../patches/02-makefile-architecture-variables.patch
+          chmod +x packages/core/talos/hack/gen-profiles.sh
+          chmod +x packages/core/talos/hack/gen-versions.sh
+          echo "Patches applied for $EXTENSION_VARIANT:"
+          git status --porcelain
+
+      - name: Build and push OCI images
+        run: |
+          cd cozystack-upstream/packages/core/talos
+          UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
+          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Could not derive Talos version from upstream installer.yaml"
+            exit 1
+          fi
+          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
+          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+          VARIANT="${{ matrix.extension_variant }}"
+          VARIANT_REGISTRY="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
+
+          # Operator is a shared image (not variant-specific). Build it once from
+          # the spin-only leg to avoid a race where both matrix legs push different
+          # digests to the same canonical tag simultaneously.
+          if [ "$VARIANT" = "spin-only" ]; then
+            echo "Building cozystack-operator (shared, spin-only leg only)..."
+            make -C ../installer image-operator \
+              REGISTRY="${{ env.REGISTRY }}" \
+              PUSH=1
+          fi
+
+          echo "Building talos installer image (REGISTRY=$VARIANT_REGISTRY)..."
+          make image-talos REGISTRY="$VARIANT_REGISTRY"
+
+          echo "Building matchbox image (REGISTRY=$VARIANT_REGISTRY)..."
+          make image-matchbox REGISTRY="$VARIANT_REGISTRY" PUSH=1
+
   build-metal-image:
+    needs: build-oci-images
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write    # create GitHub Release + upload assets
