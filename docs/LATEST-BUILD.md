@@ -1,6 +1,6 @@
-Built: 2026-05-15 20:47:01 UTC
+Built: 2026-05-16 00:11:12 UTC
 
-- Talos version: `v1.13.2`
+- Talos version: `v1.12.7`
 - CozyStack release: `v1.3.3`
 - Build target: `upstream-images`
 - Extracted asset count: `2`
