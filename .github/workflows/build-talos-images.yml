@@ -203,8 +203,34 @@ jobs:
           # Generate ARM64 profiles with dynamic Spin+Tailscale versions using upstream targets
           echo "Updating upstream dependencies and generating profiles..."
           cd packages/core/talos
-          make update  # Run gen-profiles.sh to generate Talos profiles
-          
+
+          # Pin Talos version to whatever the upstream CozyStack release pinned. The
+          # upstream repo commits pre-generated profile files (installer.yaml etc.) with
+          # an explicit `version:` line. If we let gen-profiles.sh pick its own version
+          # it would grab whatever is newest on ghcr.io/siderolabs/imager today, which
+          # can drift far beyond what the rest of the CozyStack release expects (e.g.
+          # CozyStack v1.3.3 ships Talos v1.12.7, not v1.13.x). Read it from the
+          # committed profile and pass it explicitly to gen-profiles.sh.
+          UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
+          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Could not derive Talos version from upstream installer.yaml"
+            exit 1
+          fi
+          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
+          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+
+          # Verify gen-profiles.sh honored the pin in every regenerated profile.
+          for prof in installer metal nocloud iso kernel initramfs; do
+            f="images/talos/profiles/${prof}.yaml"
+            [ -f "$f" ] || continue
+            got=$(awk '/^version:/ {print $2; exit}' "$f")
+            if [ "$got" != "$UPSTREAM_TALOS_VERSION" ]; then
+              echo "::error::$f has version $got, expected $UPSTREAM_TALOS_VERSION"
+              exit 1
+            fi
+          done
+          echo "✅ All regenerated profiles pinned to $UPSTREAM_TALOS_VERSION"
+
           # Show what profile was generated for debugging
           echo "Generated metal profile:"
           cat images/talos/profiles/metal.yaml
@@ -223,6 +249,19 @@ jobs:
             crane tag "$OPERATOR_REGISTRY/cozystack-operator:$src_ref" latest 2>/dev/null || \
               crane tag "$OPERATOR_REGISTRY/cozystack-operator:${src_ref#v}" latest 2>/dev/null || \
               echo "⚠️ Could not retag operator to :latest (tried :$src_ref and :${src_ref#v})"
+          }
+
+          # The upstream Makefile tags the talos image with the Talos version only.
+          # Also push :latest so consumers can follow the rolling build without knowing
+          # the exact Talos version in advance.
+          tag_talos_latest() {
+            if [ "$PUSH" != "1" ]; then return; fi
+            # TALOS_VERSION is set after the case block; call this function after it's known.
+            # Accept it as $1 to avoid ordering issues.
+            local talos_ver="$1"
+            echo "Retagging $REGISTRY/talos:$talos_ver → :latest"
+            crane tag "$REGISTRY/talos:$talos_ver" latest 2>/dev/null || \
+              echo "⚠️ Could not retag talos to :latest (tried :$talos_ver)"
           }
 
           case "$BUILD_TARGET" in
@@ -301,6 +340,10 @@ jobs:
           echo "extension-variant=${{ matrix.extension_variant }}" >> $GITHUB_OUTPUT
           echo "build-target=$BUILD_TARGET" >> $GITHUB_OUTPUT
           echo "Built Talos version: $TALOS_VERSION with ${{ matrix.extension_variant }} using target: $BUILD_TARGET"
+
+          # The upstream Makefile only tags the talos image with the Talos version.
+          # Also push :latest so consumers have a stable rolling reference.
+          tag_talos_latest "$TALOS_VERSION"
 
       - name: Extract and package complete asset array with validation
         id: assets

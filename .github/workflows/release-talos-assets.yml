@@ -61,10 +61,25 @@ jobs:
       - name: Build Talos metal image
         run: |
           cd cozystack-upstream/packages/core/talos
-          make update
+
+          # Pin Talos version to the upstream-committed profile (matches whatever
+          # CozyStack release we're tracking). See build-talos-images.yml for the
+          # rationale — gen-profiles.sh would otherwise pick latest upstream tag.
+          UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
+          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Could not derive Talos version from upstream installer.yaml"
+            exit 1
+          fi
+          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
+          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+
           echo "Generated profile:"
           cat images/talos/profiles/metal.yaml
-          TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
+          TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/metal.yaml)
+          if [ "$TALOS_VERSION" != "$UPSTREAM_TALOS_VERSION" ]; then
+            echo "::error::Regenerated metal.yaml has $TALOS_VERSION but expected $UPSTREAM_TALOS_VERSION"
+            exit 1
+          fi
           echo "TALOS_VERSION=$TALOS_VERSION" >> $GITHUB_ENV
           # Build raw disk images (metal, nocloud, iso, etc.)
           make assets
@@ -72,14 +87,20 @@ jobs:
       - name: Collect release artifacts
         run: |
           RELEASE_TAG="${{ github.ref_name }}"
+          # Composite version string: the raw image is a Talos image with the
+          # CozyStack-derived ARM64 patches applied. It contains no CozyStack
+          # itself, so naming it solely by the CozyStack release tag would be
+          # misleading. Encode both: talos-<TALOS_VERSION>-cozy-<RELEASE_TAG>.
+          ARTIFACT_VER="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
+          echo "ARTIFACT_VER=$ARTIFACT_VER" >> $GITHUB_ENV
           mkdir -p release-artifacts
 
           # metal raw image — primary artifact for dd / Raspberry Pi Imager
           # Built with spin-only extensions baked in (Spin runtime, no Tailscale).
           if [ -f cozystack-upstream/_out/assets/metal-arm64.raw.xz ]; then
             cp cozystack-upstream/_out/assets/metal-arm64.raw.xz \
-              "release-artifacts/talos-metal-arm64-spin-only-${RELEASE_TAG}.raw.xz"
-            echo "✅ metal-arm64.raw.xz collected (spin-only variant)"
+              "release-artifacts/talos-metal-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+            echo "✅ metal-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
           else
             echo "❌ metal-arm64.raw.xz not found in _out/assets/"
             ls cozystack-upstream/_out/assets/ || true
@@ -89,8 +110,8 @@ jobs:
           # Optional: nocloud image (useful for cloud/VM testing), also spin-only variant
           if [ -f cozystack-upstream/_out/assets/nocloud-arm64.raw.xz ]; then
             cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
-              "release-artifacts/talos-nocloud-arm64-spin-only-${RELEASE_TAG}.raw.xz"
-            echo "✅ nocloud-arm64.raw.xz collected (spin-only variant)"
+              "release-artifacts/talos-nocloud-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+            echo "✅ nocloud-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
           fi
 
           # Checksums
@@ -99,36 +120,36 @@ jobs:
           echo "Release artifacts:"
           ls -lh .
 
-      - name: Retag GHCR OCI images with release tag
+      - name: Tag GHCR OCI images at release
         run: |
           RELEASE_TAG="${{ github.ref_name }}"
           # TALOS_VERSION was written to GITHUB_ENV by the build step
           TALOS_VERSION="$TALOS_VERSION"
+          # Composite tag: ties the matchbox image to both the Talos version it embeds
+          # and the CozyStack repo release that produced it.
+          MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
           echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
             --username ${{ github.actor }} --password-stdin
 
-          # The upstream Makefile pushes images as sub-repos under each variant prefix:
-          #   .../talos/cozystack-<variant>/talos:<talos-version>
-          #   .../talos/cozystack-<variant>/matchbox:latest
-          # Retag each to the release tag for stable pinning in talm configs.
+          # Talos installer image:
+          #   Already tagged by the upstream Makefile with the Talos version (e.g. v1.13.2).
+          #   No additional tag — callers should pin by Talos version directly.
+          echo "ℹ️  Talos installer images already carry Talos version tag (${TALOS_VERSION}) — not adding repo release tag."
+
+          # Matchbox image:
+          #   Add composite tag so the exact Talos+CozyStack combination is reproducible.
           for VARIANT in spin-tailscale spin-only; do
             BASE="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
-
-            echo "Retagging ${BASE}/talos:${TALOS_VERSION} → :${RELEASE_TAG}"
-            crane tag "${BASE}/talos:${TALOS_VERSION}" "${RELEASE_TAG}" \
-              && echo "✅ ${VARIANT}/talos retagged" \
-              || echo "⚠️  Could not retag ${VARIANT}/talos"
-
-            echo "Retagging ${BASE}/matchbox:latest → :${RELEASE_TAG}"
-            crane tag "${BASE}/matchbox:latest" "${RELEASE_TAG}" \
-              && echo "✅ ${VARIANT}/matchbox retagged" \
-              || echo "⚠️  Could not retag ${VARIANT}/matchbox"
+            echo "Tagging ${BASE}/matchbox:latest → :${MATCHBOX_TAG}"
+            crane tag "${BASE}/matchbox:latest" "${MATCHBOX_TAG}" \
+              && echo "✅ ${VARIANT}/matchbox tagged ${MATCHBOX_TAG}" \
+              || echo "⚠️  Could not tag ${VARIANT}/matchbox (image may not exist yet)"
           done
 
-          # Operator is at the top-level registry (already has :latest from build job)
+          # Operator: a CozyStack component, tagged with the repo release.
           crane tag "${{ env.REGISTRY }}/cozystack-operator:latest" "${RELEASE_TAG}" \
-            && echo "✅ operator retagged" \
-            || echo "⚠️  Could not retag operator"
+            && echo "✅ operator tagged ${RELEASE_TAG}" \
+            || echo "⚠️  Could not tag operator"
 
       - name: Create GitHub Release
         env:
@@ -139,6 +160,7 @@ jobs:
           COZYSTACK_VER="${COZYSTACK_REF}"
 
           # Build release notes
+          MATCHBOX_TAG="talos-${TALOS_VER}-cozy-${RELEASE_TAG}"
           NOTES=$(cat <<EOF
           ## CozyStack ARM64 Talos Release ${RELEASE_TAG}
 
@@ -154,16 +176,27 @@ jobs:
 
           \`\`\`bash
           # Using dd (replace /dev/sdX with your target device)
-          xz -dc talos-metal-arm64-spin-only-${RELEASE_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
+          xz -dc talos-metal-arm64-spin-only-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
 
           # Or using Raspberry Pi Imager: select the .raw.xz file as a custom image
           \`\`\`
 
           ### OCI Images (for talm / talosctl)
 
+          Talos installer (pin by Talos version — same bits regardless of repo release):
           \`\`\`
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale:${RELEASE_TAG}
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only:${RELEASE_TAG}
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}
+          \`\`\`
+
+          Matchbox (pin by composite tag — ties Talos version to CozyStack release):
+          \`\`\`
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}
+          \`\`\`
+
+          CozyStack operator (pin by CozyStack release):
+          \`\`\`
           ghcr.io/urmanac/cozystack-assets/cozystack-operator:${RELEASE_TAG}
           \`\`\`
           EOF
