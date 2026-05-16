@@ -123,9 +123,22 @@ jobs:
 
       - name: Tag GHCR OCI images at release
         run: |
+          # Tagging direction: always retag FROM an immutable canonical tag
+          # (built by build-talos-images.yml against the same CozyStack ref,
+          # so the upstream Makefile produces matchbox:$(TAG) and
+          # matchbox:$(TALOS_VERSION)-$(TAG) where TAG=v1.3.3). We then
+          # alias :latest from that canonical tag.
+          #
+          # The prior implementation read FROM :latest, which is mutable and
+          # could alias stale digests into the release composite tag. See
+          # docs/ION-7-ORBITAL-REBOOT.md "Release tag drift bug".
           RELEASE_TAG="${{ github.ref_name }}"
           # TALOS_VERSION was written to GITHUB_ENV by the build step
           TALOS_VERSION="$TALOS_VERSION"
+          # Canonical immutable matchbox tag produced by upstream Makefile when
+          # cozystack-upstream HEAD is at the v1.3.3 git tag:
+          #   matchbox:$(TALOS_VERSION)-$(TAG)  →  matchbox:v1.12.7-v1.3.3
+          MATCHBOX_CANONICAL_TAG="${TALOS_VERSION}-${RELEASE_TAG}"
           # Composite tag: ties the matchbox image to both the Talos version it embeds
           # and the CozyStack repo release that produced it.
           MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
@@ -138,19 +151,36 @@ jobs:
           echo "ℹ️  Talos installer images already carry Talos version tag (${TALOS_VERSION}) — not adding repo release tag."
 
           # Matchbox image:
-          #   Add composite tag so the exact Talos+CozyStack combination is reproducible.
+          #   Retag the canonical immutable tag onto the composite tag, then alias
+          #   :latest from the same canonical source so :latest always reflects the
+          #   most recently released bits.
           for VARIANT in spin-tailscale spin-only; do
             BASE="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
-            echo "Tagging ${BASE}/matchbox:latest → :${MATCHBOX_TAG}"
-            crane tag "${BASE}/matchbox:latest" "${MATCHBOX_TAG}" \
-              && echo "✅ ${VARIANT}/matchbox tagged ${MATCHBOX_TAG}" \
-              || echo "⚠️  Could not tag ${VARIANT}/matchbox (image may not exist yet)"
+            SRC="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
+            echo "Tagging ${SRC} → :${MATCHBOX_TAG}"
+            if crane tag "${SRC}" "${MATCHBOX_TAG}"; then
+              echo "✅ ${VARIANT}/matchbox tagged ${MATCHBOX_TAG}"
+              echo "Tagging ${SRC} → :latest"
+              crane tag "${SRC}" latest \
+                && echo "✅ ${VARIANT}/matchbox latest now points to ${MATCHBOX_CANONICAL_TAG}" \
+                || echo "⚠️  Could not retag ${VARIANT}/matchbox to :latest"
+            else
+              echo "⚠️  Canonical source tag ${SRC} not found — build-talos-images.yml must run first"
+            fi
           done
 
-          # Operator: a CozyStack component, tagged with the repo release.
-          crane tag "${{ env.REGISTRY }}/cozystack-operator:latest" "${RELEASE_TAG}" \
-            && echo "✅ operator tagged ${RELEASE_TAG}" \
-            || echo "⚠️  Could not tag operator"
+          # Operator: canonical immutable tag is :v1.3.3 (the CozyStack ref the
+          # build was performed against). Alias :latest from that tag.
+          OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${RELEASE_TAG}"
+          if crane digest "${OPERATOR_SRC}" >/dev/null 2>&1; then
+            echo "✅ operator canonical tag ${RELEASE_TAG} already present"
+            echo "Tagging ${OPERATOR_SRC} → :latest"
+            crane tag "${OPERATOR_SRC}" latest \
+              && echo "✅ operator :latest now points to ${RELEASE_TAG}" \
+              || echo "⚠️  Could not retag operator to :latest"
+          else
+            echo "⚠️  Canonical source ${OPERATOR_SRC} not found — build-talos-images.yml must run first"
+          fi
 
       - name: Create GitHub Release
         env:

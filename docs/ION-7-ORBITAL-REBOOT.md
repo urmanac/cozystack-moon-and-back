@@ -147,3 +147,65 @@ The `@sha256:...` digest pins to the amd64 manifest specifically. On arm64 nodes
 3. The `kubeovn` image specifically: retag the upstream arm64 manifest to our registry rather than retagging a single-arch amd64 manifest.
 4. Override image refs in `talm-chart/` or via `HelmRelease` patches to point at `ghcr.io/urmanac/cozystack-assets/*` ARM64 images.
 5. Delete stale tags, push PR to `docs/arm64-pxe-guide-refresh` → main → tag → CI publishes new bundle.
+
+---
+
+## Release tag drift bug (found 2026-05-15)
+
+### Symptom
+
+After tagging `v1.3.3` and watching the release workflow succeed, the GHCR UI showed:
+
+- `matchbox:talos-v1.12.7-cozy-v1.3.3` — published 5 minutes ago, digest X
+- `matchbox:latest` — published 6 months ago, **same digest X**
+
+This was suspicious: a fresh release tag was aliased to whatever `:latest`
+happened to point to, *not* to a freshly built image.
+
+### Root cause
+
+[release-talos-assets.yml](.github/workflows/release-talos-assets.yml)
+retagged in the wrong direction:
+
+```bash
+# BEFORE (broken):
+crane tag matchbox:latest         talos-v1.12.7-cozy-v1.3.3
+crane tag cozystack-operator:latest  v1.3.3
+```
+
+`:latest` is mutable — it can be updated by any prior workflow run (or stay
+stale if no recent build pushed). Reading *from* `:latest` means the release
+composite tag inherits whatever `:latest` happens to be pointing at when the
+release fires, with no guarantee the bits are the ones built in this release
+cycle.
+
+### Fix
+
+Always retag *from* an immutable canonical tag:
+
+- matchbox: `:${TALOS_VERSION}-${RELEASE_TAG}` (e.g. `v1.12.7-v1.3.3`),
+  produced by upstream Makefile when cozystack-upstream HEAD is at the
+  `v1.3.3` git tag (`docker buildx --tag matchbox:$(TALOS_VERSION)-$(TAG)`).
+- operator: `:${RELEASE_TAG}` (e.g. `v1.3.3`), produced by
+  `make image-operator` against cozystack `v1.3.3`.
+
+Then alias `:latest` *from* the canonical tag, so `:latest` always reflects
+the most recently released bits.
+
+```bash
+# AFTER (correct):
+SRC=matchbox:v1.12.7-v1.3.3                # immutable, built this cycle
+crane tag "$SRC" talos-v1.12.7-cozy-v1.3.3 # composite
+crane tag "$SRC" latest                    # alias to fresh canonical
+
+SRC=cozystack-operator:v1.3.3              # immutable, built this cycle
+crane tag "$SRC" latest                    # alias to fresh canonical
+```
+
+### Why the symptom matched the released bits anyway
+
+In this specific run the upstream `:latest` happened to already be the
+correct digest because `build-talos-images.yml` had just run on the merge
+to main and pushed `:latest` *and* `:v1.12.7-v1.3.3` to the same digest.
+The release tag therefore aliased the right content — but only by
+coincidence. The fix removes the coincidence.
