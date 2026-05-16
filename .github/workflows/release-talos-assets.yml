@@ -41,11 +41,16 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y skopeo jq helm
+          sudo apt-get install -y skopeo jq
           ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
           curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz \
             | sudo tar xz -C /usr/local/bin crane
+          if [ "$ARCH" = "x86_64" ]; then HELM_ARCH="amd64"; else HELM_ARCH="arm64"; fi
+          curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" \
+            | tar xz
+          sudo mv linux-${HELM_ARCH}/helm /usr/local/bin/helm
+          rm -rf linux-${HELM_ARCH}
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
