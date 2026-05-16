@@ -54,7 +54,18 @@ jobs:
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-          crane version && yq --version && helm version --short
+          # flux CLI — must match the distribution version pinned in cozystack's
+          # packages/system/fluxcd/values.yaml (distribution.version: 2.7.x).
+          # flux push artifact is used by core/installer's image-packages target
+          # to push the full package bundle as an OCI artifact, setting
+          # cozystackOperator.platformSourceUrl in values.yaml.
+          FLUX_VERSION=$(curl -sSL https://api.github.com/repos/fluxcd/flux2/releases \
+            | jq -r '[.[] | select(.tag_name | startswith("v2.7.")) | .tag_name] | first')
+          if [ -z "$FLUX_VERSION" ]; then FLUX_VERSION="v2.7.0"; fi
+          if [ "$ARCH" = "x86_64" ]; then FLUX_ARCH="amd64"; else FLUX_ARCH="arm64"; fi
+          curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" \
+            | sudo tar xz -C /usr/local/bin flux
+          crane version && yq --version && helm version --short && flux version --client
 
       - name: Login to GHCR
         run: |

@@ -145,6 +145,36 @@ Dockerfile fixes this is worth revisiting in a future patch.
 
 ---
 
+## Test 5: flux CLI version and download URL
+
+`core/installer`'s `image-packages` target calls `flux push artifact` to push the
+entire CozyStack package tree as an OCI artifact to
+`oci://$(REGISTRY)/cozystack-packages:$(TAG)`. This sets
+`cozystackOperator.platformSourceUrl` in `values.yaml`, telling the operator where
+to fetch chart bundles from at runtime. Without `flux` in `$PATH` the build fails
+with `/bin/sh: 1: flux: not found`.
+
+The flux distribution version pinned in `packages/system/fluxcd/values.yaml` is
+`2.7.x`. We install the latest `v2.7.x` CLI release at build time:
+
+```bash
+# Version detection
+curl -sSL https://api.github.com/repos/fluxcd/flux2/releases \
+  | jq -r '[.[] | select(.tag_name | startswith("v2.7.")) | .tag_name] | first'
+# → v2.7.5
+
+# URL format verified:
+# https://github.com/fluxcd/flux2/releases/download/v2.7.5/flux_2.7.5_linux_arm64.tar.gz
+# → HTTP/2 302 → HTTP/2 200  ✅
+```
+
+GHCR authentication for `flux push artifact` is handled by the existing
+`docker login ghcr.io` step — flux uses the same Docker credential store.
+
+Result: **PASS** (URL verified, auth path confirmed)
+
+---
+
 ## Resolved CI failures (before local validation was added)
 
 | Run | Failure | Root cause | Fix |
@@ -152,3 +182,4 @@ Dockerfile fixes this is worth revisiting in a future patch.
 | v1.3.3 run 1 | `E: Unable to locate package helm` | `ubuntu-24.04-arm` apt repos don't carry helm | PR #54: install from `get.helm.sh` tarball |
 | v1.3.3 run 2 | linstor gradle/protoc `Syntax error: ")" unexpected` | amd64 ELF executed on arm64 | PR #55: skip linstor+linstor-gui in patch 07 |
 | v1.3.3 run 3 | `Error: unknown flag: --all` in crane | `crane copy --all` does not exist; correct flag is `--platform all` | PR #56: fix patch 06 |
+| v1.3.3 run 4 | `/bin/sh: 1: flux: not found` | `flux push artifact` needed by `core/installer`'s `image-packages` target; flux CLI not installed | PR #56: install flux v2.7.x from GitHub releases |
