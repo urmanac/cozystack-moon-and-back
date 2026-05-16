@@ -21,7 +21,7 @@ index 4562904..0434f83 100644
 +KUBEOVN_VERSION=$(shell yq e '.global.images.kubeovn.tag' values.yaml | cut -d@ -f1)
 +
 +image:
-+	crane copy --all docker.io/kubeovn/kube-ovn:$(KUBEOVN_VERSION) $(REGISTRY)/kubeovn:$(call settag,$(KUBEOVN_VERSION))
++	crane copy --platform all docker.io/kubeovn/kube-ovn:$(KUBEOVN_VERSION) $(REGISTRY)/kubeovn:$(call settag,$(KUBEOVN_VERSION))
 +	REPOSITORY="$(REGISTRY)" \
 +		yq -i '.global.registry.address = strenv(REPOSITORY)' values.yaml
 +	TAG="$(call settag,$(KUBEOVN_VERSION))" \
