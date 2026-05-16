@@ -1,4 +1,4 @@
-Built: 2026-05-16 10:56:58 UTC
+Built: 2026-05-16 11:28:29 UTC
 
 - Talos version: `v1.12.7`
 - CozyStack release: `v1.3.3`
