@@ -133,6 +133,13 @@ jobs:
           EXTENSION_VARIANT="${{ matrix.extension_variant }}"
           echo "Building with extension variant: $EXTENSION_VARIANT"
           
+          # Always apply: default PLATFORM to linux/arm64 in common-envs.mk
+          git apply ../patches/04-arm64-default-platform.patch || {
+            echo "Failed to apply 04-arm64-default-platform.patch"
+            git status
+            exit 1
+          }
+
           if [ "$EXTENSION_VARIANT" = "spin-only" ]; then
             echo "Applying ARM64+Spin-only patches..."
             git apply ../patches/03-arm64-spin-only.patch || {

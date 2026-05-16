@@ -51,6 +51,7 @@ jobs:
       - name: Apply spin-only ARM64 patches
         run: |
           cd cozystack-upstream
+          git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/03-arm64-spin-only.patch
           git apply ../patches/02-makefile-architecture-variables.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh

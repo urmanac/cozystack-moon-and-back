@@ -69,3 +69,81 @@ Validated against clean upstream v1.3.3 worktree:
 1. The old 0.38 assumptions no longer represent upstream build topology.
 2. Without this migration, ARM64 patching fails before any build starts.
 3. With these updates, the repo again aligns with its core purpose: producing publishable ARM64 CozyStack images for real hardware clusters.
+
+---
+
+## ARM64 Image Audit: In-Tree Built Images (CozyStack v1.3.3)
+
+**Finding date: 2026-05-15**
+
+### Root Cause
+`hack/common-envs.mk` sets `PLATFORM ?=` (empty). On GitHub's amd64 runners, every `docker buildx build $(BUILDX_ARGS)` produces a single-arch amd64 image. CozyStack v1.3.3 ships **zero** multi-arch images.
+
+The one exception — `packages/system/dashboard` — is irrecoverably amd64-only because its three `docker buildx build` invocations hardcode `--platform=linux/amd64`.
+
+### Packages with In-Tree Built Images (all amd64-only)
+
+| Image | Package | Values key to override |
+|---|---|---|
+| `cozystack-operator:<TAG>` | `packages/core/installer` | `.cozystackOperator.image` |
+| `cozystack-controller:<TAG>` | `packages/system/cozystack-controller` | `.cozystackController.image` |
+| `cozystack-api:<TAG>` | `packages/system/cozystack-api` | `.cozystackAPI.image` |
+| `backup-controller:<TAG>` | `packages/system/backup-controller` | `.backupController.image` |
+| `backupstrategy-controller:<TAG>` | `packages/system/backupstrategy-controller` | `.backupStrategyController.image` |
+| `lineage-controller-webhook:<TAG>` | `packages/system/lineage-controller-webhook` | `.lineageControllerWebhook.image` |
+| `platform-migrations:<TAG>` | `packages/core/platform` | `.migrations.image` |
+| `kamaji:<TAG>` | `packages/system/kamaji` | `.kamaji.image.repository` + `.kamaji.image.tag` |
+| `cilium:<appVersion>` | `packages/system/cilium` | `.cilium.image.repository/tag/digest` |
+| `kubeovn-webhook:<TAG>` | `packages/system/kubeovn-webhook` | `.image` |
+| `kubeovn-plunger:<TAG>` | `packages/system/kubeovn-plunger` | `.image` |
+| `matchbox:<TAG>` | `packages/core/talos` | `packages/extra/bootbox/images/matchbox.tag` |
+| `metallb-controller/speaker:<ver>` | `packages/system/metallb` | `.metallb.controller/speaker.image.repository/tag` |
+| `multus-cni:<TAG>` | `packages/system/multus` | Injected via `sed` in templates |
+| `linstor`/`piraeus-server` | `packages/system/linstor` | `.piraeusServer.image.*` |
+| `linstor-csi:<ver>` | `packages/system/linstor` | `.linstorCSI.image.*` |
+| `linstor-gui:<ver>` | `packages/system/linstor-gui` | `.image.*` |
+| `openapi-ui` + 2 others | `packages/system/dashboard` | **amd64 hardcoded — skip** |
+| `grafana-dashboards:<TAG>` | `packages/system/grafana-operator` | `.tag` file |
+
+### kubeovn: amd64-only retag confirmed
+
+```
+ghcr.io/cozystack/cozystack/kubeovn:v1.15.10
+→ manifest.v2+json (single-arch, amd64 only)
+```
+
+Upstream `docker.io/kubeovn/kube-ovn:v1.15.10` is a proper manifest list:
+- `arm64` → `sha256:a64ff020a2f2a89ff2494565941e584029aee19f49d9a1fd631dbfcbdd0efbca`
+- `amd64` → `sha256:8cc2afda38aa9cd400cab1d30f5833ec3839e30acd2d46898f49e8f9510f349a`
+
+CozyStack's `make update` retags only the amd64 manifest to GHCR — it never copies the full manifest list.
+
+### kube-ovn values.yaml pin (the actual breakage)
+
+```yaml
+global:
+  registry:
+    address: ghcr.io/cozystack/cozystack
+  images:
+    kubeovn:
+      repository: kubeovn
+      tag: v1.15.10@sha256:741299cbd0081a786a6b60c460fa3156b3a42a38141c559dd8ac031f50c5504f
+```
+
+The `@sha256:...` digest pins to the amd64 manifest specifically. On arm64 nodes the pod fails with `exec format error`.
+
+### Packages that pull upstream multi-arch (no rebuild needed)
+
+`cert-manager`, `fluxcd`, `metrics-server`, `ingress-nginx`, `coredns`, `cloudnative-pg` (postgres-operator), `external-secrets`, `keycloak`, `piraeus-operator`, `victoria-metrics-operator`, `snapshot-controller`.
+
+### kubevirt: special status
+
+`quay.io/kubevirt/*` — ARM64 support is experimental upstream. Avoid KubeVirt workloads on pure ARM64 nodes for now.
+
+### Plan for JUNIPER-8
+
+1. Clone upstream CozyStack v1.3.3, make `PLATFORM=linux/arm64` changes, run `git diff` to produce new patches (never hand-craft patches).
+2. Build all critical in-tree images for `linux/arm64`, pushing to `ghcr.io/urmanac/cozystack-assets/*`.
+3. The `kubeovn` image specifically: retag the upstream arm64 manifest to our registry rather than retagging a single-arch amd64 manifest.
+4. Override image refs in `talm-chart/` or via `HelmRelease` patches to point at `ghcr.io/urmanac/cozystack-assets/*` ARM64 images.
+5. Delete stale tags, push PR to `docs/arm64-pxe-guide-refresh` → main → tag → CI publishes new bundle.

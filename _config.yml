@@ -6,7 +6,7 @@ baseurl: "/cozystack-moon-and-back"
 url: "https://urmanac.github.io"
 
 # Site settings
-author: "CozySummit Virtual 2025"
+author: "CozySummit Virtual 2026"
 email: "kingdon@urmanac.com"
 
 # Navigation
@@ -44,4 +44,4 @@ repository: urmanac/cozystack-moon-and-back
 # Social links
 social_links:
   - https://github.com/urmanac/cozystack-moon-and-back
-  - https://community.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2025/
+  - https://community2.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2026/
