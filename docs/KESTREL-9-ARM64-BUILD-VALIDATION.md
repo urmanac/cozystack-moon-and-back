@@ -175,6 +175,27 @@ Result: **PASS** (URL verified, auth path confirmed)
 
 ---
 
+## What We Can Still Validate Locally
+
+Before the next arm64 hardware cycle, the best repository-local checks are:
+
+- run `git apply --check` on every patch against a clean `v1.3.3` clone
+- run `make -n build` to verify the exact package order and confirm which
+  packages are intentionally skipped
+- audit the package Dockerfiles for any new hardcoded `amd64`, `x86_64`, or
+  architecture-specific download URLs
+- run targeted package builds for the riskiest steps (`kubeovn`, `cilium`,
+  `core/installer`) instead of waiting for the full release workflow
+- verify the build toolchain (`crane`, `helm`, `yq`, `flux`) is available on
+  the runner architecture before we ask GitHub Actions to burn a full build
+
+If we want stronger pre-hardware validation, a native arm64 AWS Graviton test
+environment is the right next step. We should keep using the upstream Talos AMI
+as the base there rather than producing a custom AMI; the goal is to validate
+the CozyStack install flow, not image creation of the host OS.
+
+---
+
 ## Resolved CI failures (before local validation was added)
 
 | Run | Failure | Root cause | Fix |
