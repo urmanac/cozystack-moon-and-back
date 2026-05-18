@@ -4,7 +4,7 @@
 > *Smart validation strategy: Test first, buy hardware second*
 
 [![CozySummit Virtual 2026](https://img.shields.io/badge/CozySummit-May%2026%2C%202026-blue)](https://community2.cncf.io/events/details/cncf-virtual-project-events-hosted-by-cncf-presents-cozysummit-virtual-2026/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE.txt)
 [![Built with TDG](https://img.shields.io/badge/built%20with-TDG-purple)](https://chanwit.medium.com/i-was-wrong-about-test-driven-generation-and-i-couldnt-be-happier-9942b6f09502)
 
 ---
