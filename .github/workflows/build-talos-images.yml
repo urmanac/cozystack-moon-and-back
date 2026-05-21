@@ -39,9 +39,9 @@ on:
   workflow_dispatch:
     inputs:
       cozystack_commit:
-        description: 'Cozystack upstream ref or commit (default: v1.3.3)'
+        description: 'Cozystack upstream ref or commit (default: v1.4.0)'
         required: false
-        default: 'v1.3.3'
+        default: 'v1.4.0'
       extension_variant:
         description: 'Extension variant to build'
         required: false
