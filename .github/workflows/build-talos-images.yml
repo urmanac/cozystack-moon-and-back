@@ -119,7 +119,7 @@ jobs:
           # Clone upstream CozyStack at a stable release tag
           git clone https://github.com/cozystack/cozystack.git cozystack-upstream
           cd cozystack-upstream
-          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.3.3' }}"
+          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
           git checkout "$COZYSTACK_REF"
           
           echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
@@ -251,7 +251,7 @@ jobs:
           # use a stable reference regardless of which cozystack version was built.
           tag_operator_latest() {
             if [ "$PUSH" != "1" ]; then return; fi
-            local src_ref="${{ github.event.inputs.cozystack_commit || 'v1.3.3' }}"
+            local src_ref="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
             echo "Retagging $OPERATOR_REGISTRY/cozystack-operator:$src_ref → :latest"
             crane tag "$OPERATOR_REGISTRY/cozystack-operator:$src_ref" latest 2>/dev/null || \
               crane tag "$OPERATOR_REGISTRY/cozystack-operator:${src_ref#v}" latest 2>/dev/null || \
@@ -827,7 +827,7 @@ jobs:
           INITRAMFS_DIGEST="${{ needs.build-cozystack-upstream.outputs.initramfs-digest }}"
           ASSET_COUNT="${{ needs.build-cozystack-upstream.outputs.asset-count || 'N/A' }}"
           BUILD_TARGET="${{ needs.build-cozystack-upstream.outputs.build-target }}"
-          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.3.3' }}"
+          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
           DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           cat > docs/LATEST-BUILD.md << EOF
