@@ -411,7 +411,7 @@ jobs:
           EOF
           )
 
-          gh release create "$RELEASE_TAG" \
-            --title "CozyStack ARM64 Talos ${RELEASE_TAG}" \
+          gh release create "$FULL_TAG" \
+            --title "CozyStack ARM64 Talos ${FULL_TAG}" \
             --notes "$NOTES" \
             release-artifacts/*
