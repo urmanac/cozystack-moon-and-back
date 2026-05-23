@@ -73,6 +73,8 @@ jobs:
             --username ${{ github.actor }} --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
             --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
+            --username ${{ github.actor }} --password-stdin
 
       - name: Clone upstream CozyStack
         run: |
@@ -106,6 +108,7 @@ jobs:
   # images that genuinely differ between spin-tailscale and spin-only because
   # the extension list is baked into the talos installer at build time.
   build-talos-variants:
+    needs: [build-cozystack-images]
     runs-on: ubuntu-24.04-arm
     permissions:
       packages: write
@@ -136,6 +139,8 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
             --username ${{ github.actor }} --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+            --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
             --username ${{ github.actor }} --password-stdin
 
       - name: Clone upstream CozyStack
