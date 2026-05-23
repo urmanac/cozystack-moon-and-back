@@ -11,6 +11,7 @@ Upgrade the ARM64 CozyStack image pipeline to Talos v1.13.2 and introduce the `s
 ## Notable Changes
 - **Talos Upgrade:** Bumped from v1.13.0 to v1.13.2.
 - **New Variant:** `spin-hailort` added, containing both `spin` (WebAssembly) and `hailort` (Hailo AI driver) extensions.
+- **Bootability Fix:** Added `board: rpi_generic` to the ARM64 metal profile and included the `vc4` extension. This ensures that the generated `.raw.xz` images include the necessary Raspberry Pi firmware and are bootable out-of-the-box on CM4.
 - **Versioning:** Introduced composite tagging (e.g., `v1.4.0-1.13.2`) to track both CozyStack and Talos versions independently.
 
 ## Extension Variants
