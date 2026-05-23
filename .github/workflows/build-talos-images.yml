@@ -198,10 +198,10 @@ jobs:
           echo "- Architecture: $(grep 'arch:' packages/core/talos/hack/gen-profiles.sh)"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GHCR (Docker)
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -220,6 +220,9 @@ jobs:
           # Build images on every event so PRs catch regressions; only push on main.
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             PUSH=1
+            # On main branch builds, we force TAG=latest to seed the registry cache
+            export TAG=latest
+            echo "Main branch push: seeding registry cache with :latest tags"
           else
             PUSH=0
           fi
@@ -227,8 +230,8 @@ jobs:
           echo "PUSH=$PUSH (event=${{ github.event_name }}, ref=${{ github.ref }})"
 
           # Authenticate skopeo and crane explicitly (docker login handled by action)
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username x-access-token --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username x-access-token --password-stdin
 
           echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
           echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"
@@ -644,14 +647,14 @@ jobs:
 
       - name: Set up Docker Buildx (for fallback asset container)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver: docker-container
           platforms: linux/arm64,linux/amd64
 
       - name: Log in to GitHub Container Registry (for fallback)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -659,7 +662,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry (for upstream images)
         if: steps.build.outputs.build-outputs != 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -668,7 +671,7 @@ jobs:
       - name: Generate container metadata
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
           tags: |
@@ -686,7 +689,7 @@ jobs:
 
       - name: Build and push asset container
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./cozystack-upstream
           file: ./cozystack-upstream/Dockerfile.assets
@@ -756,7 +759,7 @@ jobs:
           crane version
 
       - name: Log in to GitHub Container Registry  
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
