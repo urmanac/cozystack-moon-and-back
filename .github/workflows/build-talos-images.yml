@@ -281,7 +281,12 @@ jobs:
           cat images/talos/profiles/metal.yaml
           
           # Use upstream Makefile target based on workflow input
-          BUILD_TARGET="${{ github.event.inputs.build_targets || 'upstream-images' }}"
+          # If this is a push to main, we force BUILD_TARGET=image to seed the cache for all packages.
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            BUILD_TARGET="image"
+          else
+            BUILD_TARGET="${{ github.event.inputs.build_targets || 'upstream-images' }}"
+          fi
           echo "Building with upstream target: make $BUILD_TARGET"
 
           # After the upstream Makefile pushes the operator it tags it with the upstream
