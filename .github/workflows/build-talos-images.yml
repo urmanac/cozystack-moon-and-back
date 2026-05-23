@@ -74,6 +74,64 @@ env:
   DEFAULT_TALOS_VERSION: v1.13.2
 
 jobs:
+  build-cozystack-images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
+          curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
+          if [ "$ARCH" = "x86_64" ]; then HELM_ARCH="amd64"; else HELM_ARCH="arm64"; fi
+          curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" | tar xz
+          sudo mv linux-${HELM_ARCH}/helm /usr/local/bin/helm
+          rm -rf linux-${HELM_ARCH}
+          if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          FLUX_VERSION=$(curl -sSL https://api.github.com/repos/fluxcd/flux2/releases | jq -r '[.[] | select(.tag_name | startswith("v2.7.")) | .tag_name] | first')
+          if [ -z "$FLUX_VERSION" ]; then FLUX_VERSION="v2.7.0"; fi
+          if [ "$ARCH" = "x86_64" ]; then FLUX_ARCH="amd64"; else FLUX_ARCH="arm64"; fi
+          curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" | sudo tar xz -C /usr/local/bin flux
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone upstream CozyStack
+        run: |
+          git clone https://github.com/cozystack/cozystack.git cozystack-upstream
+          cd cozystack-upstream
+          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
+          git checkout "$COZYSTACK_REF"
+
+      - name: Apply ARM64 patches (shared build)
+        run: |
+          cd cozystack-upstream
+          git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/06-kubeovn-manifest-list-retag.patch
+          git apply ../patches/07-arm64-skip-amd64-only-builds.patch
+
+      - name: Build all in-tree images (make build)
+        run: |
+          cd cozystack-upstream
+          export TAG=latest
+          make build REGISTRY="${{ env.REGISTRY }}" PUSH=1
+
   build-cozystack-upstream:
     runs-on: ubuntu-24.04-arm
     permissions:
