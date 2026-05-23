@@ -336,7 +336,7 @@ jobs:
               echo "Running full build (operator + matchbox + cozystack + talos)..."
               if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
                 echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
-                cd ../../installer
+                cd ../installer
                 make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
                 tag_operator_latest
                 cd ../talos
@@ -363,7 +363,7 @@ jobs:
             "image-operator")
               if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
                 echo "Building shared cozystack operator image (PUSH=$PUSH)..."
-                cd ../../installer
+                cd ../installer
                 make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
                 tag_operator_latest
                 echo "build-outputs=operator" >> $GITHUB_OUTPUT
