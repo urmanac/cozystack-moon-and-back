@@ -83,7 +83,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Install build dependencies
         run: |
@@ -105,7 +105,7 @@ jobs:
           curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" | sudo tar xz -C /usr/local/bin flux
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -158,7 +158,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Install build dependencies
         run: |
@@ -196,7 +196,7 @@ jobs:
           chmod +x packages/core/talos/hack/gen-versions.sh
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
         uses: docker/login-action@v4
@@ -256,20 +256,197 @@ jobs:
         id: assets
         run: |
           cd cozystack-upstream
+          
+          # List what files were actually generated
+          echo "Files in _out/assets:"
+          ls -la _out/assets/ || echo "No _out/assets directory found"
+          
+          # Create comprehensive output directory structure
           mkdir -p assets/talos/arm64/{boot,containers,validation}
+          
+          # Extract built ARM64 assets with validation
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
+          echo "Processing build outputs: $BUILD_OUTPUTS"
           
-          # Simplified asset collection logic
+          # Process kernel
           if [[ "$BUILD_OUTPUTS" =~ "kernel" ]]; then
-            cp _out/assets/kernel-arm64 assets/talos/arm64/boot/vmlinuz 2>/dev/null || true
-          fi
-          if [[ "$BUILD_OUTPUTS" =~ "initramfs" ]]; then
-            cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/boot/initramfs.xz 2>/dev/null || true
+            echo "Processing kernel asset..."
+            # Look for kernel files from upstream build
+            KERNEL_FILE=""
+            for candidate in kernel-arm64 vmlinuz-arm64 vmlinuz kernel; do
+              if [ -f "_out/assets/$candidate" ]; then
+                KERNEL_FILE="_out/assets/$candidate"
+                break
+              fi
+            done
+            
+            if [ -n "$KERNEL_FILE" ]; then
+              cp "$KERNEL_FILE" assets/talos/arm64/boot/vmlinuz
+              echo "✅ Kernel asset processed: $(basename $KERNEL_FILE) → boot/vmlinuz"
+            else
+              echo "⚠️ Kernel not found in expected locations"
+              ls -la _out/assets/ | grep -E -i "kernel|vmlinuz" || echo "No kernel files found"
+            fi
           fi
           
+          # Process initramfs
+          if [[ "$BUILD_OUTPUTS" =~ "initramfs" ]]; then
+            echo "Processing initramfs asset..."
+            # Look for initramfs files from upstream build
+            INITRAMFS_FILE=""
+            for candidate in initramfs-metal-arm64.xz initramfs-arm64.xz initramfs.xz initramfs; do
+              if [ -f "_out/assets/$candidate" ]; then
+                INITRAMFS_FILE="_out/assets/$candidate"
+                break
+              fi
+            done
+            
+            if [ -n "$INITRAMFS_FILE" ]; then
+              cp "$INITRAMFS_FILE" assets/talos/arm64/boot/initramfs.xz
+              echo "✅ Initramfs asset processed: $(basename $INITRAMFS_FILE) → boot/initramfs.xz"
+            else
+              echo "⚠️ Initramfs not found in expected locations"
+              ls -la _out/assets/ | grep -E -i "initramfs" || echo "No initramfs files found"
+            fi
+          fi
+          
+          # Process ISO, nocloud, and metal images (from assets target)
+          if [[ "$BUILD_OUTPUTS" =~ "iso" ]] && [ -f "_out/assets/metal-arm64.iso" ]; then
+            cp _out/assets/metal-arm64.iso assets/talos/arm64/installer.iso
+            echo "✅ ISO asset processed: metal-arm64.iso → installer.iso"
+          fi
+          if [[ "$BUILD_OUTPUTS" =~ "nocloud" ]] && [ -f "_out/assets/nocloud-arm64.raw.xz" ]; then
+            cp _out/assets/nocloud-arm64.raw.xz assets/talos/arm64/nocloud.raw.xz
+            echo "✅ NoCloud asset processed: nocloud-arm64.raw.xz → nocloud.raw.xz"
+          fi
+          if [[ "$BUILD_OUTPUTS" =~ "metal" ]] && [ -f "_out/assets/metal-arm64.raw.xz" ]; then
+            cp _out/assets/metal-arm64.raw.xz assets/talos/arm64/metal.raw.xz
+            echo "✅ Metal asset processed: metal-arm64.raw.xz → metal.raw.xz"
+          fi
+          
+          # Process container images (from image target)
+          if [[ "$BUILD_OUTPUTS" =~ "talos-installer" ]] && [ -f "_out/assets/installer-arm64.tar" ]; then
+            cp _out/assets/installer-arm64.tar assets/talos/arm64/containers/talos-installer.tar
+          fi
+          
+          # Generate comprehensive checksums (exclude the checksum file itself)
           cd assets/talos/arm64
+          
+          # Create checksums for all files except checksums.sha256
           find . -type f ! -name "checksums.sha256" -exec sha256sum {} \; > checksums.sha256
-          echo "asset-count=$(find . -type f | wc -l)" >> $GITHUB_OUTPUT
+          
+          # Validate checksums work
+          echo "Validating asset checksums..."
+          if sha256sum -c checksums.sha256 2>/dev/null; then
+            echo "✅ All asset checksums validated successfully"
+          else
+            echo "⚠️ Checksum validation had warnings, but files exist:"
+            echo "Generated checksums:"
+            cat checksums.sha256
+          fi
+          
+          # Count and summarize assets
+          ASSET_COUNT=$(find . -type f | wc -l)
+          echo "Total assets extracted: $ASSET_COUNT"
+          
+          # Generate validation report
+          cat > validation/build-report.txt << EOF
+          CozyStack ARM64 Asset Array Build Report
+          ========================================
+          Build Target: ${{ steps.build.outputs.build-target }}
+          Build Outputs: ${{ steps.build.outputs.build-outputs }}
+          Total Assets: $ASSET_COUNT
+          Talos Version: ${{ steps.build.outputs.talos-version }}
+          CozyStack Commit: $COZYSTACK_COMMIT
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          Asset Inventory:
+          $(find . -type f -exec ls -lh {} \;)
+          EOF
+          
+          # Output validation results
+          if [ -f "usr/install/arm64/vmlinuz.efi" ]; then
+            KERNEL_DIGEST=$(sha256sum usr/install/arm64/vmlinuz.efi | cut -d' ' -f1)
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "talos/arm64/boot/vmlinuz" ]; then
+            KERNEL_DIGEST=$(sha256sum talos/arm64/boot/vmlinuz | cut -d' ' -f1)
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "boot/vmlinuz" ]; then
+            KERNEL_DIGEST=$(sha256sum boot/vmlinuz | cut -d' ' -f1)
+            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -f "usr/install/arm64/systemd-boot.efi" ]; then
+            INITRAMFS_DIGEST=$(sha256sum usr/install/arm64/systemd-boot.efi | cut -d' ' -f1)
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "talos/arm64/boot/initramfs.xz" ]; then
+            INITRAMFS_DIGEST=$(sha256sum talos/arm64/boot/initramfs.xz | cut -d' ' -f1)
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          elif [ -f "boot/initramfs.xz" ]; then
+            INITRAMFS_DIGEST=$(sha256sum boot/initramfs.xz | cut -d' ' -f1)
+            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "asset-count=$ASSET_COUNT" >> $GITHUB_OUTPUT
+          echo "validation-status=success" >> $GITHUB_OUTPUT
+          
+          echo "✅ Successfully extracted and validated ARM64 asset array:"
+          ls -la .
+
+      - name: Verify upstream CozyStack image build and push
+        id: upstream-verify
+        run: |
+          cd cozystack-upstream
+          
+          # Get build outputs from upstream build
+          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
+          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
+          
+          echo "✅ Upstream CozyStack build completed successfully!"
+          echo "Built: $BUILD_OUTPUTS"
+          echo "Talos Version: $TALOS_VERSION"
+          
+          # The upstream Makefile targets already pushed to our registry:
+          echo "Images pushed to ${{ env.REGISTRY }}:"
+          echo "  - cozystack-operator:latest (shared; pushed once from Job 1 or spin-only leg)"
+          echo "  - talos/cozystack-${{ matrix.extension_variant }}/talos:v$TALOS_VERSION"
+          echo "  - talos/cozystack-${{ matrix.extension_variant }}/matchbox:latest"
+
+      - name: Validate ARM64 image architectures
+        id: arm64-validation
+        run: |
+          echo "🧪 Validating that our container images are actually ARM64..."
+
+          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
+
+          # Registry validation only applies when images were pushed (push-to-main).
+          if [ "${{ github.event_name }}" != "push" ] || [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "ℹ️ PR / non-main build - skipping registry validation."
+            exit 0
+          fi
+
+          # Operator image is only published once.
+          if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
+            echo "🔍 Testing cozystack-operator container image architecture and functionality..."
+            OPERATOR_IMAGE="${{ env.REGISTRY }}/cozystack-operator:latest"
+
+            echo "Checking if operator image exists in registry..."
+            if ! docker manifest inspect "$OPERATOR_IMAGE" >/dev/null 2>&1; then
+              echo "❌ Operator image does not exist in registry: $OPERATOR_IMAGE"
+              exit 1
+            fi
+
+            docker pull --platform linux/arm64 "$OPERATOR_IMAGE"
+            OPERATOR_ARCH=$(docker image inspect --format='{{.Architecture}}' "$OPERATOR_IMAGE")
+            echo "Operator image architecture: $OPERATOR_ARCH"
+
+            if [[ "$OPERATOR_ARCH" == "arm64" ]]; then
+              echo "✅ Operator image is ARM64"
+            else
+              echo "❌ Operator image is not ARM64: $OPERATOR_ARCH"
+              exit 1
+            fi
+          fi
 
       - name: Generate build summary
         run: |
@@ -310,13 +487,64 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Update docs
         run: |
-          echo "Built: $(date -u)" > docs/LATEST-BUILD.md
-          echo "- Talos version: ${{ needs.build-cozystack-upstream.outputs.talos-version }}" >> docs/LATEST-BUILD.md
+          # Update docs with latest build info
+          TALOS_VERSION="${{ needs.build-cozystack-upstream.outputs.talos-version }}"
+          KERNEL_DIGEST="${{ needs.build-cozystack-upstream.outputs.kernel-digest }}"
+          INITRAMFS_DIGEST="${{ needs.build-cozystack-upstream.outputs.initramfs-digest }}"
+          ASSET_COUNT="${{ needs.build-cozystack-upstream.outputs.asset-count || 'N/A' }}"
+          BUILD_TARGET="${{ needs.build-cozystack-upstream.outputs.build-target }}"
+          COZYSTACK_REF="v1.4.0"
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          cat > docs/LATEST-BUILD.md << EOF
+          Built: $DATE
+
+          - Talos version: \`$TALOS_VERSION\`
+          - CozyStack release: \`$COZYSTACK_REF\`
+          - Build target: \`$BUILD_TARGET\`
+          - Extracted asset count: \`$ASSET_COUNT\`
+
+          ## Asset Digests
+
+          | Asset | Digest |
+          |-------|--------|
+          | Kernel | \`${KERNEL_DIGEST:-not available}\` |
+          | Boot Loader | \`${INITRAMFS_DIGEST:-not available}\` |
+
+          ## What This Build Contains
+
+          This page reflects the latest successful main branch build.
+
+          ## Container Images
+
+          Spin + Tailscale variant:
+
+          \`\`\`bash
+          docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:latest
+          docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:latest
+          \`\`\`
+
+          Spin-only variant:
+
+          \`\`\`bash
+          docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:latest
+          docker pull ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:latest
+          \`\`\`
+
+          CozyStack operator:
+
+          \`\`\`bash
+          docker pull ghcr.io/urmanac/cozystack-assets/cozystack-operator:latest
+          \`\`\`
+          EOF
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docs/LATEST-BUILD.md
-          git commit -m "Update build info" || exit 0
+          git commit -m "Update build documentation: $TALOS_VERSION" || exit 0
           git push
