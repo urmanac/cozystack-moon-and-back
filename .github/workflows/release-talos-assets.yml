@@ -288,38 +288,34 @@ jobs:
 
       - name: Tag GHCR OCI images at release
         run: |
-          # Tagging direction: always retag FROM an immutable canonical tag
-          # (built by build-talos-images.yml against the same CozyStack ref,
-          # so the upstream Makefile produces matchbox:$(TAG) and
-          # matchbox:$(TALOS_VERSION)-$(TAG) where TAG=v1.3.3). We then
-          # alias :latest from that canonical tag.
-          #
-          # The prior implementation read FROM :latest, which is mutable and
-          # could alias stale digests into the release composite tag. See
-          # docs/ION-7-ORBITAL-REBOOT.md "Release tag drift bug".
-          RELEASE_TAG="${{ github.ref_name }}"
+          # Parse the release tag.
+          # Format A: v1.4.0 (implies upstream-pinned Talos version)
+          # Format B: v1.4.0-1.13.2 (explicit Talos version override)
+          FULL_TAG="${{ github.ref_name }}"
+          if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)$ ]]; then
+            COZY_VER="${BASH_REMATCH[1]}"
+            TALOS_REQ="${BASH_REMATCH[2]}"
+            # If the tag was v1.4.0-1.13.2, the cozystack version to pull is v1.4.0
+          else
+            COZY_VER="$FULL_TAG"
+            TALOS_REQ=""
+          fi
+          
           # TALOS_VERSION was written to GITHUB_ENV by the build step
           TALOS_VERSION="$TALOS_VERSION"
-          # Canonical immutable matchbox tag produced by upstream Makefile when
-          # cozystack-upstream HEAD is at the v1.3.3 git tag:
-          #   matchbox:$(TALOS_VERSION)-$(TAG)  →  matchbox:v1.12.7-v1.3.3
-          MATCHBOX_CANONICAL_TAG="${TALOS_VERSION}-${RELEASE_TAG}"
-          # Composite tag: ties the matchbox image to both the Talos version it embeds
-          # and the CozyStack repo release that produced it.
-          MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
+          
+          # Matchbox tags:
+          #   MATCHBOX_CANONICAL_TAG: $(TALOS_VERSION)-$(COZY_VER) (e.g. 1.13.2-v1.4.0)
+          #   MATCHBOX_TAG: talos-$(TALOS_VERSION)-cozy-$(COZY_VER) (e.g. talos-1.13.2-cozy-v1.4.0)
+          MATCHBOX_CANONICAL_TAG="${TALOS_VERSION}-${COZY_VER}"
+          MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${COZY_VER}"
+          
           echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
             --username ${{ github.actor }} --password-stdin
 
-          # Talos installer image:
-          #   Already tagged by the upstream Makefile with the Talos version (e.g. v1.13.2).
-          #   No additional tag — callers should pin by Talos version directly.
           echo "ℹ️  Talos installer images already carry Talos version tag (${TALOS_VERSION}) — not adding repo release tag."
 
-          # Matchbox image:
-          #   Retag the canonical immutable tag onto the composite tag, then alias
-          #   :latest from the same canonical source so :latest always reflects the
-          #   most recently released bits.
-          for VARIANT in spin-tailscale spin-only; do
+          for VARIANT in spin-tailscale spin-hailort spin-only; do
             BASE="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
             SRC="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
             echo "Tagging ${SRC} → :${MATCHBOX_TAG}"
@@ -330,70 +326,71 @@ jobs:
                 && echo "✅ ${VARIANT}/matchbox latest now points to ${MATCHBOX_CANONICAL_TAG}" \
                 || echo "⚠️  Could not retag ${VARIANT}/matchbox to :latest"
             else
-              echo "⚠️  Canonical source tag ${SRC} not found — build-talos-images.yml must run first"
+              echo "⚠️  Canonical source tag ${SRC} not found"
             fi
           done
 
-          # Operator: canonical immutable tag is :v1.3.3 (the CozyStack ref the
-          # build was performed against). Alias :latest from that tag.
-          OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${RELEASE_TAG}"
+          # Operator and other packages use the COZY_VER (e.g. v1.4.0)
+          OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${COZY_VER}"
           if crane digest "${OPERATOR_SRC}" >/dev/null 2>&1; then
-            echo "✅ operator canonical tag ${RELEASE_TAG} already present"
+            echo "✅ operator canonical tag ${COZY_VER} already present"
             echo "Tagging ${OPERATOR_SRC} → :latest"
             crane tag "${OPERATOR_SRC}" latest \
-              && echo "✅ operator :latest now points to ${RELEASE_TAG}" \
+              && echo "✅ operator :latest now points to ${COZY_VER}" \
               || echo "⚠️  Could not retag operator to :latest"
           else
-            echo "⚠️  Canonical source ${OPERATOR_SRC} not found — build-talos-images.yml must run first"
+            echo "⚠️  Canonical source ${OPERATOR_SRC} not found"
           fi
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_TAG="${{ github.ref_name }}"
+          FULL_TAG="${{ github.ref_name }}"
+          if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)$ ]]; then
+            COZY_VER="${BASH_REMATCH[1]}"
+          else
+            COZY_VER="$FULL_TAG"
+          fi
+          
           TALOS_VER="${TALOS_VERSION}"
-          COZYSTACK_VER="${COZYSTACK_REF}"
 
           # Build release notes
-          MATCHBOX_TAG="talos-${TALOS_VER}-cozy-${RELEASE_TAG}"
+          MATCHBOX_TAG="talos-${TALOS_VER}-cozy-${COZY_VER}"
           NOTES=$(cat <<EOF
-          ## CozyStack ARM64 Talos Release ${RELEASE_TAG}
+          ## CozyStack ARM64 Talos Release ${FULL_TAG}
 
-          **CozyStack upstream:** \`${COZYSTACK_VER}\`
+          **CozyStack upstream:** \`${COZY_VER}\`
           **Talos version:** \`${TALOS_VER}\`
           **Architecture:** ARM64 (Raspberry Pi CM4 and compatible boards)
-          **Extensions baked in:** Spin runtime only (spin-only variant)
-
-          > The spin-tailscale variant (Spin + Tailscale) is available as an OCI image
-          > for use with talm/talosctl but is not included here as a flashable image.
+          **Extensions baked in:** Spin runtime (all variants), Tailscale (spin-tailscale), HailoRT (spin-hailort)
 
           ### Flashing to Raspberry Pi CM4
 
           \`\`\`bash
           # Using dd (replace /dev/sdX with your target device)
           xz -dc talos-metal-arm64-spin-only-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
-
-          # Or using Raspberry Pi Imager: select the .raw.xz file as a custom image
           \`\`\`
 
           ### OCI Images (for talm / talosctl)
 
-          Talos installer (pin by Talos version — same bits regardless of repo release):
+          Talos installer (pin by Talos version):
           \`\`\`
           ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}
           ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}
           \`\`\`
 
-          Matchbox (pin by composite tag — ties Talos version to CozyStack release):
+          Matchbox (pin by composite tag):
           \`\`\`
           ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}
+          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}
           ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}
           \`\`\`
 
           CozyStack operator (pin by CozyStack release):
           \`\`\`
-          ghcr.io/urmanac/cozystack-assets/cozystack-operator:${RELEASE_TAG}
+          ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}
           \`\`\`
           EOF
           )

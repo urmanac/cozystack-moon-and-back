@@ -42,6 +42,10 @@ on:
         description: 'Cozystack upstream ref or commit (default: v1.4.0)'
         required: false
         default: 'v1.4.0'
+      talos_version:
+        description: 'Talos version to build (default: v1.13.2)'
+        required: false
+        default: 'v1.13.2'
       extension_variant:
         description: 'Extension variant to build'
         required: false
@@ -49,6 +53,7 @@ on:
         type: choice
         options:
           - 'spin-tailscale'
+          - 'spin-hailort'
           - 'spin-only'
       build_targets:
         description: 'Build targets to execute'
@@ -66,6 +71,7 @@ on:
 # Source: https://github.com/cozystack/cozystack/blob/v1.3.3/packages/core/talos/Makefile
 env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
+  DEFAULT_TALOS_VERSION: v1.13.2
 
 jobs:
   build-cozystack-upstream:
@@ -75,7 +81,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        extension_variant: [spin-tailscale, spin-only]
+        extension_variant: [spin-tailscale, spin-hailort, spin-only]
     
     outputs:
       kernel-digest: ${{ steps.assets.outputs.kernel-digest }}
@@ -152,6 +158,18 @@ jobs:
               git status
               exit 1
             }
+          elif [ "$EXTENSION_VARIANT" = "spin-hailort" ]; then
+            echo "Applying ARM64+Spin+Hailort patches..."
+            git apply ../patches/08-arm64-spin-hailort.patch || {
+              echo "Failed to apply 08-arm64-spin-hailort.patch"
+              git status
+              exit 1
+            }
+            git apply ../patches/02-makefile-architecture-variables.patch || {
+              echo "Failed to apply 02-makefile-architecture-variables.patch"
+              git status
+              exit 1
+            }
           else
             echo "Applying ARM64+Spin+Tailscale patches..."
             git apply ../patches/01-arm64-spin-tailscale.patch || {
@@ -219,24 +237,33 @@ jobs:
           # CozyStack v1.3.3 ships Talos v1.12.7, not v1.13.x). Read it from the
           # committed profile and pass it explicitly to gen-profiles.sh.
           UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
-          if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
-            echo "::error::Could not derive Talos version from upstream installer.yaml"
+          TARGET_TALOS_VERSION="${{ github.event.inputs.talos_version || env.DEFAULT_TALOS_VERSION }}"
+          
+          # Use the override if provided, otherwise stick to upstream pin
+          if [ -n "$TARGET_TALOS_VERSION" ]; then
+            TALOS_VER="$TARGET_TALOS_VERSION"
+          else
+            TALOS_VER="$UPSTREAM_TALOS_VERSION"
+          fi
+          
+          if [ -z "$TALOS_VER" ]; then
+            echo "::error::Could not derive Talos version"
             exit 1
           fi
-          echo "Upstream-pinned Talos version: $UPSTREAM_TALOS_VERSION"
-          bash hack/gen-profiles.sh "$UPSTREAM_TALOS_VERSION"
+          echo "Target Talos version: $TALOS_VER (Upstream pin was: $UPSTREAM_TALOS_VERSION)"
+          bash hack/gen-profiles.sh "$TALOS_VER"
 
           # Verify gen-profiles.sh honored the pin in every regenerated profile.
           for prof in installer metal nocloud iso kernel initramfs; do
             f="images/talos/profiles/${prof}.yaml"
             [ -f "$f" ] || continue
             got=$(awk '/^version:/ {print $2; exit}' "$f")
-            if [ "$got" != "$UPSTREAM_TALOS_VERSION" ]; then
-              echo "::error::$f has version $got, expected $UPSTREAM_TALOS_VERSION"
+            if [ "$got" != "$TALOS_VER" ]; then
+              echo "::error::$f has version $got, expected $TALOS_VER"
               exit 1
             fi
           done
-          echo "✅ All regenerated profiles pinned to $UPSTREAM_TALOS_VERSION"
+          echo "✅ All regenerated profiles pinned to $TALOS_VER"
 
           # Show what profile was generated for debugging
           echo "Generated metal profile:"
