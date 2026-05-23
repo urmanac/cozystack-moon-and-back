@@ -1,4 +1,4 @@
-Built: 2026-05-23 19:29:12 UTC
+Built: 2026-05-23 19:36:12 UTC
 
 - Talos version: `v1.13.2`
 - CozyStack release: `v1.4.0`
@@ -10,7 +10,7 @@ Built: 2026-05-23 19:29:12 UTC
 | Asset | Digest |
 |-------|--------|
 | Kernel | `2ca630b49bf174acf82a4461f924c6310a35d9e8f05c56baeec99d08f3b21e11` |
-| Boot Loader | `b42283a35482e37287ae1c83f6fc69d46958b05bd9283a137effd3d0a57d4dff` |
+| Boot Loader | `a01efae6b41b0df27c8057310c6c8dcd9b349bdd3c2dfb1848da3dcb99cba8d2` |
 
 ## What This Build Contains
 
