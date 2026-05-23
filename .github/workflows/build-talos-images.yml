@@ -116,13 +116,12 @@ jobs:
           cd cozystack-upstream
           git checkout v1.4.0
 
-      - name: Apply ARM64 patches (shared build)
+      - name: Apply ARM64 patches
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
-          git apply ../patches/09-arm64-linstor-dashboard.patch
 
       - name: Build parallel package group
         run: |
@@ -132,9 +131,9 @@ jobs:
           export PUSH=1
           
           if [ "$GROUP" = "apps" ]; then
-            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes packages/system/dashboard"
+            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes"
           elif [ "$GROUP" = "system-base" ]; then
-            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui"
+            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook"
           elif [ "$GROUP" = "system-net" ]; then
             DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
@@ -196,7 +195,6 @@ jobs:
           git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
-          git apply ../patches/09-arm64-linstor-dashboard.patch
 
       - name: Build operator and manifests
         run: |
@@ -259,9 +257,6 @@ jobs:
             git apply ../patches/01-arm64-spin-tailscale.patch
           fi
           git apply ../patches/02-makefile-architecture-variables.patch
-          git apply ../patches/06-kubeovn-manifest-list-retag.patch
-          git apply ../patches/07-arm64-skip-amd64-only-builds.patch
-          git apply ../patches/09-arm64-linstor-dashboard.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
 
