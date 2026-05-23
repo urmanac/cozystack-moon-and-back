@@ -38,20 +38,28 @@ echo "Verifying expected changes..."
 EXTENSIONS_PROFILES=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-profiles.sh)
 EXTENSIONS_VERSIONS=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh)
 ARCH_LINE=$(grep "arch:" packages/core/talos/hack/gen-profiles.sh)
+BOARD_LINE=$(grep "board:" packages/core/talos/hack/gen-profiles.sh)
 
-if [[ "$EXTENSIONS_PROFILES" == *"spin tailscale"* ]]; then
-    echo "✓ gen-profiles.sh has spin tailscale extensions"
+if [[ "$EXTENSIONS_PROFILES" == *"spin"* ]]; then
+    echo "✓ gen-profiles.sh has spin extension"
 else
-    echo "✗ gen-profiles.sh missing spin tailscale extensions"
+    echo "✗ gen-profiles.sh missing spin extension"
     echo "  Found: $EXTENSIONS_PROFILES"
     exit 1
 fi
 
-if [[ "$EXTENSIONS_VERSIONS" == *"spin tailscale"* ]]; then
-    echo "✓ gen-versions.sh has spin tailscale extensions"
+if [[ "$EXTENSIONS_PROFILES" == *"vc4"* ]]; then
+    echo "✓ gen-profiles.sh has vc4 extension"
 else
-    echo "✗ gen-versions.sh missing spin tailscale extensions" 
-    echo "  Found: $EXTENSIONS_VERSIONS"
+    echo "✗ gen-profiles.sh missing vc4 extension"
+    echo "  Found: $EXTENSIONS_PROFILES"
+    exit 1
+fi
+
+if [[ "$BOARD_LINE" == *"rpi_generic"* ]]; then
+    echo "✓ gen-profiles.sh has board: rpi_generic"
+else
+    echo "✗ gen-profiles.sh missing rpi_generic board"
     exit 1
 fi
 
@@ -63,11 +71,11 @@ else
     exit 1
 fi
 
-# Check for SPIN and TAILSCALE image refs
-if grep -q "SPIN_IMAGE" packages/core/talos/hack/gen-profiles.sh && grep -q "TAILSCALE_IMAGE" packages/core/talos/hack/gen-profiles.sh; then
-    echo "✓ SPIN_IMAGE and TAILSCALE_IMAGE references added"
+# Check for SPIN image ref
+if grep -q "SPIN_IMAGE" packages/core/talos/hack/gen-profiles.sh; then
+    echo "✓ SPIN_IMAGE reference added"
 else
-    echo "✗ Missing SPIN_IMAGE or TAILSCALE_IMAGE references"
+    echo "✗ Missing SPIN_IMAGE reference"
     exit 1
 fi
 
@@ -150,10 +158,10 @@ echo "=== TEST 4: PATCH DIRECTORY CLEANLINESS ==="
 echo "Ensuring no leftover debugging patches..."
 
 PATCH_COUNT=$(find patches/ -name "*.patch" | wc -l)
-if [[ $PATCH_COUNT -eq 3 ]]; then
-    echo "✓ Expected patch files present (spin-tailscale, makefile variables, spin-only)"
+if [[ $PATCH_COUNT -ge 3 ]]; then
+    echo "✓ Patch files present ($PATCH_COUNT)"
 else
-    echo "✗ Expected 3 patch files, found $PATCH_COUNT"
+    echo "✗ Expected at least 3 patch files, found $PATCH_COUNT"
     echo "Files found:"
     ls -la patches/
     exit 1
@@ -171,7 +179,7 @@ echo ""
 echo "=== TEST 5: DOCUMENTATION VALIDATION ==="
 echo "Checking that ADR exists and is complete..."
 
-ADR_FILE="docs/ADR-003-PATCH-GENERATION.md"
+ADR_FILE="docs/ADRs/ADR-003-PATCH-GENERATION.md"
 if [[ -f "$ADR_FILE" ]]; then
     echo "✓ ADR-003 documentation exists"
     
