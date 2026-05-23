@@ -197,6 +197,16 @@ jobs:
           echo "- EXTENSIONS: $(grep EXTENSIONS= packages/core/talos/hack/gen-profiles.sh)"
           echo "- Architecture: $(grep 'arch:' packages/core/talos/hack/gen-profiles.sh)"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR (Docker)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update upstream dependencies and build with Makefile targets
         id: build
         env:
@@ -216,12 +226,10 @@ jobs:
           export PUSH
           echo "PUSH=$PUSH (event=${{ github.event_name }}, ref=${{ github.ref }})"
 
-          # Authenticate both skopeo and docker to GHCR (login is cheap and lets pushes
-          # work when PUSH=1 on main; reads of upstream images also benefit from auth).
+          # Authenticate skopeo and crane explicitly (docker login handled by action)
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username ${{ github.actor }} --password-stdin
 
-          # Override registry for our build with extension variant
           echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
           echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"
 
