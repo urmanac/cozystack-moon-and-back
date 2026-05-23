@@ -668,7 +668,7 @@ jobs:
       - name: Generate container metadata
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
           tags: |
