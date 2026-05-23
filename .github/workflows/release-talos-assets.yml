@@ -15,11 +15,15 @@ env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
 
 jobs:
-  # Stage 1: build all in-tree CozyStack images as linux/arm64 and push to our registry.
-  build-cozystack-images:
+  # Stage 1: Build general Cozystack packages in parallel to seed the registry cache.
+  build-cozystack-packages:
     runs-on: ubuntu-24.04-arm
     permissions:
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [apps, system-base, system-net, system-cloud]
 
     steps:
       - name: Checkout repository
@@ -31,8 +35,77 @@ jobs:
           sudo apt-get install -y skopeo jq
           ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
-          curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz \
-            | sudo tar xz -C /usr/local/bin crane
+          curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
+          if [ "$ARCH" = "x86_64" ]; then HELM_ARCH="amd64"; else HELM_ARCH="arm64"; fi
+          curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" | tar xz
+          sudo mv linux-${HELM_ARCH}/helm /usr/local/bin/helm
+          rm -rf linux-${HELM_ARCH}
+          if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone upstream CozyStack
+        run: |
+          COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
+            .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
+          git clone --branch "$COZYSTACK_REF" --depth 1 \
+            https://github.com/cozystack/cozystack.git cozystack-upstream
+
+      - name: Apply ARM64 patches
+        run: |
+          cd cozystack-upstream
+          git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/06-kubeovn-manifest-list-retag.patch
+          git apply ../patches/07-arm64-skip-amd64-only-builds.patch
+
+      - name: Build parallel package group
+        run: |
+          cd cozystack-upstream
+          GROUP="${{ matrix.group }}"
+          export PUSH=1
+          
+          if [ "$GROUP" = "apps" ]; then
+            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes"
+          elif [ "$GROUP" = "system-base" ]; then
+            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook"
+          elif [ "$GROUP" = "system-net" ]; then
+            DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
+          elif [ "$GROUP" = "system-cloud" ]; then
+            DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
+          fi
+
+          for d in $DIRS; do
+            echo "Building $d..."
+            make -C "$d" image REGISTRY="${{ env.REGISTRY }}"
+          done
+
+  # Stage 2: Finalize the operator.
+  build-cozystack-operator:
+    needs: [build-cozystack-packages]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
+          curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
           if [ "$ARCH" = "x86_64" ]; then HELM_ARCH="amd64"; else HELM_ARCH="arm64"; fi
           curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" | tar xz
           sudo mv linux-${HELM_ARCH}/helm /usr/local/bin/helm
@@ -44,14 +117,13 @@ jobs:
             | jq -r '[.[] | select(.tag_name | startswith("v2.7.")) | .tag_name] | first')
           if [ -z "$FLUX_VERSION" ]; then FLUX_VERSION="v2.7.0"; fi
           if [ "$ARCH" = "x86_64" ]; then FLUX_ARCH="amd64"; else FLUX_ARCH="arm64"; fi
-          curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" \
-            | sudo tar xz -C /usr/local/bin flux
+          curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" | sudo tar xz -C /usr/local/bin flux
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -59,29 +131,26 @@ jobs:
 
       - name: Clone upstream CozyStack
         run: |
-          # Use the default commit pinned in the main build workflow
           COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
             .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
-          echo "Building CozyStack images from $COZYSTACK_REF"
           git clone --branch "$COZYSTACK_REF" --depth 1 \
             https://github.com/cozystack/cozystack.git cozystack-upstream
 
-      - name: Apply ARM64 patches (shared build)
+      - name: Apply ARM64 patches
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 
-      - name: Build all in-tree images (make build)
+      - name: Build operator and manifests
         run: |
           cd cozystack-upstream
-          # Normal build (uses default TAG from Makefile, e.g. v1.4.0)
-          make build REGISTRY="${{ env.REGISTRY }}" PUSH=1
+          make -C packages/core/installer image REGISTRY="${{ env.REGISTRY }}" PUSH=1
 
-  # Stage 2: per-variant talos installer + matchbox images.
+  # Stage 3: per-variant talos installer + matchbox images.
   build-talos-variants:
-    needs: [build-cozystack-images]
+    needs: [build-cozystack-operator]
     runs-on: ubuntu-24.04-arm
     permissions:
       packages: write
@@ -111,7 +180,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -159,8 +228,9 @@ jobs:
           make image-talos REGISTRY="$VARIANT_REGISTRY"
           make image-matchbox REGISTRY="$VARIANT_REGISTRY" PUSH=1
 
+  # Stage 4: Generate flashable metal images.
   build-metal-image:
-    needs: [build-cozystack-images, build-talos-variants]
+    needs: [build-cozystack-operator, build-talos-variants]
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write

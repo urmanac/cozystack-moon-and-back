@@ -120,6 +120,8 @@ jobs:
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/06-kubeovn-manifest-list-retag.patch
+          git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 
       - name: Build parallel package group
         run: |
