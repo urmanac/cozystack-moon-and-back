@@ -198,10 +198,10 @@ jobs:
           echo "- Architecture: $(grep 'arch:' packages/core/talos/hack/gen-profiles.sh)"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GHCR (Docker)
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -644,14 +644,14 @@ jobs:
 
       - name: Set up Docker Buildx (for fallback asset container)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver: docker-container
           platforms: linux/arm64,linux/amd64
 
       - name: Log in to GitHub Container Registry (for fallback)
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -659,7 +659,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry (for upstream images)
         if: steps.build.outputs.build-outputs != 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -668,7 +668,7 @@ jobs:
       - name: Generate container metadata
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
           tags: |
@@ -686,7 +686,7 @@ jobs:
 
       - name: Build and push asset container
         if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./cozystack-upstream
           file: ./cozystack-upstream/Dockerfile.assets
@@ -756,7 +756,7 @@ jobs:
           crane version
 
       - name: Log in to GitHub Container Registry  
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
