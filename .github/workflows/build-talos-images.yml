@@ -233,6 +233,13 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username x-access-token --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username x-access-token --password-stdin
 
+          if [ "$BUILD_TARGET" = "image" ] && [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
+            echo "Main branch full build requested. Running full root 'make build' to seed registry cache..."
+            # Run the full build from the repository root
+            export TAG=latest
+            make build REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
+          fi
+
           echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
           echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"
 
@@ -334,12 +341,9 @@ jobs:
               ;;
             "image")
               echo "Running full build (operator + matchbox + cozystack + talos)..."
+              # Operator is built by 'make build' from the root. Just retag it if we pushed.
               if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
-                echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
-                cd ../installer
-                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
                 tag_operator_latest
-                cd ../talos
               fi
               make image
               # Capture all build outputs for complete asset array
