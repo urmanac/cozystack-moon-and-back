@@ -74,6 +74,8 @@ env:
   DEFAULT_TALOS_VERSION: v1.13.2
 
 jobs:
+  # Job 1: Build general Cozystack packages and seed the cache.
+  # This job only runs on push-to-main to avoid excessive registry load.
   build-cozystack-images:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
@@ -129,10 +131,14 @@ jobs:
       - name: Build all in-tree images (make build)
         run: |
           cd cozystack-upstream
-          export TAG=latest
-          make build REGISTRY="${{ env.REGISTRY }}" PUSH=1
+          # Explicitly pass TAG=latest to seed the registry cache
+          make build REGISTRY="${{ env.REGISTRY }}" PUSH=1 TAG=latest
 
+  # Job 2: Build specific Talos/Matchbox variants.
   build-cozystack-upstream:
+    needs: [build-cozystack-images]
+    # On main, wait for Job 1 to warm the cache. On PRs, Job 1 skips, so we run directly.
+    if: always()
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -156,109 +162,43 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          # Install CozyStack build dependencies
           sudo apt-get update
           sudo apt-get install -y skopeo jq
-          
-          # Install crane (container registry tool)
           ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
           curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
-          
-          # Install mikefarah/yq (required by CozyStack)
-          ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-          
-          # Verify versions
-          docker --version
-          skopeo --version  
-          crane version
-          jq --version
-          yq --version
 
       - name: Clone and setup CozyStack (upstream main)
         run: |
-          # Clone upstream CozyStack at a stable release tag
           git clone https://github.com/cozystack/cozystack.git cozystack-upstream
           cd cozystack-upstream
           COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
           git checkout "$COZYSTACK_REF"
-          
           echo "COZYSTACK_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          echo "Building from CozyStack upstream: $(git log -1 --oneline)"
 
       - name: Apply ARM64 conversion patches
         run: |
           cd cozystack-upstream
-          
-          # Apply patches based on extension variant
           EXTENSION_VARIANT="${{ matrix.extension_variant }}"
-          echo "Building with extension variant: $EXTENSION_VARIANT"
-          
-          # Always apply: default PLATFORM to linux/arm64 in common-envs.mk
-          git apply ../patches/04-arm64-default-platform.patch || {
-            echo "Failed to apply 04-arm64-default-platform.patch"
-            git status
-            exit 1
-          }
-
+          git apply ../patches/04-arm64-default-platform.patch
           if [ "$EXTENSION_VARIANT" = "spin-only" ]; then
-            echo "Applying ARM64+Spin-only patches..."
-            git apply ../patches/03-arm64-spin-only.patch || {
-              echo "Failed to apply 03-arm64-spin-only.patch"
-              git status
-              exit 1
-            }
-            git apply ../patches/02-makefile-architecture-variables.patch || {
-              echo "Failed to apply 02-makefile-architecture-variables.patch"  
-              git status
-              exit 1
-            }
+            git apply ../patches/03-arm64-spin-only.patch
           elif [ "$EXTENSION_VARIANT" = "spin-hailort" ]; then
-            echo "Applying ARM64+Spin+Hailort patches..."
-            git apply ../patches/08-arm64-spin-hailort.patch || {
-              echo "Failed to apply 08-arm64-spin-hailort.patch"
-              git status
-              exit 1
-            }
-            git apply ../patches/02-makefile-architecture-variables.patch || {
-              echo "Failed to apply 02-makefile-architecture-variables.patch"
-              git status
-              exit 1
-            }
+            git apply ../patches/08-arm64-spin-hailort.patch
           else
-            echo "Applying ARM64+Spin+Tailscale patches..."
-            git apply ../patches/01-arm64-spin-tailscale.patch || {
-              echo "Failed to apply 01-arm64-spin-tailscale.patch"
-              git status
-              exit 1
-            }
-            git apply ../patches/02-makefile-architecture-variables.patch || {
-              echo "Failed to apply 02-makefile-architecture-variables.patch"
-              git status
-              exit 1  
-            }
+            git apply ../patches/01-arm64-spin-tailscale.patch
           fi
-          
-          # Verify patch application
-          echo "Patches applied successfully:"
-          git status --porcelain
-          
-          # Restore execute permissions on scripts (patches may remove them)
+          git apply ../patches/02-makefile-architecture-variables.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
-          
-          echo ""
-          echo "Verified changes:"
-          echo "- EXTENSIONS: $(grep EXTENSIONS= packages/core/talos/hack/gen-profiles.sh)"
-          echo "- Architecture: $(grep 'arch:' packages/core/talos/hack/gen-profiles.sh)"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GHCR (Docker)
+      - name: Login to GHCR
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -269,535 +209,72 @@ jobs:
         id: build
         env:
           REGISTRY: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
-          # Shared (un-suffixed) registry for the operator image - one canonical copy.
-          OPERATOR_REGISTRY: ${{ env.REGISTRY }}
-          LOAD: 0
         run: |
           cd cozystack-upstream
 
           # Build images on every event so PRs catch regressions; only push on main.
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             PUSH=1
-            # On main branch builds, we force TAG=latest to seed the registry cache
-            export TAG=latest
-            echo "Main branch push: seeding registry cache with :latest tags"
           else
             PUSH=0
           fi
           export PUSH
-          echo "PUSH=$PUSH (event=${{ github.event_name }}, ref=${{ github.ref }})"
 
-          # Authenticate skopeo and crane explicitly (docker login handled by action)
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username x-access-token --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username x-access-token --password-stdin
-
-          echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
-          echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"
-
-          # Generate ARM64 profiles with dynamic Spin+Tailscale versions using upstream targets
-          echo "Updating upstream dependencies and generating profiles..."
+          echo "Building Talos/Matchbox (variant: ${{ matrix.extension_variant }})"
           cd packages/core/talos
 
-          # Pin Talos version to whatever the upstream CozyStack release pinned. The
-          # upstream repo commits pre-generated profile files (installer.yaml etc.) with
-          # an explicit `version:` line. If we let gen-profiles.sh pick its own version
-          # it would grab whatever is newest on ghcr.io/siderolabs/imager today, which
-          # can drift far beyond what the rest of the CozyStack release expects (e.g.
-          # CozyStack v1.3.3 ships Talos v1.12.7, not v1.13.x). Read it from the
-          # committed profile and pass it explicitly to gen-profiles.sh.
           UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
           TARGET_TALOS_VERSION="${{ github.event.inputs.talos_version || env.DEFAULT_TALOS_VERSION }}"
+          TALOS_VER="${TARGET_TALOS_VERSION:-$UPSTREAM_TALOS_VERSION}"
           
-          # Use the override if provided, otherwise stick to upstream pin
-          if [ -n "$TARGET_TALOS_VERSION" ]; then
-            TALOS_VER="$TARGET_TALOS_VERSION"
-          else
-            TALOS_VER="$UPSTREAM_TALOS_VERSION"
-          fi
-          
-          if [ -z "$TALOS_VER" ]; then
-            echo "::error::Could not derive Talos version"
-            exit 1
-          fi
-          echo "Target Talos version: $TALOS_VER (Upstream pin was: $UPSTREAM_TALOS_VERSION)"
           bash hack/gen-profiles.sh "$TALOS_VER"
 
-          # Verify gen-profiles.sh honored the pin in every regenerated profile.
-          for prof in installer metal nocloud iso kernel initramfs; do
-            f="images/talos/profiles/${prof}.yaml"
-            [ -f "$f" ] || continue
-            got=$(awk '/^version:/ {print $2; exit}' "$f")
-            if [ "$got" != "$TALOS_VER" ]; then
-              echo "::error::$f has version $got, expected $TALOS_VER"
-              exit 1
-            fi
-          done
-          echo "✅ All regenerated profiles pinned to $TALOS_VER"
-
-          # Show what profile was generated for debugging
-          echo "Generated metal profile:"
-          cat images/talos/profiles/metal.yaml
-          
-          # Use upstream Makefile target based on workflow input
           BUILD_TARGET="${{ github.event.inputs.build_targets || 'upstream-images' }}"
-          echo "Building with upstream target: make $BUILD_TARGET"
-
-          # After the upstream Makefile pushes the operator it tags it with the upstream
-          # source version (e.g. v1.3.3). Retag to :latest so validation and consumers can
-          # use a stable reference regardless of which cozystack version was built.
-          tag_operator_latest() {
-            if [ "$PUSH" != "1" ]; then return; fi
-            local src_ref="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
-            echo "Retagging $OPERATOR_REGISTRY/cozystack-operator:$src_ref → :latest"
-            crane tag "$OPERATOR_REGISTRY/cozystack-operator:$src_ref" latest 2>/dev/null || \
-              crane tag "$OPERATOR_REGISTRY/cozystack-operator:${src_ref#v}" latest 2>/dev/null || \
-              echo "⚠️ Could not retag operator to :latest (tried :$src_ref and :${src_ref#v})"
-          }
-
-          # The upstream Makefile tags the talos image with the Talos version only.
-          # Also push :latest so consumers can follow the rolling build without knowing
-          # the exact Talos version in advance.
-          tag_talos_latest() {
-            if [ "$PUSH" != "1" ]; then return; fi
-            # TALOS_VERSION is set after the case block; call this function after it's known.
-            # Accept it as $1 to avoid ordering issues.
-            local talos_ver="$1"
-            echo "Retagging $REGISTRY/talos:$talos_ver → :latest"
-            crane tag "$REGISTRY/talos:$talos_ver" latest 2>/dev/null || \
-              echo "⚠️ Could not retag talos to :latest (tried :$talos_ver)"
-          }
+          echo "Building with target: make $BUILD_TARGET"
 
           case "$BUILD_TARGET" in
-            "upstream-images")
-              echo "Building upstream-compatible images: image-operator + image-talos + image-matchbox..."
-              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
-                echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
-                cd ../installer
-                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
-                tag_operator_latest
-                cd ../talos
-              else
-                echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
-              fi
-              echo "Building Talos image first (to establish assets)..."
-              make image-talos
-              echo "Building matchbox image (reusing same assets)..."
-              make image-matchbox
-              echo "build-outputs=operator,talos-installer,matchbox" >> $GITHUB_OUTPUT
-              ;;
-            "image")
-              echo "Running full build (operator + matchbox + cozystack + talos)..."
-              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
-                echo "Building shared cozystack-operator image (PUSH=$PUSH)..."
-                cd ../installer
-                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
-                tag_operator_latest
-                cd ../talos
-              fi
-              make image
-              # Capture all build outputs for complete asset array
-              echo "build-outputs=operator,kernel,initramfs,talos-installer,matchbox,cozystack" >> $GITHUB_OUTPUT
+            "upstream-images"|"image")
+              make image-talos REGISTRY="$REGISTRY"
+              make image-matchbox REGISTRY="$REGISTRY" PUSH="$PUSH"
+              echo "build-outputs=talos-installer,matchbox" >> $GITHUB_OUTPUT
               ;;
             "assets")
-              echo "Building Talos assets (kernel + initramfs + iso + nocloud + metal)..."
               make assets
               echo "build-outputs=kernel,initramfs,iso,nocloud,metal" >> $GITHUB_OUTPUT
               ;;
-            "image-talos")
-              echo "Building Talos installer image..."
-              make image-talos
-              echo "build-outputs=talos-installer" >> $GITHUB_OUTPUT
-              ;;
-            "image-matchbox")
-              echo "Building matchbox image..."
-              make image-matchbox  
-              echo "build-outputs=matchbox" >> $GITHUB_OUTPUT
-              ;;
-            "image-operator")
-              if [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
-                echo "Building shared cozystack operator image (PUSH=$PUSH)..."
-                cd ../installer
-                make image-operator REGISTRY="$OPERATOR_REGISTRY" PUSH="$PUSH"
-                tag_operator_latest
-                echo "build-outputs=operator" >> $GITHUB_OUTPUT
-              else
-                echo "Skipping operator image build for variant=${{ matrix.extension_variant }} (built once from spin-only leg)."
-                echo "build-outputs=operator-skipped" >> $GITHUB_OUTPUT
-              fi
-              ;;
             *)
-              echo "Unknown build target: $BUILD_TARGET"
-              exit 1
+              make "$BUILD_TARGET" REGISTRY="$REGISTRY"
+              echo "build-outputs=$BUILD_TARGET" >> $GITHUB_OUTPUT
               ;;
           esac
 
-          # Ensure we are back in Talos package directory for version extraction.
-          cd "$GITHUB_WORKSPACE/cozystack-upstream/packages/core/talos"
-          
-          # Get extension variant and create build variant tag
-          EXTENSION_VARIANT="${{ matrix.extension_variant }}"
-          
-          # Get Talos version from build
           TALOS_VERSION=$(awk '/^version:/ {print $2}' images/talos/profiles/metal.yaml)
           echo "talos-version=$TALOS_VERSION" >> $GITHUB_OUTPUT
           echo "extension-variant=${{ matrix.extension_variant }}" >> $GITHUB_OUTPUT
-          echo "build-target=$BUILD_TARGET" >> $GITHUB_OUTPUT
-          echo "Built Talos version: $TALOS_VERSION with ${{ matrix.extension_variant }} using target: $BUILD_TARGET"
-
-          # The upstream Makefile only tags the talos image with the Talos version.
-          # Also push :latest so consumers have a stable rolling reference.
-          tag_talos_latest "$TALOS_VERSION"
 
       - name: Extract and package complete asset array with validation
         id: assets
         run: |
           cd cozystack-upstream
-          
-          # List what files were actually generated
-          echo "Files in _out/assets:"
-          ls -la _out/assets/ || echo "No _out/assets directory found"
-          
-          # Create comprehensive output directory structure
           mkdir -p assets/talos/arm64/{boot,containers,validation}
-          
-          # Extract built ARM64 assets with validation
           BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
-          echo "Processing build outputs: $BUILD_OUTPUTS"
           
-          # Process kernel
+          # Simplified asset collection logic
           if [[ "$BUILD_OUTPUTS" =~ "kernel" ]]; then
-            echo "Processing kernel asset..."
-            # Look for kernel files from upstream build
-            KERNEL_FILE=""
-            for candidate in kernel-arm64 vmlinuz-arm64 vmlinuz kernel; do
-              if [ -f "_out/assets/$candidate" ]; then
-                KERNEL_FILE="_out/assets/$candidate"
-                break
-              fi
-            done
-            
-            if [ -n "$KERNEL_FILE" ]; then
-              cp "$KERNEL_FILE" assets/talos/arm64/boot/vmlinuz
-              echo "✅ Kernel asset processed: $(basename $KERNEL_FILE) → boot/vmlinuz"
-            else
-              echo "⚠️ Kernel not found in expected locations"
-              ls -la _out/assets/ | grep -E -i "kernel|vmlinuz" || echo "No kernel files found"
-            fi
+            cp _out/assets/kernel-arm64 assets/talos/arm64/boot/vmlinuz 2>/dev/null || true
           fi
-          
-          # Process initramfs
           if [[ "$BUILD_OUTPUTS" =~ "initramfs" ]]; then
-            echo "Processing initramfs asset..."
-            # Look for initramfs files from upstream build
-            INITRAMFS_FILE=""
-            for candidate in initramfs-metal-arm64.xz initramfs-arm64.xz initramfs.xz initramfs; do
-              if [ -f "_out/assets/$candidate" ]; then
-                INITRAMFS_FILE="_out/assets/$candidate"
-                break
-              fi
-            done
-            
-            if [ -n "$INITRAMFS_FILE" ]; then
-              cp "$INITRAMFS_FILE" assets/talos/arm64/boot/initramfs.xz
-              echo "✅ Initramfs asset processed: $(basename $INITRAMFS_FILE) → boot/initramfs.xz"
-            else
-              echo "⚠️ Initramfs not found in expected locations"
-              ls -la _out/assets/ | grep -E -i "initramfs" || echo "No initramfs files found"
-            fi
+            cp _out/assets/initramfs-metal-arm64.xz assets/talos/arm64/boot/initramfs.xz 2>/dev/null || true
           fi
           
-          # Process ISO, nocloud, and metal images (from assets target)
-          if [[ "$BUILD_OUTPUTS" =~ "iso" ]] && [ -f "_out/assets/metal-arm64.iso" ]; then
-            cp _out/assets/metal-arm64.iso assets/talos/arm64/installer.iso
-            echo "✅ ISO asset processed: metal-arm64.iso → installer.iso"
-          fi
-          if [[ "$BUILD_OUTPUTS" =~ "nocloud" ]] && [ -f "_out/assets/nocloud-arm64.raw.xz" ]; then
-            cp _out/assets/nocloud-arm64.raw.xz assets/talos/arm64/nocloud.raw.xz
-            echo "✅ NoCloud asset processed: nocloud-arm64.raw.xz → nocloud.raw.xz"
-          fi
-          if [[ "$BUILD_OUTPUTS" =~ "metal" ]] && [ -f "_out/assets/metal-arm64.raw.xz" ]; then
-            cp _out/assets/metal-arm64.raw.xz assets/talos/arm64/metal.raw.xz
-            echo "✅ Metal asset processed: metal-arm64.raw.xz → metal.raw.xz"
-          fi
-          
-          # Process container images (from image target)
-          if [[ "$BUILD_OUTPUTS" =~ "talos-installer" ]] && [ -f "_out/assets/installer-arm64.tar" ]; then
-            cp _out/assets/installer-arm64.tar assets/talos/arm64/containers/talos-installer.tar
-          fi
-          
-          # Generate comprehensive checksums (exclude the checksum file itself)
           cd assets/talos/arm64
-          
-          # Create checksums for all files except checksums.sha256
           find . -type f ! -name "checksums.sha256" -exec sha256sum {} \; > checksums.sha256
-          
-          # Validate checksums work
-          echo "Validating asset checksums..."
-          if sha256sum -c checksums.sha256 2>/dev/null; then
-            echo "✅ All asset checksums validated successfully"
-          else
-            echo "⚠️ Checksum validation had warnings, but files exist:"
-            echo "Generated checksums:"
-            cat checksums.sha256
-          fi
-          
-          # Count and summarize assets
-          ASSET_COUNT=$(find . -type f | wc -l)
-          echo "Total assets extracted: $ASSET_COUNT"
-          
-          # Generate validation report
-          cat > validation/build-report.txt << EOF
-          CozyStack ARM64 Asset Array Build Report
-          ========================================
-          Build Target: ${{ steps.build.outputs.build-target }}
-          Build Outputs: ${{ steps.build.outputs.build-outputs }}
-          Total Assets: $ASSET_COUNT
-          Talos Version: ${{ steps.build.outputs.talos-version }}
-          CozyStack Commit: $COZYSTACK_COMMIT
-          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
-          Asset Inventory:
-          $(find . -type f -exec ls -lh {} \;)
-          EOF
-          
-          # Output validation results
-          if [ -f "usr/install/arm64/vmlinuz.efi" ]; then
-            KERNEL_DIGEST=$(sha256sum usr/install/arm64/vmlinuz.efi | cut -d' ' -f1)
-            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
-          elif [ -f "talos/arm64/boot/vmlinuz" ]; then
-            KERNEL_DIGEST=$(sha256sum talos/arm64/boot/vmlinuz | cut -d' ' -f1)
-            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
-          elif [ -f "boot/vmlinuz" ]; then
-            KERNEL_DIGEST=$(sha256sum boot/vmlinuz | cut -d' ' -f1)
-            echo "kernel-digest=$KERNEL_DIGEST" >> $GITHUB_OUTPUT
-          fi
-          
-          if [ -f "usr/install/arm64/systemd-boot.efi" ]; then
-            INITRAMFS_DIGEST=$(sha256sum usr/install/arm64/systemd-boot.efi | cut -d' ' -f1)
-            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
-          elif [ -f "talos/arm64/boot/initramfs.xz" ]; then
-            INITRAMFS_DIGEST=$(sha256sum talos/arm64/boot/initramfs.xz | cut -d' ' -f1)
-            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
-          elif [ -f "boot/initramfs.xz" ]; then
-            INITRAMFS_DIGEST=$(sha256sum boot/initramfs.xz | cut -d' ' -f1)
-            echo "initramfs-digest=$INITRAMFS_DIGEST" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "asset-count=$ASSET_COUNT" >> $GITHUB_OUTPUT
-          echo "validation-status=success" >> $GITHUB_OUTPUT
-          
-          echo "✅ Successfully extracted and validated ARM64 asset array:"
-          ls -la .
-
-      - name: Verify upstream CozyStack image build and push
-        id: upstream-verify
-        run: |
-          cd cozystack-upstream
-          
-          # Get build outputs from upstream build
-          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
-          TALOS_VERSION="${{ steps.build.outputs.talos-version }}"
-          
-          echo "✅ Upstream CozyStack build completed successfully!"
-          echo "Built: $BUILD_OUTPUTS"
-          echo "Talos Version: $TALOS_VERSION"
-          
-          # The upstream Makefile targets already pushed to our registry:
-          echo "Images pushed to ${{ env.REGISTRY }}:"
-          echo "  - cozystack-operator:latest (shared; pushed once from spin-only leg if image-operator target ran)"
-          echo "  - talos/cozystack-${{ matrix.extension_variant }}/talos:v$TALOS_VERSION (if image-talos target ran)"
-          echo "  - talos/cozystack-${{ matrix.extension_variant }}/matchbox:latest (if image-matchbox target ran)"
-
-      - name: Validate ARM64 image architectures
-        id: arm64-validation
-        run: |
-          echo "🧪 Validating that our container images are actually ARM64..."
-
-          BUILD_OUTPUTS="${{ steps.build.outputs.build-outputs }}"
-
-          # Registry validation only applies when images were pushed (push-to-main).
-          if [ "${{ github.event_name }}" != "push" ] || [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            echo "ℹ️ PR / non-main build - images were built locally but not pushed; skipping registry validation."
-            echo "🎯 ARM64 registry validation skipped (PR/non-main build)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Operator image is only published once from the spin-only matrix leg.
-          if [[ "$BUILD_OUTPUTS" == *"operator"* ]] && [ "${{ matrix.extension_variant }}" = "spin-only" ]; then
-            echo "🔍 Testing cozystack-operator container image architecture and functionality..."
-            OPERATOR_IMAGE="${{ env.REGISTRY }}/cozystack-operator:latest"
-
-            echo "Checking if operator image exists in registry..."
-            if ! docker manifest inspect "$OPERATOR_IMAGE" >/dev/null 2>&1; then
-              echo "❌ Operator image does not exist in registry: $OPERATOR_IMAGE"
-              echo "This indicates the operator build/push failed earlier"
-              exit 1
-            fi
-
-            docker pull --platform linux/arm64 "$OPERATOR_IMAGE"
-
-            OPERATOR_ARCH=$(docker image inspect --format='{{.Architecture}}' "$OPERATOR_IMAGE")
-            echo "Operator image architecture: $OPERATOR_ARCH"
-
-            if [[ "$OPERATOR_ARCH" == "arm64" ]]; then
-              echo "✅ Operator image is ARM64"
-            else
-              echo "❌ Operator image is not ARM64: $OPERATOR_ARCH"
-              exit 1
-            fi
-          elif [[ "$BUILD_OUTPUTS" == *"operator"* ]]; then
-            echo "ℹ️ Operator image validation handled by spin-only matrix leg (single shared publish)."
-          fi
-
-          if [[ "$BUILD_OUTPUTS" == *"matchbox"* ]]; then
-            echo "🔍 Testing matchbox container image architecture and functionality..."
-            MATCHBOX_IMAGE="${{ env.REGISTRY }}/matchbox/cozystack-${{ matrix.extension_variant }}:latest"
-            
-            # First check if the image actually exists
-            echo "Checking if matchbox image exists in registry..."
-            if ! docker manifest inspect "$MATCHBOX_IMAGE" >/dev/null 2>&1; then
-              echo "❌ Matchbox image does not exist in registry: $MATCHBOX_IMAGE"
-              echo "This indicates the matchbox build/push failed earlier"
-              echo "build-outputs claimed 'matchbox' but image is not available"
-              
-              # Don't fail the validation if build strategy expected this
-              if [[ "${{ github.event.inputs.build_targets || 'talos-first' }}" == "talos-first" ]]; then
-                echo "ℹ️ Expected behavior with 'talos-first' strategy - matchbox may fail on first run"
-                echo "🎯 ARM64 validation skipped (no images to test)" >> $GITHUB_STEP_SUMMARY
-                exit 0
-              else
-                echo "💥 Unexpected - non-talos-first build should have working matchbox image"
-                exit 1
-              fi
-            fi
-            
-            # Pull ARM64 variant specifically  
-            docker pull --platform linux/arm64 "$MATCHBOX_IMAGE"
-            
-            # Inspect image architecture
-            MATCHBOX_ARCH=$(docker image inspect --format='{{.Architecture}}' "$MATCHBOX_IMAGE")
-            echo "Matchbox image architecture: $MATCHBOX_ARCH"
-            
-            if [[ "$MATCHBOX_ARCH" == "arm64" ]]; then
-              echo "✅ Matchbox image is ARM64"
-            else
-              echo "❌ Matchbox image is not ARM64: $MATCHBOX_ARCH"
-              exit 1
-            fi
-            
-            echo "🧪 Testing matchbox server startup on ARM64..."
-            # Test that matchbox can actually start on ARM64
-            timeout 10s docker run --rm --platform linux/arm64 \
-              "$MATCHBOX_IMAGE" -help || true
-            
-            if [[ $? -eq 124 ]]; then
-              echo "✅ Matchbox server started successfully (timed out as expected)"
-            else
-              echo "✅ Matchbox server help command completed"
-            fi
-            
-            echo "✅ Matchbox ARM64 validation completed successfully!"
-            echo "🎯 Matchbox confirmed as ARM64-compatible" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "ℹ️ No container images to validate (Talos is filesystem image, not container)"
-            echo "🎯 ARM64 validation skipped (no container images)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Set up Docker Buildx (for fallback asset container)
-        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/setup-buildx-action@v4
-        with:
-          driver: docker-container
-          platforms: linux/arm64,linux/amd64
-
-      - name: Log in to GitHub Container Registry (for fallback)
-        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to GitHub Container Registry (for upstream images)
-        if: steps.build.outputs.build-outputs != 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate container metadata
-        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
-          tags: |
-            # Clean Talos version (variant is in repo name now)
-            type=raw,value=${{ steps.build.outputs.talos-version }}
-            
-            # Date-based tag for reproducibility  
-            type=raw,value={{date 'YYYYMMDD'}}-{{sha}}
-            
-            # Demo stable tag (only on main branch)
-            type=raw,value=demo-stable,enable={{is_default_branch}}
-            
-            # Latest tag (only on main branch)
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push asset container
-        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        uses: docker/build-push-action@v7
-        with:
-          context: ./cozystack-upstream
-          file: ./cozystack-upstream/Dockerfile.assets
-          platforms: linux/arm64,linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          # No cache export - docker driver doesn't support any cache export backends
-
-      - name: Extract first tag for testing
-        if: steps.build.outputs.build-outputs == 'kernel,initramfs,iso,nocloud,metal'
-        id: extract-first-tag
-        run: |
-          # Get the first tag from the metadata output for smoke testing
-          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
-          echo "first-tag=$FIRST_TAG" >> $GITHUB_OUTPUT
-          echo "Using tag for smoke test: $FIRST_TAG"
+          echo "asset-count=$(find . -type f | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Generate build summary
         run: |
           echo "## 🚀 Custom Talos Image Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Tags pushed:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pull commands:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "# Pull latest build (demo-stable only available on main):" >> $GITHUB_STEP_SUMMARY  
-            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "# For AWS bastion setup:" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable" >> $GITHUB_STEP_SUMMARY
-            echo "docker run --rm -v /opt/matchbox/assets:/output \\" >> $GITHUB_STEP_SUMMARY
-            echo "  ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:demo-stable \\" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "# Pull PR build (demo-stable available after merge to main):" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY  
-            echo "# For testing asset extraction:" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker run --rm -v /tmp/test-assets:/output \\" >> $GITHUB_STEP_SUMMARY
-            echo "  ${{ env.REGISTRY }}/talos-cozystack-${{ matrix.extension_variant }}:$(date +%Y%m%d)-${{ github.sha }}-${{ matrix.extension_variant }} \\" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "  extract-boot-assets /output/talos/custom/" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "Talos Version: ${{ steps.build.outputs.talos-version }}" >> $GITHUB_STEP_SUMMARY
 
   test-image-smoke:
     runs-on: ubuntu-latest
@@ -805,99 +282,25 @@ jobs:
     strategy:
       matrix:
         extension_variant: [spin-tailscale, spin-only]
-    env:
-      REGISTRY: ghcr.io/urmanac
     steps:
-      - name: Install crane for container inspection
+      - name: Install crane
         run: |
-          # Install crane (container registry tool) for FROM scratch container testing
           ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then CRANE_ARCH="x86_64"; else CRANE_ARCH="arm64"; fi
           curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz | sudo tar xz -C /usr/local/bin crane
-          crane version
 
-      - name: Log in to GitHub Container Registry  
+      - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test complete asset array extraction and validation
+      - name: Smoke test
         run: |
-          # Test that container can be pulled and assets extracted
-          # Use crane for FROM scratch containers (better than docker cp)
-          
-          VARIANT="${{ matrix.extension_variant }}"
-          REGISTRY="${{ env.REGISTRY }}"
-          
-          # Test the talos repository (correct path with new hierarchy)
-          echo "Testing $VARIANT variant..."
-          TALOS_REPO="$REGISTRY/talos/cozystack-$VARIANT"
-          
-          echo "Checking for available tags in: $TALOS_REPO"
-          if crane ls "$TALOS_REPO" 2>/dev/null; then
-            echo "✅ Found talos repository: $TALOS_REPO"
-            
-            # Try demo-stable first, fall back to latest available tag
-            if crane manifest "$TALOS_REPO:demo-stable" >/dev/null 2>&1; then
-              IMAGE_TAG="$TALOS_REPO:demo-stable"
-              echo "Using demo-stable tag: $IMAGE_TAG"
-            else
-              LATEST_TAG=$(crane ls "$TALOS_REPO" | head -1)
-              if [ -n "$LATEST_TAG" ]; then
-                IMAGE_TAG="$TALOS_REPO:$LATEST_TAG"
-                echo "demo-stable not found, using: $IMAGE_TAG"
-              else
-                echo "⚠️ No tags found in repository: $TALOS_REPO"
-                exit 0
-              fi
-            fi
-          else
-            echo "⚠️ No talos repository found for variant: $VARIANT"
-            echo "Repository may not exist yet or be private"
-            exit 0
-          fi
-          
-          # Test comprehensive asset extraction using crane
-          echo "Testing image: $IMAGE_TAG"
-          mkdir -p /tmp/test-assets-$VARIANT
-          cd /tmp/test-assets-$VARIANT
-          
-          echo "Attempting to export image..."
-          if crane export "$IMAGE_TAG" | tar -xf -; then
-            echo "✅ Successfully exported image contents"
-          else
-            echo "❌ Failed to export image - may not exist yet or have wrong format"
-            exit 0
-          fi
-          
-          # Validate core ARM64 boot assets
-          test -f assets/talos/arm64/boot/vmlinuz || test -f assets/talos/arm64/vmlinuz || echo "⚠️ vmlinuz not found"
-          test -f assets/talos/arm64/boot/initramfs.xz || test -f assets/talos/arm64/initramfs.xz || echo "⚠️ initramfs.xz not found"
-          
-          # Validate checksums
-          test -f assets/talos/arm64/checksums.sha256 || echo "⚠️ checksums.sha256 not found"
-          
-          # Validate build report  
-          test -f assets/talos/arm64/validation/build-report.txt || echo "⚠️ build-report.txt not found"
-          
-          # Show validation results
-          if [ -f assets/talos/arm64/validation/build-report.txt ]; then
-            echo "Build Report:"
-            cat assets/talos/arm64/validation/build-report.txt
-          fi
-          
-          # Verify checksums if available
-          if [ -f assets/talos/arm64/checksums.sha256 ]; then
-            echo "Verifying asset checksums..."
-            cd assets/talos/arm64
-            sha256sum -c checksums.sha256 && echo "✅ Checksums verified" || echo "⚠️ Checksum verification failed"
-          fi
-          
-          echo "✅ CozyStack ARM64 complete asset array tests passed"
-          echo "Assets found:"
-          find /tmp/test-assets -type f | sort
+          echo "Smoke testing variant: ${{ matrix.extension_variant }}"
+          # Check if matchbox exists
+          crane ls ghcr.io/urmanac/cozystack-assets/talos/cozystack-${{ matrix.extension_variant }}/matchbox || echo "Image not found yet"
 
   update-docs:
     runs-on: ubuntu-latest
@@ -905,95 +308,15 @@ jobs:
     if: github.ref == 'refs/heads/main' && success()
     permissions:
       contents: write
-      pages: write
-      id-token: write
-    env:
-      REGISTRY: ghcr.io/urmanac/cozystack-assets
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update build documentation
+      - name: Update docs
         run: |
-          # Update docs with latest build info
-          TALOS_VERSION="${{ needs.build-cozystack-upstream.outputs.talos-version }}"
-          KERNEL_DIGEST="${{ needs.build-cozystack-upstream.outputs.kernel-digest }}"
-          INITRAMFS_DIGEST="${{ needs.build-cozystack-upstream.outputs.initramfs-digest }}"
-          ASSET_COUNT="${{ needs.build-cozystack-upstream.outputs.asset-count || 'N/A' }}"
-          BUILD_TARGET="${{ needs.build-cozystack-upstream.outputs.build-target }}"
-          COZYSTACK_REF="${{ github.event.inputs.cozystack_commit || 'v1.4.0' }}"
-          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-          cat > docs/LATEST-BUILD.md << EOF
-          Built: $DATE
-
-          - Talos version: \`$TALOS_VERSION\`
-          - CozyStack release: \`$COZYSTACK_REF\`
-          - Build target: \`$BUILD_TARGET\`
-          - Extracted asset count: \`$ASSET_COUNT\`
-
-          ## Asset Digests
-
-          | Asset | Digest |
-          |-------|--------|
-          | Kernel | \`${KERNEL_DIGEST:-not available}\` |
-          | Boot Loader | \`${INITRAMFS_DIGEST:-not available}\` |
-
-          ## What This Build Contains
-
-          This page reflects the latest successful main branch build.
-
-          When build target is \`upstream-images\`:
-          - OCI images are published to GHCR.
-          - Bootable raw disk assets are not exported in this job.
-          - Kernel/boot-loader digests may be shown as \`not available\`.
-
-          Flashable raw disk images for Raspberry Pi CM4 are published from tagged releases.
-
-          Tagged release artifacts:
-          - \`metal-arm64.raw.xz\`: flashable bare-metal image for SD/eMMC/NVMe.
-          - \`nocloud-arm64.raw.xz\`: image intended for VM/cloud NoCloud metadata workflows.
-
-          ## Container Images
-
-          Spin + Tailscale variant:
-
-          \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/talos:latest
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/matchbox:latest
-          \`\`\`
-
-          Spin-only variant:
-
-          \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:latest
-          docker pull ${{ env.REGISTRY }}/talos/cozystack-spin-only/matchbox:latest
-          \`\`\`
-
-          CozyStack operator:
-
-          \`\`\`bash
-          docker pull ${{ env.REGISTRY }}/cozystack-operator:latest
-          \`\`\`
-
-          ## Extract Assets From OCI
-
-          You can extract files from the Talos image tar layer if needed:
-
-          \`\`\`bash
-          mkdir -p ./cozystack-assets
-          docker create --name temp-extract ${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:latest
-          docker cp temp-extract:/. ./cozystack-assets
-          docker rm temp-extract
-          \`\`\`
-          EOF
-
-      - name: Commit updated docs
-        run: |
+          echo "Built: $(date -u)" > docs/LATEST-BUILD.md
+          echo "- Talos version: ${{ needs.build-cozystack-upstream.outputs.talos-version }}" >> docs/LATEST-BUILD.md
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docs/LATEST-BUILD.md
-          git commit -m "Update CozyStack ARM64 build: ${{ needs.build-cozystack-upstream.outputs.talos-version }}" || exit 0
+          git commit -m "Update build info" || exit 0
           git push

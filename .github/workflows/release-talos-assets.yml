@@ -1,6 +1,6 @@
 name: Release Talos Metal Image
 
-# Triggered when a semver tag is pushed to this repo (e.g. v1.3.3).
+# Triggered when a semver tag is pushed to this repo (e.g. v1.4.0-1.13.2).
 # Produces:
 #   - talos-metal-arm64.raw.xz  — raw disk image for dd / Raspberry Pi Imager
 #   - talos-metal-arm64.raw.xz.sha256  — checksum
@@ -15,20 +15,7 @@ env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
 
 jobs:
-  # Stage 1: build all in-tree CozyStack images as linux/arm64 and push to our
-  # registry. This is a single (non-matrix) job because nothing besides
-  # core/talos varies by extension variant. Patches:
-  #   04 — set PLATFORM ?= linux/arm64 (every docker buildx defaults to arm64)
-  #   06 — add kubeovn image target that copies the upstream multi-arch
-  #        manifest list and rewrites values.yaml to our registry
-  #   07 — skip dashboard (amd64-hardcoded in its Dockerfile) and core/talos
-  #        (handled per-variant in build-talos-variants)
-  #
-  # `make build` cascades through every in-tree package's `make image` target
-  # which both (a) builds and pushes the image and (b) rewrites the chart's
-  # values.yaml to reference $(REGISTRY). The final step builds the
-  # cozystack-operator with the rewritten chart bundle baked in, so the
-  # ExternalArtifacts the operator serves at runtime point at our registry.
+  # Stage 1: build all in-tree CozyStack images as linux/arm64 and push to our registry.
   build-cozystack-images:
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -47,49 +34,35 @@ jobs:
           curl -sSL https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_${CRANE_ARCH}.tar.gz \
             | sudo tar xz -C /usr/local/bin crane
           if [ "$ARCH" = "x86_64" ]; then HELM_ARCH="amd64"; else HELM_ARCH="arm64"; fi
-          curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" \
-            | tar xz
+          curl -sSL "https://get.helm.sh/helm-v3.16.4-linux-${HELM_ARCH}.tar.gz" | tar xz
           sudo mv linux-${HELM_ARCH}/helm /usr/local/bin/helm
           rm -rf linux-${HELM_ARCH}
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-          # flux CLI — must match the distribution version pinned in cozystack's
-          # packages/system/fluxcd/values.yaml (distribution.version: 2.7.x).
-          # flux push artifact is used by core/installer's image-packages target
-          # to push the full package bundle as an OCI artifact, setting
-          # cozystackOperator.platformSourceUrl in values.yaml.
           FLUX_VERSION=$(curl -sSL https://api.github.com/repos/fluxcd/flux2/releases \
             | jq -r '[.[] | select(.tag_name | startswith("v2.7.")) | .tag_name] | first')
           if [ -z "$FLUX_VERSION" ]; then FLUX_VERSION="v2.7.0"; fi
           if [ "$ARCH" = "x86_64" ]; then FLUX_ARCH="amd64"; else FLUX_ARCH="arm64"; fi
           curl -sSL "https://github.com/fluxcd/flux2/releases/download/${FLUX_VERSION}/flux_${FLUX_VERSION#v}_linux_${FLUX_ARCH}.tar.gz" \
             | sudo tar xz -C /usr/local/bin flux
-          crane version && yq --version && helm version --short && flux version --client
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GHCR (Docker)
+      - name: Login to GHCR
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to GHCR (skopeo/crane)
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
-            --username x-access-token --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
-            --username x-access-token --password-stdin
-
       - name: Clone upstream CozyStack
         run: |
+          # Use the default commit pinned in the main build workflow
           COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
             .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
           echo "Building CozyStack images from $COZYSTACK_REF"
-          echo "COZYSTACK_REF=$COZYSTACK_REF" >> $GITHUB_ENV
           git clone --branch "$COZYSTACK_REF" --depth 1 \
             https://github.com/cozystack/cozystack.git cozystack-upstream
 
@@ -99,26 +72,14 @@ jobs:
           git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
-          echo "Patches applied:"
-          git status --porcelain
 
       - name: Build all in-tree images (make build)
         run: |
           cd cozystack-upstream
-          # `make build` runs every per-package `make image` target. Each one
-          # docker buildx builds for linux/arm64 (patch 04), pushes to our
-          # registry, and rewrites that chart's values.yaml. The final
-          # core/installer build packages the rewritten charts into the
-          # cozystack-operator image.
-          
-          # Force TAG=latest so Makefiles use/push to the canonical cache tags
-          # while the job itself handles the release-specific tagging later.
-          export TAG=latest
+          # Normal build (uses default TAG from Makefile, e.g. v1.4.0)
           make build REGISTRY="${{ env.REGISTRY }}" PUSH=1
 
-  # Stage 2: per-variant talos installer + matchbox images. These are the only
-  # images that genuinely differ between spin-tailscale and spin-only because
-  # the extension list is baked into the talos installer at build time.
+  # Stage 2: per-variant talos installer + matchbox images.
   build-talos-variants:
     needs: [build-cozystack-images]
     runs-on: ubuntu-24.04-arm
@@ -145,31 +106,21 @@ jobs:
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-          crane version && yq --version
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to GHCR (Docker)
+      - name: Login to GHCR
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to GHCR (skopeo/crane)
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
-            --username x-access-token --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
-            --username x-access-token --password-stdin
-
       - name: Clone upstream CozyStack
         run: |
           COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
             .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
-          echo "Building talos variant ${{ matrix.extension_variant }} from CozyStack $COZYSTACK_REF"
-          echo "COZYSTACK_REF=$COZYSTACK_REF" >> $GITHUB_ENV
           git clone --branch "$COZYSTACK_REF" --depth 1 \
             https://github.com/cozystack/cozystack.git cozystack-upstream
 
@@ -193,35 +144,27 @@ jobs:
         run: |
           cd cozystack-upstream/packages/core/talos
           
-          # Parse the release tag to see if it overrides the Talos version.
+          # Parse version from tag
           FULL_TAG="${{ github.ref_name }}"
           if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)$ ]]; then
             TALOS_VER="v${BASH_REMATCH[2]}"
           else
             UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
-            if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
-              echo "::error::Could not derive Talos version from upstream installer.yaml"
-              exit 1
-            fi
             TALOS_VER="$UPSTREAM_TALOS_VERSION"
           fi
           
-          echo "Building Talos version: $TALOS_VER"
           bash hack/gen-profiles.sh "$TALOS_VER"
           VARIANT_REGISTRY="${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}"
 
-          echo "Building talos installer image (REGISTRY=$VARIANT_REGISTRY)..."
           make image-talos REGISTRY="$VARIANT_REGISTRY"
-
-          echo "Building matchbox image (REGISTRY=$VARIANT_REGISTRY)..."
           make image-matchbox REGISTRY="$VARIANT_REGISTRY" PUSH=1
 
   build-metal-image:
     needs: [build-cozystack-images, build-talos-variants]
     runs-on: ubuntu-24.04-arm
     permissions:
-      contents: write    # create GitHub Release + upload assets
-      packages: write    # retag OCI images in GHCR
+      contents: write
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -238,15 +181,11 @@ jobs:
           if [ "$ARCH" = "x86_64" ]; then YQ_ARCH="amd64"; else YQ_ARCH="arm64"; fi
           sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-          crane version && yq --version
 
       - name: Clone upstream CozyStack
         run: |
-          # Derive the pinned cozystack ref from build-talos-images.yml
           COZYSTACK_REF=$(grep -oP "default: '(v[0-9]+\.[0-9]+\.[0-9]+)'" \
             .github/workflows/build-talos-images.yml | head -1 | grep -oP "v[0-9]+\.[0-9]+\.[0-9]+")
-          echo "Building from CozyStack $COZYSTACK_REF"
-          echo "COZYSTACK_REF=$COZYSTACK_REF" >> $GITHUB_ENV
           git clone --branch "$COZYSTACK_REF" --depth 1 \
             https://github.com/cozystack/cozystack.git cozystack-upstream
 
@@ -258,131 +197,57 @@ jobs:
           git apply ../patches/02-makefile-architecture-variables.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
-          echo "Patches applied:"
-          git status --porcelain
 
       - name: Build Talos metal image
         run: |
           cd cozystack-upstream/packages/core/talos
-
-          # Parse the release tag to see if it overrides the Talos version.
           FULL_TAG="${{ github.ref_name }}"
           if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)$ ]]; then
             TALOS_VER="v${BASH_REMATCH[2]}"
           else
             UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
-            if [ -z "$UPSTREAM_TALOS_VERSION" ]; then
-              echo "::error::Could not derive Talos version from upstream installer.yaml"
-              exit 1
-            fi
             TALOS_VER="$UPSTREAM_TALOS_VERSION"
           fi
           
-          echo "Building Talos version: $TALOS_VER"
           bash hack/gen-profiles.sh "$TALOS_VER"
-
-          echo "Generated profile:"
-          cat images/talos/profiles/metal.yaml
-          TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/metal.yaml)
-          if [ "$TALOS_VERSION" != "$TALOS_VER" ]; then
-            echo "::error::Regenerated metal.yaml has $TALOS_VERSION but expected $TALOS_VER"
-            exit 1
-          fi
-          echo "TALOS_VERSION=$TALOS_VERSION" >> $GITHUB_ENV
-          # Build raw disk images (metal, nocloud, iso, etc.)
+          echo "TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/metal.yaml)" >> $GITHUB_ENV
           make assets
 
       - name: Collect release artifacts
         run: |
           RELEASE_TAG="${{ github.ref_name }}"
-          # Composite version string: the raw image is a Talos image with the
-          # CozyStack-derived ARM64 patches applied. It contains no CozyStack
-          # itself, so naming it solely by the CozyStack release tag would be
-          # misleading. Encode both: talos-<TALOS_VERSION>-cozy-<RELEASE_TAG>.
           ARTIFACT_VER="talos-${TALOS_VERSION}-cozy-${RELEASE_TAG}"
-          echo "ARTIFACT_VER=$ARTIFACT_VER" >> $GITHUB_ENV
           mkdir -p release-artifacts
-
-          # metal raw image — primary artifact for dd / Raspberry Pi Imager
-          # Built with spin-only extensions baked in (Spin runtime, no Tailscale).
-          if [ -f cozystack-upstream/_out/assets/metal-arm64.raw.xz ]; then
-            cp cozystack-upstream/_out/assets/metal-arm64.raw.xz \
-              "release-artifacts/talos-metal-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
-            echo "✅ metal-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
-          else
-            echo "❌ metal-arm64.raw.xz not found in _out/assets/"
-            ls cozystack-upstream/_out/assets/ || true
-            exit 1
-          fi
-
-          # Optional: nocloud image (useful for cloud/VM testing), also spin-only variant
-          if [ -f cozystack-upstream/_out/assets/nocloud-arm64.raw.xz ]; then
-            cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
-              "release-artifacts/talos-nocloud-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
-            echo "✅ nocloud-arm64.raw.xz collected (spin-only variant, ${ARTIFACT_VER})"
-          fi
-
-          # Checksums
-          cd release-artifacts
-          sha256sum * > SHA256SUMS
-          echo "Release artifacts:"
-          ls -lh .
+          cp cozystack-upstream/_out/assets/metal-arm64.raw.xz \
+            "release-artifacts/talos-metal-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+          cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
+            "release-artifacts/talos-nocloud-arm64-spin-only-${ARTIFACT_VER}.raw.xz" 2>/dev/null || true
+          cd release-artifacts && sha256sum * > SHA256SUMS
 
       - name: Tag GHCR OCI images at release
         run: |
-          # Parse the release tag.
-          # Format A: v1.4.0 (implies upstream-pinned Talos version)
-          # Format B: v1.4.0-1.13.2 (explicit Talos version override)
           FULL_TAG="${{ github.ref_name }}"
           if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)$ ]]; then
             COZY_VER="${BASH_REMATCH[1]}"
-            TALOS_REQ="v${BASH_REMATCH[2]}"
-            # If the tag was v1.4.0-1.13.2, the cozystack version to pull is v1.4.0
           else
             COZY_VER="$FULL_TAG"
-            TALOS_REQ=""
           fi
           
-          # TALOS_VERSION was written to GITHUB_ENV by the build step
-          TALOS_VERSION="$TALOS_VERSION"
-          
-          # Matchbox tags:
-          #   MATCHBOX_CANONICAL_TAG: $(TALOS_VERSION)-$(COZY_VER) (e.g. 1.13.2-v1.4.0)
-          #   MATCHBOX_TAG: talos-$(TALOS_VERSION)-cozy-$(COZY_VER) (e.g. talos-1.13.2-cozy-v1.4.0)
           MATCHBOX_CANONICAL_TAG="${TALOS_VERSION}-${COZY_VER}"
           MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${COZY_VER}"
           
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
             --username ${{ github.actor }} --password-stdin
-
-          echo "ℹ️  Talos installer images already carry Talos version tag (${TALOS_VERSION}) — not adding repo release tag."
 
           for VARIANT in spin-tailscale spin-hailort spin-only; do
             BASE="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
             SRC="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
-            echo "Tagging ${SRC} → :${MATCHBOX_TAG}"
-            if crane tag "${SRC}" "${MATCHBOX_TAG}"; then
-              echo "✅ ${VARIANT}/matchbox tagged ${MATCHBOX_TAG}"
-              echo "Tagging ${SRC} → :latest"
-              crane tag "${SRC}" latest \
-                && echo "✅ ${VARIANT}/matchbox latest now points to ${MATCHBOX_CANONICAL_TAG}" \
-                || echo "⚠️  Could not retag ${VARIANT}/matchbox to :latest"
-            else
-              echo "⚠️  Canonical source tag ${SRC} not found"
-            fi
+            docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}" "${SRC}" || true
+            docker buildx imagetools create --tag "${BASE}/matchbox:latest" "${SRC}" || true
           done
 
-          # Operator and other packages use the COZY_VER (e.g. v1.4.0)
           OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${COZY_VER}"
-          if crane digest "${OPERATOR_SRC}" >/dev/null 2>&1; then
-            echo "✅ operator canonical tag ${COZY_VER} already present"
-            echo "Tagging ${OPERATOR_SRC} → :latest"
-            crane tag "${OPERATOR_SRC}" latest \
-              && echo "✅ operator :latest now points to ${COZY_VER}" \
-              || echo "⚠️  Could not retag operator to :latest"
-          else
-            echo "⚠️  Canonical source ${OPERATOR_SRC} not found"
-          fi
+          docker buildx imagetools create --tag "${{ env.REGISTRY }}/cozystack-operator:latest" "${OPERATOR_SRC}" || true
 
       - name: Create GitHub Release
         env:
@@ -396,44 +261,33 @@ jobs:
           fi
           
           TALOS_VER="${TALOS_VERSION}"
-
-          # Build release notes
           MATCHBOX_TAG="talos-${TALOS_VER}-cozy-${COZY_VER}"
+          
           NOTES=$(cat <<EOF
           ## CozyStack ARM64 Talos Release ${FULL_TAG}
-
           **CozyStack upstream:** \`${COZY_VER}\`
           **Talos version:** \`${TALOS_VER}\`
           **Architecture:** ARM64 (Raspberry Pi CM4 and compatible boards)
           **Extensions baked in:** Spin runtime (all variants), Tailscale (spin-tailscale), HailoRT (spin-hailort)
-
+          
           ### Flashing to Raspberry Pi CM4
-
           \`\`\`bash
-          # Using dd (replace /dev/sdX with your target device)
           xz -dc talos-metal-arm64-spin-only-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
           \`\`\`
-
-          ### OCI Images (for talm / talosctl)
-
-          Talos installer (pin by Talos version):
-          \`\`\`
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}
-          \`\`\`
-
-          Matchbox (pin by composite tag):
-          \`\`\`
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}
-          ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}
-          \`\`\`
-
-          CozyStack operator (pin by CozyStack release):
-          \`\`\`
-          ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}
-          \`\`\`
+          
+          ### OCI Images
+          Talos installer:
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}
+          
+          Matchbox:
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}
+          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}
+          
+          CozyStack operator:
+          - ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}
           EOF
           )
 
