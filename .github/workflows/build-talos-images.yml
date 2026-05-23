@@ -104,7 +104,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -133,7 +133,7 @@ jobs:
           elif [ "$GROUP" = "system-base" ]; then
             DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook"
           elif [ "$GROUP" = "system-net" ]; then
-            DIRS="packages/system/cilium packages/system/linstor packages/system/linstor-gui packages/system/kubeovn-webhook packages/system/kubeovn-plunger packages/system/dashboard"
+            DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
             DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
           fi
@@ -177,7 +177,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -262,7 +262,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
