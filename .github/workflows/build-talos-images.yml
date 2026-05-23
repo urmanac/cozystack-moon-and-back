@@ -220,6 +220,9 @@ jobs:
           # Build images on every event so PRs catch regressions; only push on main.
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             PUSH=1
+            # On main branch builds, we force TAG=latest to seed the registry cache
+            export TAG=latest
+            echo "Main branch push: seeding registry cache with :latest tags"
           else
             PUSH=0
           fi
@@ -227,8 +230,8 @@ jobs:
           echo "PUSH=$PUSH (event=${{ github.event_name }}, ref=${{ github.ref }})"
 
           # Authenticate skopeo and crane explicitly (docker login handled by action)
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username ${{ github.actor }} --password-stdin
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username x-access-token --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io --username x-access-token --password-stdin
 
           echo "Building with REGISTRY=$REGISTRY (variant: ${{ matrix.extension_variant }})"
           echo "Operator publish target: $OPERATOR_REGISTRY/cozystack-operator (shared across variants)"

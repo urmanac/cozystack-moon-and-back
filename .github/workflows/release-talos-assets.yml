@@ -110,6 +110,10 @@ jobs:
           # registry, and rewrites that chart's values.yaml. The final
           # core/installer build packages the rewritten charts into the
           # cozystack-operator image.
+          
+          # Force TAG=latest so Makefiles use/push to the canonical cache tags
+          # while the job itself handles the release-specific tagging later.
+          export TAG=latest
           make build REGISTRY="${{ env.REGISTRY }}" PUSH=1
 
   # Stage 2: per-variant talos installer + matchbox images. These are the only
