@@ -70,11 +70,11 @@ jobs:
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
 
       - name: Clone upstream CozyStack
         run: |
@@ -114,6 +114,7 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         extension_variant: [spin-tailscale, spin-hailort, spin-only]
 
@@ -137,11 +138,11 @@ jobs:
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
           echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
-            --username ${{ github.actor }} --password-stdin
+            --username x-access-token --password-stdin
 
       - name: Clone upstream CozyStack
         run: |
