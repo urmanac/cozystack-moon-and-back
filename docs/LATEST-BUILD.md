@@ -1,16 +1,16 @@
-Built: 2026-05-23 19:36:12 UTC
+Built: 2026-05-23 19:51:19 UTC
 
 - Talos version: `v1.13.2`
 - CozyStack release: `v1.4.0`
-- Build target: `image`
-- Extracted asset count: `4`
+- Build target: `upstream-images`
+- Extracted asset count: `2`
 
 ## Asset Digests
 
 | Asset | Digest |
 |-------|--------|
-| Kernel | `2ca630b49bf174acf82a4461f924c6310a35d9e8f05c56baeec99d08f3b21e11` |
-| Boot Loader | `a01efae6b41b0df27c8057310c6c8dcd9b349bdd3c2dfb1848da3dcb99cba8d2` |
+| Kernel | `not available` |
+| Boot Loader | `not available` |
 
 ## What This Build Contains
 
