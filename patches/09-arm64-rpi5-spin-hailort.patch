@@ -1,5 +1,5 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 034b827..fbfe42f 100644
+index 034b827..2bec956 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
 @@ -11,12 +11,14 @@ update:
@@ -20,7 +20,7 @@ index 034b827..fbfe42f 100644
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
-@@ -28,27 +30,39 @@ image-matchbox:
+@@ -28,29 +30,40 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
@@ -68,8 +68,10 @@ index 034b827..fbfe42f 100644
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
  		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
+ 		tar -C ../../../_out/assets -xzf-
+-
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index fcad661..6e495b5 100755
+index fcad661..04f7395 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -81,59 +83,3 @@ index fcad661..6e495b5 100755
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
-@@ -36,6 +36,7 @@ done
- for profile in $PROFILES; do
-   echo "writing profile images/talos/profiles/$profile.yaml"
-   board=""
-+  overlay_block=""
-   case "$profile" in
-     initramfs|kernel|iso)
-       image_options="{}"
-@@ -49,6 +50,19 @@ for profile in $PROFILES; do
-       platform="metal"
-       kind="installer"
-       ;;
-+    installer-rpi5)
-+      image_options="{}"
-+      out_format="raw"
-+      platform="metal"
-+      kind="installer"
-+      board="rpi_generic"
-+      overlay_block=$(cat <<EOF
-+  overlay:
-+    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
-+    name: rpi_5
-+EOF
-+)
-+      ;;
-     metal)
-       image_options="{ diskSize: 1306525696, diskFormat: raw }"
-       out_format=".xz"
-@@ -56,6 +70,19 @@ for profile in $PROFILES; do
-       kind="image"
-       board="rpi_generic"
-       ;;
-+    metal-rpi5)
-+      image_options="{ diskSize: 1306525696, diskFormat: raw }"
-+      out_format=".xz"
-+      platform="metal"
-+      kind="image"
-+      board="rpi_generic"
-+      overlay_block=$(cat <<EOF
-+  overlay:
-+    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
-+    name: rpi_5
-+EOF
-+)
-+      ;;
-     nocloud)
-       image_options="{ diskSize: 1306525696, diskFormat: raw }"
-       out_format=".xz"
-@@ -83,6 +110,7 @@ input:
-     path: /usr/install/arm64/initramfs.xz
-   baseInstaller:
-     imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
-+${overlay_block}
-   systemExtensions:
-     - imageRef: ${AMD_UCODE_IMAGE}
-     - imageRef: ${AMDGPU_IMAGE}
