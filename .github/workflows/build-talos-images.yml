@@ -253,6 +253,7 @@ jobs:
             git apply ../patches/03-arm64-spin-only.patch
           elif [ "$EXTENSION_VARIANT" = "spin-hailort" ]; then
             git apply ../patches/08-arm64-spin-hailort.patch
+            git apply ../patches/09-arm64-rpi5-spin-hailort.patch
           else
             git apply ../patches/01-arm64-spin-tailscale.patch
           fi

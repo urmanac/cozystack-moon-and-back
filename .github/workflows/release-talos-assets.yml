@@ -259,11 +259,12 @@ jobs:
           git clone --branch "$COZYSTACK_REF" --depth 1 \
             https://github.com/cozystack/cozystack.git cozystack-upstream
 
-      - name: Apply spin-only ARM64 patches
+      - name: Apply spin-hailort ARM64 patches
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
-          git apply ../patches/03-arm64-spin-only.patch
+          git apply ../patches/08-arm64-spin-hailort.patch
+          git apply ../patches/09-arm64-rpi5-spin-hailort.patch
           git apply ../patches/02-makefile-architecture-variables.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
@@ -298,9 +299,11 @@ jobs:
           mkdir -p release-artifacts
           
           cp cozystack-upstream/_out/assets/metal-arm64.raw.xz \
-            "release-artifacts/talos-metal-arm64-spin-only-${ARTIFACT_VER}.raw.xz"
+            "release-artifacts/talos-metal-arm64-spin-hailort-${ARTIFACT_VER}.raw.xz"
+          cp cozystack-upstream/_out/assets/metal-rpi5-arm64.raw.xz \
+            "release-artifacts/talos-metal-rpi5-arm64-spin-hailort-${ARTIFACT_VER}.raw.xz" 2>/dev/null || true
           cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
-            "release-artifacts/talos-nocloud-arm64-spin-only-${ARTIFACT_VER}.raw.xz" 2>/dev/null || true
+            "release-artifacts/talos-nocloud-arm64-spin-hailort-${ARTIFACT_VER}.raw.xz" 2>/dev/null || true
           
           cd release-artifacts && sha256sum * > SHA256SUMS
 
@@ -347,12 +350,17 @@ jobs:
           ## CozyStack ARM64 Talos Release ${FULL_TAG}
           **CozyStack upstream:** \`${COZY_VER}\`
           **Talos version:** \`${TALOS_VER}\`
-          **Architecture:** ARM64 (Raspberry Pi CM4 and compatible boards)
+          **Architecture:** ARM64 (Raspberry Pi CM4, CM5 and compatible boards)
           **Extensions baked in:** Spin runtime (all variants), Tailscale (spin-tailscale), HailoRT (spin-hailort)
           
           ### Flashing to Raspberry Pi CM4
           \`\`\`bash
-          xz -dc talos-metal-arm64-spin-only-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
+          xz -dc talos-metal-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
+          \`\`\`
+
+          ### Flashing to Raspberry Pi 5 / CM5
+          \`\`\`bash
+          xz -dc talos-metal-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
           \`\`\`
           
           ### OCI Images
