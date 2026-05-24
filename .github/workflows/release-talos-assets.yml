@@ -264,8 +264,8 @@ jobs:
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
           git apply ../patches/08-arm64-spin-hailort.patch
-          git apply ../patches/09-arm64-rpi5-spin-hailort.patch
           git apply ../patches/02-makefile-architecture-variables.patch
+          git apply ../patches/09-arm64-rpi5-spin-hailort.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
 
