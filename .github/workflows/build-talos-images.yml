@@ -259,6 +259,7 @@ jobs:
           git apply ../patches/02-makefile-architecture-variables.patch
           if [ "$EXTENSION_VARIANT" = "spin-hailort" ]; then
             git apply ../patches/09-arm64-rpi5-spin-hailort.patch
+            git apply ../patches/10-arm64-rpi5-specialized-matchbox.patch
           fi
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh

@@ -266,6 +266,7 @@ jobs:
           git apply ../patches/08-arm64-spin-hailort.patch
           git apply ../patches/02-makefile-architecture-variables.patch
           git apply ../patches/09-arm64-rpi5-spin-hailort.patch
+          git apply ../patches/10-arm64-rpi5-specialized-matchbox.patch
           chmod +x packages/core/talos/hack/gen-profiles.sh
           chmod +x packages/core/talos/hack/gen-versions.sh
 
@@ -305,6 +306,14 @@ jobs:
           cp cozystack-upstream/_out/assets/nocloud-arm64.raw.xz \
             "release-artifacts/talos-nocloud-arm64-spin-hailort-${ARTIFACT_VER}.raw.xz" 2>/dev/null || true
           
+          # Netboot assets for RPi5
+          if [ -f cozystack-upstream/_out/assets/rpi5-kernel-arm64 ]; then
+            cp cozystack-upstream/_out/assets/rpi5-kernel-arm64 "release-artifacts/talos-kernel-rpi5-arm64-spin-hailort-${ARTIFACT_VER}"
+          fi
+          if [ -f cozystack-upstream/_out/assets/rpi5-initramfs-metal-arm64.xz ]; then
+            cp cozystack-upstream/_out/assets/rpi5-initramfs-metal-arm64.xz "release-artifacts/talos-initramfs-rpi5-arm64-spin-hailort-${ARTIFACT_VER}.xz"
+          fi
+
           cd release-artifacts && sha256sum * > SHA256SUMS
 
       - name: Tag GHCR OCI images at release
@@ -327,6 +336,13 @@ jobs:
             SRC="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
             docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}" "${SRC}" || true
             docker buildx imagetools create --tag "${BASE}/matchbox:latest" "${SRC}" || true
+            
+            # Specialized RPi5 Matchbox
+            if [ "$VARIANT" = "spin-hailort" ]; then
+              SRC_RPI5="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}-rpi5"
+              docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}-rpi5" "${SRC_RPI5}" || true
+              docker buildx imagetools create --tag "${BASE}/matchbox:latest-rpi5" "${SRC_RPI5}" || true
+            fi
           done
 
           OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${COZY_VER}"
@@ -365,17 +381,19 @@ jobs:
           
           ### OCI Images
           Talos installer:
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}
+          - Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}`
+          - RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}-rpi5`
+          - Tailscale (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}`
+          - Spin Only (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}`
           
           Matchbox:
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}
-          - ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}
+          - Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}`
+          - RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}-rpi5`
+          - Tailscale (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}`
+          - Spin Only (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}`
           
           CozyStack operator:
-          - ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}
+          - `ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}`
           EOF
           )
 

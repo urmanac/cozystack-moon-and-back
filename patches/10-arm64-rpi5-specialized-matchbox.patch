@@ -1,0 +1,90 @@
+diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
+index e590b7b..edef45f 100644
+--- a/packages/core/talos/Makefile
++++ b/packages/core/talos/Makefile
+@@ -16,28 +16,46 @@ image-talos:
+ 	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
+ 	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
+ 
+-image-matchbox:
+-	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) talos-kernel
+-	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) talos-initramfs
++image-matchbox: image-matchbox-generic image-matchbox-rpi5
++
++image-matchbox-%:
++	$(eval BOARD := $*)
++	$(eval BOARD_SUFFIX := $(if $(filter generic,$(BOARD)),,-rpi5))
++	$(eval ASSET_PREFIX := $(if $(filter generic,$(BOARD)),,rpi5-))
++	test -f ../../../_out/assets/$(ASSET_PREFIX)kernel-arm64 || $(MAKE) talos-kernel$(BOARD_SUFFIX)
++	test -f ../../../_out/assets/$(ASSET_PREFIX)initramfs-metal-arm64.xz || $(MAKE) talos-initramfs$(BOARD_SUFFIX)
+ 	docker buildx build -f images/matchbox/Dockerfile ../../.. \
+-		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
+-		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
+-		--cache-from type=registry,ref=$(REGISTRY)/matchbox:latest \
++		--build-arg KERNEL_ASSET=$(ASSET_PREFIX)kernel-arm64 \
++		--build-arg INITRAMFS_ASSET=$(ASSET_PREFIX)initramfs-metal-arm64.xz \
++		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG))$(BOARD_SUFFIX) \
++		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG))$(BOARD_SUFFIX) \
++		--cache-from type=registry,ref=$(REGISTRY)/matchbox:latest$(BOARD_SUFFIX) \
+ 		--cache-to type=inline \
+-		--metadata-file images/matchbox.json \
++		--metadata-file images/matchbox$(BOARD_SUFFIX).json \
+ 		$(BUILDX_ARGS)
+-	echo "$(REGISTRY)/matchbox:$(call settag,$(TAG))@$$(yq e '."containerimage.digest"' images/matchbox.json -o json -r)" \
+-		> ../../extra/bootbox/images/matchbox.tag
+-	rm -f images/matchbox.json
+-
++	echo "$(REGISTRY)/matchbox:$(call settag,$(TAG))$(BOARD_SUFFIX)@$$(yq e '."containerimage.digest"' images/matchbox$(BOARD_SUFFIX).json -o json -r)" \
++		> ../../extra/bootbox/images/matchbox$(BOARD_SUFFIX).tag
++	rm -f images/matchbox$(BOARD_SUFFIX).json
+ assets: talos-iso talos-nocloud talos-metal-rpi5 talos-metal talos-kernel talos-initramfs
+ 
+ talos-initramfs:
+ 	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
+ 
++talos-initramfs-rpi5:
++	test -f ../../../_out/assets/rpi5-initramfs-metal-arm64.xz || ( \
++		$(MAKE) build-talos-initramfs-rpi5 && \
++		mv ../../../_out/assets/initramfs-metal-arm64.xz ../../../_out/assets/rpi5-initramfs-metal-arm64.xz \
++	)
++
+ talos-kernel:
+ 	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) build-talos-kernel
+ 
++talos-kernel-rpi5:
++	test -f ../../../_out/assets/rpi5-kernel-arm64 || ( \
++		$(MAKE) build-talos-kernel-rpi5 && \
++		mv ../../../_out/assets/kernel-arm64 ../../../_out/assets/rpi5-kernel-arm64 \
++	)
++
+ talos-installer:
+ 	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
+ 
+diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
+index 6e495b5..a4d53d0 100644
+--- a/packages/core/talos/hack/gen-profiles.sh
++++ b/packages/core/talos/hack/gen-profiles.sh
+@@ -3,7 +3,7 @@ set -e
+ set -u
+ 
+ TMPDIR=$(mktemp -d)
+-PROFILES="initramfs kernel iso installer installer-rpi5 nocloud metal metal-rpi5"
++PROFILES="initramfs kernel iso installer installer-rpi5 initramfs-rpi5 kernel-rpi5 nocloud metal metal-rpi5"
+ FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
+ EXTENSIONS="drbd zfs spin hailort vc4"
+ 
+diff --git a/packages/core/talos/images/matchbox/Dockerfile b/packages/core/talos/images/matchbox/Dockerfile
+index 21b91e5..833a9e1 100644
+--- a/packages/core/talos/images/matchbox/Dockerfile
++++ b/packages/core/talos/images/matchbox/Dockerfile
+@@ -1,6 +1,8 @@
+ FROM quay.io/poseidon/matchbox:v0.11.0-310-g77aedbd0-arm64
++ARG KERNEL_ASSET=kernel-arm64
++ARG INITRAMFS_ASSET=initramfs-metal-arm64.xz
+ 
+-COPY _out/assets/initramfs-metal-arm64.xz /var/lib/matchbox/assets/initramfs.xz
+-COPY _out/assets/kernel-arm64 /var/lib/matchbox/assets/vmlinuz
++COPY _out/assets/${INITRAMFS_ASSET} /var/lib/matchbox/assets/initramfs.xz
++COPY _out/assets/${KERNEL_ASSET} /var/lib/matchbox/assets/vmlinuz
+ COPY packages/core/talos/images/matchbox/groups /var/lib/matchbox/groups
+ COPY packages/core/talos/images/matchbox/profiles /var/lib/matchbox/profiles
