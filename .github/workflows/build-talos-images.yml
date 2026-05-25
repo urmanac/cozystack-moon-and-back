@@ -268,7 +268,8 @@ jobs:
           cd packages/core/talos
 
           UPSTREAM_TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/installer.yaml)
-          TARGET_TALOS_VERSION=$(cut -d- -f2 ${{ github.workspace }}/VERSION)
+          RAW_TALOS_VERSION=$(cut -d- -f2 ${{ github.workspace }}/VERSION)
+          TARGET_TALOS_VERSION="v${RAW_TALOS_VERSION#v}"
           TALOS_VER="${TARGET_TALOS_VERSION:-$UPSTREAM_TALOS_VERSION}"
           
           bash hack/gen-profiles.sh "$TALOS_VER"
