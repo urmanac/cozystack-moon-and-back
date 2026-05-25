@@ -73,6 +73,7 @@ jobs:
           cd cozystack-upstream
           GROUP="${{ matrix.group }}"
           export PUSH=1
+          export TAG="${{ github.ref_name }}"
           
           if [ "$GROUP" = "apps" ]; then
             DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes"
@@ -146,7 +147,7 @@ jobs:
       - name: Build operator and manifests
         run: |
           cd cozystack-upstream
-          make -C packages/core/installer image REGISTRY="${{ env.REGISTRY }}" PUSH=1
+          make -C packages/core/installer image REGISTRY="${{ env.REGISTRY }}" PUSH=1 TAG="${{ github.ref_name }}"
 
   # Stage 3: per-variant talos installer + matchbox images.
   build-talos-variants:
@@ -202,6 +203,8 @@ jobs:
             git apply ../patches/03-arm64-spin-only.patch
           elif [ "$EXTENSION_VARIANT" = "spin-hailort" ]; then
             git apply ../patches/08-arm64-spin-hailort.patch
+            git apply ../patches/09-arm64-rpi5-spin-hailort.patch
+            git apply ../patches/10-arm64-rpi5-specialized-matchbox.patch
           else
             git apply ../patches/01-arm64-spin-tailscale.patch
           fi
@@ -331,22 +334,53 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
             --username ${{ github.actor }} --password-stdin
 
+          # Promote all Cozystack packages to 'latest'
+          PACKAGES=(
+            "http-cache" "mariadb" "clickhouse" "kubernetes"
+            "monitoring" "cozystack-api" "cozystack-controller" "backup-controller" "backupstrategy-controller" "lineage-controller-webhook"
+            "cilium" "kubeovn" "kubeovn-webhook" "kubeovn-plunger"
+            "metallb" "kamaji" "multus" "bucket" "objectstorage-controller" "grafana-operator" "testing" "platform"
+          )
+          for PKG in "${PACKAGES[@]}"; do
+            SRC="${{ env.REGISTRY }}/${PKG}:${FULL_TAG}"
+            docker buildx imagetools create --tag "${{ env.REGISTRY }}/${PKG}:${COZY_VER}" "${SRC}" || true
+            docker buildx imagetools create --tag "${{ env.REGISTRY }}/${PKG}:latest" "${SRC}" || true
+          done
+
+          # Promote Talos and Matchbox images
           for VARIANT in spin-tailscale spin-hailort spin-only; do
             BASE="${{ env.REGISTRY }}/talos/cozystack-${VARIANT}"
-            SRC="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
-            docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}" "${SRC}" || true
-            docker buildx imagetools create --tag "${BASE}/matchbox:latest" "${SRC}" || true
             
-            # Specialized RPi5 Matchbox
+            # Matchbox
+            SRC_MB="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}"
+            docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}" "${SRC_MB}" || true
+            docker buildx imagetools create --tag "${BASE}/matchbox:latest" "${SRC_MB}" || true
+            
+            # Installer (Generic)
+            SRC_TALOS="${BASE}/talos:${TALOS_VERSION}"
+            docker buildx imagetools create --tag "${BASE}/talos:latest" "${SRC_TALOS}" || true
+            
+            # Specialized RPi5
             if [ "$VARIANT" = "spin-hailort" ]; then
-              SRC_RPI5="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}-rpi5"
-              docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}-rpi5" "${SRC_RPI5}" || true
-              docker buildx imagetools create --tag "${BASE}/matchbox:latest-rpi5" "${SRC_RPI5}" || true
+              # RPi5 Matchbox
+              SRC_MB_RPI5="${BASE}/matchbox:${MATCHBOX_CANONICAL_TAG}-rpi5"
+              docker buildx imagetools create --tag "${BASE}/matchbox:${MATCHBOX_TAG}-rpi5" "${SRC_MB_RPI5}" || true
+              docker buildx imagetools create --tag "${BASE}/matchbox:latest-rpi5" "${SRC_MB_RPI5}" || true
+              
+              # RPi5 Installer
+              SRC_TALOS_RPI5="${BASE}/talos:${TALOS_VERSION}-rpi5"
+              docker buildx imagetools create --tag "${BASE}/talos:latest-rpi5" "${SRC_TALOS_RPI5}" || true
             fi
           done
 
-          OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${COZY_VER}"
+          OPERATOR_SRC="${{ env.REGISTRY }}/cozystack-operator:${FULL_TAG}"
+          docker buildx imagetools create --tag "${{ env.REGISTRY }}/cozystack-operator:${COZY_VER}" "${OPERATOR_SRC}" || true
           docker buildx imagetools create --tag "${{ env.REGISTRY }}/cozystack-operator:latest" "${OPERATOR_SRC}" || true
+
+      - name: Verify Release Provenance
+        run: |
+          FULL_TAG="${{ github.ref_name }}"
+          bash tests/custom-image/05-release-provenance.sh "${FULL_TAG}"
 
       - name: Create GitHub Release
         env:
@@ -355,47 +389,45 @@ jobs:
           FULL_TAG="${{ github.ref_name }}"
           if [[ "$FULL_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-(1\.[0-9]+\.[0-9]+)(-.*)?$ ]]; then
             COZY_VER="${BASH_REMATCH[1]}"
+            TALOS_BASE_VER="v${BASH_REMATCH[2]}"
           else
             COZY_VER="$FULL_TAG"
+            TALOS_BASE_VER="v1.13.2"
           fi
           
-          TALOS_VER="${TALOS_VERSION}"
-          MATCHBOX_TAG="talos-${TALOS_VER}-cozy-${COZY_VER}"
+          MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${COZY_VER}"
           
           NOTES=$(cat <<EOF
-          ## CozyStack ARM64 Talos Release ${FULL_TAG}
-          **CozyStack upstream:** \`${COZY_VER}\`
-          **Talos version:** \`${TALOS_VER}\`
-          **Architecture:** ARM64 (Raspberry Pi CM4, CM5 and compatible boards)
-          **Extensions baked in:** Spin runtime (all variants), Tailscale (spin-tailscale), HailoRT (spin-hailort)
-          
-          ### Flashing to Raspberry Pi CM4
-          \`\`\`bash
-          xz -dc talos-metal-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
-          \`\`\`
+## CozyStack ARM64 Talos Release ${FULL_TAG}
+**CozyStack upstream:** \`${COZY_VER}\`
+**Talos version:** \`${TALOS_VERSION}\`
+**Architecture:** ARM64 (Raspberry Pi CM4, CM5 and compatible boards)
 
-          ### Flashing to Raspberry Pi 5 / CM5
-          \`\`\`bash
-          xz -dc talos-metal-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
-          \`\`\`
-          
-          ### OCI Images
-          Talos installer:
-          - Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}`
-          - RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VER}-rpi5`
-          - Tailscale (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos:${TALOS_VER}`
-          - Spin Only (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos:${TALOS_VER}`
-          
-          Matchbox:
-          - Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}`
-          - RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}-rpi5`
-          - Tailscale (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox:${MATCHBOX_TAG}`
-          - Spin Only (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox:${MATCHBOX_TAG}`
-          
-          CozyStack operator:
-          - `ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}`
-          EOF
-          )
+### OCI Images
+#### Talos Installer (Upgrades)
+- **Generic (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}\`
+- **RPi5 (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}-rpi5\`
+
+#### Matchbox (Netboot)
+- **Generic (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}\`
+- **RPi5 (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}-rpi5\`
+
+#### Packages
+- **Operator:** \`ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}\`
+- All system packages are tagged with \`${COZY_VER}\` and \`latest\`.
+
+### Flashable Metal Images
+- **CM4:** \`talos-metal-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz\`
+- **CM5:** \`talos-metal-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz\`
+
+### Specialized RPi5 Netboot Assets
+- **Kernel:** \`talos-kernel-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}\`
+- **Initramfs:** \`talos-initramfs-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.xz\`
+
+---
+*Verified by Release Provenance Rubric*
+EOF
+)
 
           gh release create "$FULL_TAG" \
             --title "CozyStack ARM64 Talos ${FULL_TAG}" \
