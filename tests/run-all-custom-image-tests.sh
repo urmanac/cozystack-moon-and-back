@@ -56,6 +56,18 @@ fi
 ((TOTAL_TESTS++))
 echo ""
 
+# Test 4: RPi5 Support
+echo "▶️  Running Test 4: RPi5 Support"
+if "$SCRIPT_DIR/custom-image/04-rpi5-support.sh"; then
+    echo "✅ Test 4 PASSED"
+    ((PASSED_TESTS++))
+else
+    echo "❌ Test 4 FAILED"
+    ((FAILED_TESTS++))
+fi
+((TOTAL_TESTS++))
+echo ""
+
 # Summary
 echo "📊 Test Results Summary"
 echo "======================"
