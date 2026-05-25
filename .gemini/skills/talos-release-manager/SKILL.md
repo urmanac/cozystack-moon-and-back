@@ -43,3 +43,10 @@ Before merging a Pull Request into `main`:
 2. Monitor this workflow: `gh run list --branch <tag-name> --workflow release-talos-assets.yml --limit 1`.
 3. Wait for it to complete. The workflow includes the **Release Provenance Rubric** step (`tests/custom-image/05-release-provenance.sh`), which will mathematically guarantee the presence of all 31+ expected OCI images.
 4. Report the final success to the user.
+
+## Known Gaps and Testing Strategy
+**The Release Workflow Gap:** Because `release-talos-assets.yml` only triggers on version tags, its logic is NOT exercised in PR or `main` branch builds. 
+*   Always perform a meticulous manual review of any changes to `.github/workflows/release-talos-assets.yml`.
+*   Ensure that any shared logic between `build-talos-images.yml` and `release-talos-assets.yml` is kept in sync (or ideally moved to external scripts).
+*   Until the release workflow is modularized into scripts, the first true test of its logic occurs *at tag time*.
+
