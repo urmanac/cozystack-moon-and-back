@@ -22,10 +22,10 @@ Before merging or tagging, always run the local validation suite:
 
 ## Release Process
 
+**MANDATORY:** Always activate and follow the `talos-release-manager` skill when merging to main or tagging a release.
+
 1.  Create a feature branch.
 2.  Implement changes and perform atomic commits.
 3.  Create a Pull Request.
-4.  Wait for all CI checks to pass.
-5.  Merge the PR.
-6.  Pull `main` and tag the release (e.g., `v1.4.0-1.13.2`).
-7.  Push the tag.
+4.  Activate the `talos-release-manager` skill (via `activate_skill` or equivalent CLI command) to orchestrate the merge and tagging process.
+5.  Strictly follow the skill's CI waiting periods and provenance verification rubric. Do NOT proceed to tagging without `main` CI passing.
