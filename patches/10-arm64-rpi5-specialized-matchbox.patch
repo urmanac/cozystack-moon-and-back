@@ -61,7 +61,7 @@ index e590b7b..edef45f 100644
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 6e495b5..a4d53d0 100644
+index 6e495b5..e489ad6 100644
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -73,6 +73,39 @@ index 6e495b5..a4d53d0 100644
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
+@@ -38,6 +38,32 @@ for profile in $PROFILES; do
+   board=""
+   overlay_block=""
+   case "$profile" in
++    initramfs-rpi5)
++      image_options="{}"
++      out_format="raw"
++      platform="metal"
++      kind="initramfs"
++      board="rpi_generic"
++      overlay_block=$(cat <<EOF
++  overlay:
++    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
++    name: rpi_5
++EOF
++)
++      ;;
++    kernel-rpi5)
++      image_options="{}"
++      out_format="raw"
++      platform="metal"
++      kind="kernel"
++      board="rpi_generic"
++      overlay_block=$(cat <<EOF
++  overlay:
++    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
++    name: rpi_5
++EOF
++)
++      ;;
+     initramfs|kernel|iso)
+       image_options="{}"
+       out_format="raw"
 diff --git a/packages/core/talos/images/matchbox/Dockerfile b/packages/core/talos/images/matchbox/Dockerfile
 index 21b91e5..833a9e1 100644
 --- a/packages/core/talos/images/matchbox/Dockerfile
