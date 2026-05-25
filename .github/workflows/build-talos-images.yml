@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'patches/**'
-      - '.github/workflows/build-talos-images.yml'
+      - '.github/workflows/**'
       - 'tests/**'
       - 'validate-*.sh'
       - 'crane'
@@ -21,7 +21,7 @@ on:
     branches: [ main ]
     paths:
       - 'patches/**' 
-      - '.github/workflows/build-talos-images.yml'
+      - '.github/workflows/**'
       - 'tests/**'
       - 'validate-*.sh'
       - 'crane'
