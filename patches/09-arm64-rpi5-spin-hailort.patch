@@ -1,30 +1,39 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 034b827..bb64803 100644
+index 034b827..e590b7b 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -11,8 +11,10 @@ update:
+@@ -11,12 +11,14 @@ update:
  image: image-matchbox image-talos
  
  image-talos:
 -	test -f ../../../_out/assets/installer-arm64.tar || make talos-installer
-+	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
- 	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
 +	test -f ../../../_out/assets/installer-rpi5-arm64.tar || $(MAKE) talos-installer-rpi5
 +	skopeo copy docker-archive:../../../_out/assets/installer-rpi5-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))-rpi5
++	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
+ 	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
  
  image-matchbox:
- 	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
-@@ -28,7 +30,7 @@ image-matchbox:
+-	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
+-	test -f ../../../_out/assets/initramfs-metal-arm64.xz || make talos-initramfs
++	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) talos-kernel
++	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) talos-initramfs
+ 	docker buildx build -f images/matchbox/Dockerfile ../../.. \
+ 		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
+ 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
+@@ -28,29 +30,40 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
 -assets: talos-iso talos-nocloud talos-metal talos-kernel talos-initramfs
-+assets: talos-iso talos-nocloud talos-metal talos-metal-rpi5 talos-kernel talos-initramfs
++assets: talos-iso talos-nocloud talos-metal-rpi5 talos-metal talos-kernel talos-initramfs
  
  talos-initramfs:
- 	test -f ../../../_out/assets/initramfs-metal-amd64.xz || $(MAKE) build-talos-initramfs
-@@ -37,7 +39,13 @@ talos-kernel:
- 	test -f ../../../_out/assets/kernel-amd64 || $(MAKE) build-talos-kernel
+-	test -f ../../../_out/assets/initramfs-metal-amd64.xz || $(MAKE) build-talos-initramfs
++	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
+ 
+ talos-kernel:
+-	test -f ../../../_out/assets/kernel-amd64 || $(MAKE) build-talos-kernel
++	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) build-talos-kernel
  
  talos-installer:
 -	test -f ../../../_out/assets/installer-amd64.tar || $(MAKE) build-talos-installer
@@ -37,9 +46,12 @@ index 034b827..bb64803 100644
 +	)
  
  talos-iso:
- 	test -f ../../../_out/assets/metal-amd64.iso || $(MAKE) build-talos-iso
-@@ -46,9 +54,15 @@ talos-nocloud:
- 	test -f ../../../_out/assets/nocloud-amd64.raw.xz || $(MAKE) build-talos-nocloud
+-	test -f ../../../_out/assets/metal-amd64.iso || $(MAKE) build-talos-iso
++	test -f ../../../_out/assets/metal-arm64.iso || $(MAKE) build-talos-iso
+ 
+ talos-nocloud:
+-	test -f ../../../_out/assets/nocloud-amd64.raw.xz || $(MAKE) build-talos-nocloud
++	test -f ../../../_out/assets/nocloud-arm64.raw.xz || $(MAKE) build-talos-nocloud
  
  talos-metal:
 -	test -f ../../../_out/assets/metal-amd64.raw.xz || $(MAKE) build-talos-metal
@@ -56,6 +68,8 @@ index 034b827..bb64803 100644
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
  		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
+ 		tar -C ../../../_out/assets -xzf-
+-
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
 old mode 100755
 new mode 100644
