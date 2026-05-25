@@ -11,6 +11,21 @@ REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 RELEASE_TAG=${1:-latest}
 FAILURES=0
 
+# Helper function to check for image or artifact presence
+check_exists() {
+  local IMAGE=$1
+  local TYPE=$2
+  
+  # crane manifest is more robust for both container images and OCI artifacts (like Flux/Helm)
+  if crane manifest "$IMAGE" >/dev/null 2>&1; then
+    echo "✅ $IMAGE exists ($TYPE)"
+    return 0
+  else
+    echo "❌ $IMAGE MISSING ($TYPE)"
+    return 1
+  fi
+}
+
 # Components that we EXPECT to match our RELEASE_TAG
 SPECIALIZED=(
   "cozystack-operator"
@@ -18,7 +33,6 @@ SPECIALIZED=(
 )
 
 # Components that use their own upstream versioning or 'latest'
-# These are the actual image names produced by the Cozystack build.
 UPSTREAM_PACKAGES=(
   "nginx-cache:latest"
   "mariadb-backup:latest"
@@ -57,71 +71,31 @@ echo "==========================================="
 
 # Check Specialized
 for PKG in "${SPECIALIZED[@]}"; do
-  IMAGE="$REGISTRY/$PKG:$RELEASE_TAG"
-  if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-    echo "✅ $IMAGE exists (matches release tag)"
-  else
-    echo "❌ $IMAGE MISSING (failed to match release tag)"
-    FAILURES=$((FAILURES + 1))
-  fi
+  check_exists "$REGISTRY/$PKG:$RELEASE_TAG" "specialized" || FAILURES=$((FAILURES + 1))
 done
 
-# Check Upstream (accepting their versioning)
+# Check Upstream
 for ENTRY in "${UPSTREAM_PACKAGES[@]}"; do
   PKG=${ENTRY%%:*}
   TAG=${ENTRY##*:}
-  IMAGE="$REGISTRY/$PKG:$TAG"
-  if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-    echo "✅ $IMAGE exists (uses upstream tag)"
-  else
-    echo "❌ $IMAGE MISSING"
-    FAILURES=$((FAILURES + 1))
-  fi
+  check_exists "$REGISTRY/$PKG:$TAG" "upstream" || FAILURES=$((FAILURES + 1))
 done
 
-# Check Talos/Matchbox (Specialized per release/board)
+# Check Talos/Matchbox
 for VAR in "${VARIANTS[@]}"; do
-  # Generic Installer
-  IMAGE="$REGISTRY/talos/cozystack-$VAR/talos:latest"
-  if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-    echo "✅ $IMAGE exists (Generic Installer)"
-  else
-    echo "❌ $IMAGE MISSING"
-    FAILURES=$((FAILURES + 1))
-  fi
-
-  # Matchbox
-  IMAGE="$REGISTRY/talos/cozystack-$VAR/matchbox:latest"
-  if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-    echo "✅ $IMAGE exists (Generic Matchbox)"
-  else
-    echo "❌ $IMAGE MISSING"
-    FAILURES=$((FAILURES + 1))
-  fi
+  check_exists "$REGISTRY/talos/cozystack-$VAR/talos:latest" "installer" || FAILURES=$((FAILURES + 1))
+  check_exists "$REGISTRY/talos/cozystack-$VAR/matchbox:latest" "matchbox" || FAILURES=$((FAILURES + 1))
 
   # RPi5 Specialization (only for spin-hailort)
   if [ "$VAR" = "spin-hailort" ]; then
-    IMAGE="$REGISTRY/talos/cozystack-$VAR/talos:latest-rpi5"
-    if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-      echo "✅ $IMAGE exists (RPi5 Installer)"
-    else
-      echo "❌ $IMAGE MISSING"
-      FAILURES=$((FAILURES + 1))
-    fi
-
-    IMAGE="$REGISTRY/talos/cozystack-$VAR/matchbox:latest-rpi5"
-    if skopeo inspect "docker://$IMAGE" >/dev/null 2>&1; then
-      echo "✅ $IMAGE exists (RPi5 Matchbox)"
-    else
-      echo "❌ $IMAGE MISSING"
-      FAILURES=$((FAILURES + 1))
-    fi
+    check_exists "$REGISTRY/talos/cozystack-$VAR/talos:latest-rpi5" "rpi5-installer" || FAILURES=$((FAILURES + 1))
+    check_exists "$REGISTRY/talos/cozystack-$VAR/matchbox:latest-rpi5" "rpi5-matchbox" || FAILURES=$((FAILURES + 1))
   fi
 done
 
 echo "==========================================="
 if [ $FAILURES -eq 0 ]; then
-  echo "🎉 Provenance verified (Pragmatic Mode)!"
+  echo "🎉 All verified successfully (Pragmatic + Artifact-Aware)!"
   exit 0
 else
   echo "💥 $FAILURES images missing!"
