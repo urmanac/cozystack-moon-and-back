@@ -42,7 +42,7 @@ on:
       talos_version:
         description: 'Talos version to build'
         required: false
-        default: 'v1.33.3'
+        default: 'v1.13.3'
       extension_variant:
         description: 'Extension variant to build'
         required: false
@@ -67,7 +67,7 @@ on:
 
 env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
-  DEFAULT_TALOS_VERSION: v1.33.3
+  DEFAULT_TALOS_VERSION: v1.13.3
 
 jobs:
   # Stage 1: Build packages in parallel to seed the registry cache.
