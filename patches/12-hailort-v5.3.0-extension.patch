@@ -11,3 +11,16 @@ index 7dadad0..0beed25 100644
    MELLANOX_MSFTFLINT_VERSION: 4.34.1-4 # update this when updating PKGS_VERSION in Makefile
    XDMA_VERSION: a78e645 # update this when updating PKGS_VERSION in Makefile
  
+diff --git a/drivers/hailort/manifest.yaml.tmpl b/drivers/hailort/manifest.yaml.tmpl
+index db4256e..13e4d81 100644
+--- a/drivers/hailort/manifest.yaml.tmpl
++++ b/drivers/hailort/manifest.yaml.tmpl
+@@ -4,7 +4,7 @@ metadata:
+   version: "{{ .VERSION }}"
+   author: hailo.ai team
+   description: |
+-    [{{ .TIER }}] Driver for HailoRT family of AI hardware (eg. Hailo-8L) and is required for PCIe and M.2 Hailo accelerators.
++    [{{ .TIER }}] Driver for HailoRT family of AI hardware (eg. Hailo-8L, Hailo-10H) and is required for PCIe and M.2 Hailo accelerators.
+   compatibility:
+     talos:
+       version: ">= v1.9.0"

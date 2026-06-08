@@ -262,6 +262,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build HailoRT extension (if variant is spin-hailort)
+        if: matrix.extension_variant == 'spin-hailort'
+        run: |
+          chmod +x hack/build-hailort.sh
+          ./hack/build-hailort.sh
+          cat hailort-build.env >> $GITHUB_ENV
+
       - name: Update upstream dependencies and build with Makefile targets
         id: build
         env:
