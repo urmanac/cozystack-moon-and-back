@@ -30,45 +30,49 @@ echo "🛠️ Patching extensions..."
 cd ../extensions
 git apply "$PATCH_DIR/12-hailort-v5.3.0-extension.patch"
 
-# Download bldr if not present
-if ! command -v bldr &> /dev/null; then
-    echo "📥 Downloading bldr..."
-    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-    ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
-    curl -sSL https://github.com/siderolabs/bldr/releases/download/v0.6.0/bldr-${OS}-${ARCH} -o bldr
-    chmod +x bldr
-    export PATH="$PWD:$PATH"
+# Download bldr
+echo "📥 Downloading bldr..."
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
+curl -sSL https://github.com/siderolabs/bldr/releases/download/v0.6.0/bldr-${OS}-${ARCH} -o bldr
+chmod +x bldr
+export PATH="$PWD:$PATH"
+
+# Calculate versions
+cd ../pkgs
+PKG_VERSION=$(bldr eval --target hailort-pkg '{{.VERSION}}')
+PKG_IMAGE="$REGISTRY/$USERNAME/hailort-pkg:$PKG_VERSION"
+
+cd ../extensions
+EXT_VERSION=$(bldr eval --target hailort --build-arg PKGS="$PKG_VERSION" --build-arg PKGS_PREFIX="$REGISTRY/$USERNAME" '{{.VERSION}}')
+EXT_IMAGE="$REGISTRY/$USERNAME/hailort:$EXT_VERSION"
+
+echo "🎯 Target Extension Image: $EXT_IMAGE"
+
+# Check if image exists in registry
+if skopeo inspect "docker://$EXT_IMAGE" &>/dev/null; then
+    echo "✅ Image already exists in registry. Skipping build."
+    echo "HAILORT_IMAGE=$EXT_IMAGE" > "$SCRIPT_DIR/../hailort-build.env"
+    exit 0
 fi
+
+echo "🚀 Image not found. Starting build (this may take a while as it builds the kernel)..."
 
 # Build hailort-pkg
 echo "🏗️ Building hailort-pkg..."
 cd ../pkgs
-make hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" PUSH=true
-
-# Get the version/tag of the built pkg
-PKG_VERSION=$(bldr eval --target hailort-pkg '{{.VERSION}}')
-PKG_IMAGE="$REGISTRY/$USERNAME/hailort-pkg:$PKG_VERSION"
-echo "✅ Built pkg: $PKG_IMAGE"
+make hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" PUSH=true PLATFORM=linux/arm64
 
 # Build hailort extension
 echo "🏗️ Building hailort extension..."
 cd ../extensions
-
-# We need to tell bldr to use our local pkgs build
-# One way is to update Pkgfile or Makefile.
-# But bldr can take build-args.
-# The hailort extension uses: {{ .BUILD_ARG_PKGS_PREFIX }}/hailort-pkg:{{ .BUILD_ARG_PKGS }}
-
-# We can override PKGS in the make call
 make hailort \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
     PKGS="$PKG_VERSION" \
     PKGS_PREFIX="$REGISTRY/$USERNAME" \
-    PUSH=true
+    PUSH=true \
+    PLATFORM=linux/arm64
 
-EXT_VERSION=$(bldr eval --target hailort --build-arg PKGS="$PKG_VERSION" --build-arg PKGS_PREFIX="$REGISTRY/$USERNAME" '{{.VERSION}}')
-EXT_IMAGE="$REGISTRY/$USERNAME/hailort:$EXT_VERSION"
-
-echo "✅ Built extension: $EXT_IMAGE"
+echo "✅ Built and pushed: $EXT_IMAGE"
 echo "HAILORT_IMAGE=$EXT_IMAGE" > "$SCRIPT_DIR/../hailort-build.env"
