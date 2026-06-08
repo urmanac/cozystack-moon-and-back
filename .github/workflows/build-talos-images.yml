@@ -38,11 +38,11 @@ on:
       cozystack_commit:
         description: 'Cozystack upstream ref or commit'
         required: false
-        default: 'v1.4.2'
+        default: 'v1.4.3'
       talos_version:
         description: 'Talos version to build'
         required: false
-        default: 'v1.13.3'
+        default: 'v1.4.3'
       extension_variant:
         description: 'Extension variant to build'
         required: false
