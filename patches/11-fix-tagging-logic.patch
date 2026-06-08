@@ -1,0 +1,22 @@
+diff --git a/hack/common-envs.mk b/hack/common-envs.mk
+index 9b8db5d..2684398 100644
+--- a/hack/common-envs.mk
++++ b/hack/common-envs.mk
+@@ -10,7 +10,7 @@ TAG = $(shell git describe --tags --exact-match --match 'v*' 2>/dev/null || echo
+ PUSH := 1
+ LOAD := 0
+ BUILDER ?=
+-PLATFORM ?= 
++PLATFORM ?= linux/arm64
+ BUILDX_EXTRA_ARGS ?=
+ COZYSTACK_VERSION = $(patsubst v%,%,$(shell git describe --tags --match 'v*'))
+ 
+@@ -22,7 +22,7 @@ BUILDX_ARGS := --provenance=false --push=$(PUSH) --load=$(LOAD) \
+ 
+ # Returns 'latest' if the git tag is not assigned, otherwise returns the provided value
+ define settag
+-$(if $(filter $(TAG),latest),latest,$(1))
++$(if $(filter latest,$(TAG)),$(1),$(TAG))
+ endef
+ 
+ ifeq ($(COZYSTACK_VERSION),)

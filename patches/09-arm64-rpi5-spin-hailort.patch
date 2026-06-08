@@ -73,7 +73,7 @@ index 034b827..e590b7b 100644
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
 old mode 100755
 new mode 100644
-index fcad661..6e495b5
+index 2a273c2..820dec2
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -85,7 +85,7 @@ index fcad661..6e495b5
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
-@@ -36,6 +36,7 @@ done
+@@ -42,6 +42,7 @@ done
  for profile in $PROFILES; do
    echo "writing profile images/talos/profiles/$profile.yaml"
    board=""
@@ -93,7 +93,7 @@ index fcad661..6e495b5
    case "$profile" in
      initramfs|kernel|iso)
        image_options="{}"
-@@ -49,6 +50,19 @@ for profile in $PROFILES; do
+@@ -55,6 +56,19 @@ for profile in $PROFILES; do
        platform="metal"
        kind="installer"
        ;;
@@ -113,7 +113,7 @@ index fcad661..6e495b5
      metal)
        image_options="{ diskSize: 1306525696, diskFormat: raw }"
        out_format=".xz"
-@@ -56,6 +70,19 @@ for profile in $PROFILES; do
+@@ -62,6 +76,19 @@ for profile in $PROFILES; do
        kind="image"
        board="rpi_generic"
        ;;
@@ -133,7 +133,7 @@ index fcad661..6e495b5
      nocloud)
        image_options="{ diskSize: 1306525696, diskFormat: raw }"
        out_format=".xz"
-@@ -83,6 +110,7 @@ input:
+@@ -89,6 +116,7 @@ input:
      path: /usr/install/arm64/initramfs.xz
    baseInstaller:
      imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
