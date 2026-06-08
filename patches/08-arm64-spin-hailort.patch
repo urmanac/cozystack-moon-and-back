@@ -1,5 +1,5 @@
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index bbe932d..2a273c2 100755
+index bbe932d..af333cc 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -5,7 +5,7 @@ set -u
@@ -17,7 +17,7 @@ index bbe932d..2a273c2 100755
    extension_var=$(echo "$extension" | tr '[:lower:]' '[:upper:]' | tr - _)_IMAGE
 -  image=$(grep -F "/$extension:" $TMPDIR/image-digests)
 +  # Allow override from environment
-+  eval "existing_image=\$$extension_var"
++  eval "existing_image=\${$extension_var:-}"
 +  if [ -n "$existing_image" ]; then
 +    image="$existing_image"
 +  else

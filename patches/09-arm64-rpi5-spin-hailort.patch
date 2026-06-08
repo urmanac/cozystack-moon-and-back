@@ -71,9 +71,7 @@ index 034b827..e590b7b 100644
  		tar -C ../../../_out/assets -xzf-
 -
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-old mode 100755
-new mode 100644
-index 2a273c2..820dec2
+index af333cc..067b3d5 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
