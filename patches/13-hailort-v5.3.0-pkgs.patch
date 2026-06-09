@@ -20,7 +20,7 @@ index 4176c11..d7b5e81 100644
    # renovate: datasource=github-releases depName=intel/isa-l
    igzip_version: 2.32.0
 diff --git a/hailort/pkg.yaml b/hailort/pkg.yaml
-index 53fb4b9..69e3cff 100644
+index 53fb4b9..4e29c79 100644
 --- a/hailort/pkg.yaml
 +++ b/hailort/pkg.yaml
 @@ -12,8 +12,8 @@ steps:
@@ -34,7 +34,7 @@ index 53fb4b9..69e3cff 100644
          sha256: "{{ .hailort_fw_sha256 }}"
          sha512: "{{ .hailort_fw_sha512 }}"
      env:
-@@ -23,14 +23,20 @@ steps:
+@@ -23,17 +23,22 @@ steps:
        - |
          tar xf hailort-driver.tar.gz --strip-components=1
        - |
@@ -56,4 +56,7 @@ index 53fb4b9..69e3cff 100644
 +        cp -R hailo10h-fw/* /rootfs/usr/lib/firmware/hailo/hailo10h/
          cd linux/pcie
          make -j $(nproc) -C /src M=$(pwd) modules_install INSTALL_MOD_PATH=/rootfs/usr INSTALL_MOD_DIR=kernel/drivers/misc INSTALL_MOD_STRIP=1
-         cp 51-hailo-udev.rules /rootfs/usr/lib/udev/rules.d/51-hailo-udev.rules
+-        cp 51-hailo-udev.rules /rootfs/usr/lib/udev/rules.d/51-hailo-udev.rules
+     test:
+       - |
+         # https://www.kernel.org/doc/html/v4.15/admin-guide/module-signing.html#signed-modules-and-stripping
