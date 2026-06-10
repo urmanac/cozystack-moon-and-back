@@ -24,3 +24,20 @@ index db4256e..13e4d81 100644
    compatibility:
      talos:
        version: ">= v1.9.0"
+diff --git a/drivers/hailort/pkg.yaml b/drivers/hailort/pkg.yaml
+index 884fa3a..5d01c58 100644
+--- a/drivers/hailort/pkg.yaml
++++ b/drivers/hailort/pkg.yaml
+@@ -11,12 +11,10 @@ steps:
+       - |
+         mkdir -p /rootfs/usr/lib/modules/
+         mkdir -p /rootfs/usr/lib/firmware/hailo/
+-        mkdir -p /rootfs/usr/lib/udev/rules.d/
+ 
+       - |
+         cp -R /usr/lib/modules/* /rootfs/usr/lib/modules/
+         cp -R /usr/lib/firmware/hailo/* /rootfs/usr/lib/firmware/hailo/
+-        cp -R /usr/lib/udev/rules.d/* /rootfs/usr/lib/udev/rules.d/
+     test:
+       - |
+         mkdir -p /extensions-validator-rootfs
