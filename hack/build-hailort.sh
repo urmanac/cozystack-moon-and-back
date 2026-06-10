@@ -3,7 +3,7 @@ set -e
 
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-talos}
-HAILORT_VERSION="5.3.0"
+HAILORT_VERSION="5.3.0-v1.13.3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -17,9 +17,9 @@ trap cleanup EXIT
 echo "📂 Working in $WORK_DIR"
 cd "$WORK_DIR"
 
-# Clone repos
-git clone --depth 1 https://github.com/siderolabs/pkgs.git
-git clone --depth 1 https://github.com/siderolabs/extensions.git
+# Clone repos at specific tags to match Talos v1.13.3 kernel (6.18.33-talos)
+git clone --depth 1 --branch v1.13.3 https://github.com/siderolabs/extensions.git
+git clone --depth 1 --branch v1.13.0-23-g8c18616 https://github.com/siderolabs/pkgs.git
 
 # Apply patches
 echo "🛠️ Patching pkgs..."
@@ -53,7 +53,7 @@ PKG_VERSION=$(bldr eval --target hailort-pkg '{{.VERSION}}')
 PKG_IMAGE="$REGISTRY/$USERNAME/hailort-pkg:$PKG_VERSION"
 
 cd ../extensions
-EXT_VERSION=$(bldr eval --target hailort --build-arg PKGS="$PKG_VERSION" --build-arg PKGS_PREFIX="$REGISTRY/$USERNAME" '{{.VERSION}}')
+EXT_VERSION="$HAILORT_VERSION"
 EXT_IMAGE="$REGISTRY/$USERNAME/hailort:$EXT_VERSION"
 
 echo "🎯 Target Extension Image: $EXT_IMAGE"
