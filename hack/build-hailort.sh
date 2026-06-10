@@ -19,7 +19,12 @@ cd "$WORK_DIR"
 
 # Clone repos at specific tags to match Talos v1.13.3 kernel (6.18.33-talos)
 git clone --depth 1 --branch v1.13.3 https://github.com/siderolabs/extensions.git
-git clone --depth 1 --branch v1.13.0-23-g8c18616 https://github.com/siderolabs/pkgs.git
+
+# v1.13.0-23-g8c18616 is a git description, not a tag. We clone and checkout the hash.
+git clone https://github.com/siderolabs/pkgs.git
+cd pkgs
+git checkout 8c18616
+cd ..
 
 # Apply patches
 echo "🛠️ Patching pkgs..."
