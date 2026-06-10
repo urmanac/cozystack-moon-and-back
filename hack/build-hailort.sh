@@ -40,8 +40,8 @@ cd ..
 if [ "$(uname -s)" = "Darwin" ]; then
     echo "🍎 Applying macOS fixes to Makefiles..."
     # The GNU sed command in CI_RELEASE_TAG breaks BSD sed. We don't need it.
-    sed -i '' 's/CI_RELEASE_TAG := .*/CI_RELEASE_TAG :=/' pkgs/Makefile
-    sed -i '' 's/CI_RELEASE_TAG := .*/CI_RELEASE_TAG :=/' extensions/Makefile
+    perl -pi -e 's/^CI_RELEASE_TAG :=.*/CI_RELEASE_TAG :=/' pkgs/Makefile
+    perl -pi -e 's/^CI_RELEASE_TAG :=.*/CI_RELEASE_TAG :=/' extensions/Makefile
 fi
 
 # Download bldr
@@ -53,8 +53,13 @@ chmod +x bldr
 export PATH="$PWD:$PATH"
 
 # Calculate versions
+# We use git describe directly to bypass bldr eval bugs on old pkgs trees
 cd pkgs
-PKG_VERSION=$(bldr eval --target hailort-pkg '{{.VERSION}}')
+PKG_VERSION=$(git describe --tag --always --dirty --match "v[0-9]*")
+if [ -z "$PKG_VERSION" ]; then
+    echo "❌ Error: Failed to evaluate PKG_VERSION."
+    exit 1
+fi
 PKG_IMAGE="$REGISTRY/$USERNAME/hailort-pkg:$PKG_VERSION"
 
 cd ../extensions
