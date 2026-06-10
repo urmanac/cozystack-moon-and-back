@@ -266,7 +266,7 @@ jobs:
         id: build
         env:
           REGISTRY: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}
-          HAILORT_IMAGE: ghcr.io/urmanac/cozystack-assets/yebyen/hailort:1b7063c-dirty
+          HAILORT_IMAGE: ghcr.io/urmanac/cozystack-assets/yebyen/hailort:5.3.0
         run: |
           cd cozystack-upstream
           cd packages/core/talos
