@@ -13,7 +13,7 @@ index 53fb4b9..4e29c79 100644
          sha256: "{{ .hailort_fw_sha256 }}"
          sha512: "{{ .hailort_fw_sha512 }}"
      env:
-@@ -23,17 +23,22 @@ steps:
+@@ -23,17 +23,23 @@ steps:
        - |
          tar xf hailort-driver.tar.gz --strip-components=1
        - |
@@ -22,9 +22,6 @@ index 53fb4b9..4e29c79 100644
 +        find . -name "*.c" -o -name "*.h" | xargs sed -i 's/del_timer_sync/timer_delete_sync/g'
 +      - |
 +        mkdir -p /rootfs/usr/lib/modules/$(cat /src/include/config/kernel.release)/ /rootfs/usr/lib/firmware/hailo/hailo10h/ /rootfs/usr/lib/udev/rules.d/
-+      - |
-+        mkdir -p hailo10h-fw
-+        tar xf hailo10h_fw.tar.gz -C hailo10h-fw
      build:
        - |
          cd linux/pcie
@@ -32,7 +29,9 @@ index 53fb4b9..4e29c79 100644
      install:
        - |
 -        mv hailo8_fw.bin /rootfs/usr/lib/firmware/hailo/hailo8_fw.bin
-+        cp -R hailo10h-fw/* /rootfs/usr/lib/firmware/hailo/hailo10h/
++        # We use tar to extract directly into the rootfs to preserve symlinks (e.g. u-boot-default.dtb.signed)
++        tar xf hailo10h_fw.tar.gz -C /rootfs/usr/lib/firmware/hailo/hailo10h/
++      - |
          cd linux/pcie
          make -j $(nproc) -C /src M=$(pwd) modules_install INSTALL_MOD_PATH=/rootfs/usr INSTALL_MOD_DIR=kernel/drivers/misc INSTALL_MOD_STRIP=1
 -        cp 51-hailo-udev.rules /rootfs/usr/lib/udev/rules.d/51-hailo-udev.rules
