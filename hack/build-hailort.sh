@@ -3,7 +3,7 @@ set -e
 
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
-HAILORT_VERSION="5.3.0"
+HAILORT_VERSION="5.3.0-v1.13.3"
 
 # Pinned Sidero Versions for Talos v1.13.3 (Kernel 6.18.33-talos)
 EXT_TAG="v1.13.3"
