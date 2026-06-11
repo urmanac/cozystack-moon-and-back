@@ -131,5 +131,22 @@ $MAKE_CMD hailort \
     PUSH=true \
     PLATFORM=linux/arm64
 
-echo "✅ Built and pushed: $EXT_IMAGE"
+# The Sidero Makefile strictly tags the image based on the Pkgfile VERSION (5.3.0).
+# We want BOTH tags: '5.3.0' (generic) and '5.3.0-v1.13.3' (kernel-pinned).
+echo "🏷️ Adding secondary kernel-pinned tag: $EXT_VERSION"
+if [ -f "_out/hailort.metadata.json" ]; then
+    DIGEST=$(jq -r '."containerimage.digest"' _out/hailort.metadata.json)
+    if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
+        echo "Found digest: $DIGEST"
+        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$EXT_VERSION"
+        echo "✅ Built and pushed: $EXT_IMAGE"
+    else
+        echo "❌ Error: Could not parse digest from metadata file."
+        exit 1
+    fi
+else
+    echo "❌ Error: _out/hailort.metadata.json not found. Make failed?"
+    exit 1
+fi
+
 echo "HAILORT_IMAGE=$EXT_IMAGE" > "$SCRIPT_DIR/../hailort-build.env"
