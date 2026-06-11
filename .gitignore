@@ -4,3 +4,4 @@ controlplane.yaml
 talosconfig
 worker.yaml
 /talm-chart/**
+temp-upstream/

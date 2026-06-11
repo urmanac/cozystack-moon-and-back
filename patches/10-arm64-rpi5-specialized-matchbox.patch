@@ -1,8 +1,8 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index e590b7b..ec3d83a 100644
+index e590b7b..357aa47 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -16,28 +16,46 @@ image-talos:
+@@ -16,28 +16,47 @@ image-talos:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
  	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
  
@@ -33,10 +33,10 @@ index e590b7b..ec3d83a 100644
 -	echo "$(REGISTRY)/matchbox:$(call settag,$(TAG))@$$(yq e '."containerimage.digest"' images/matchbox.json -o json -r)" \
 -		> ../../extra/bootbox/images/matchbox.tag
 -	rm -f images/matchbox.json
--
 +	echo "$(REGISTRY)/matchbox:$(call settag,$(TAG))$(BOARD_SUFFIX)@$$(yq e '."containerimage.digest"' images/matchbox$(BOARD_SUFFIX).json -o json -r)" \
 +		> ../../extra/bootbox/images/matchbox$(BOARD_SUFFIX).tag
 +	rm -f images/matchbox$(BOARD_SUFFIX).json
+ 
  assets: talos-iso talos-nocloud talos-metal-rpi5 talos-metal talos-kernel talos-initramfs
  
  talos-initramfs:
@@ -60,7 +60,7 @@ index e590b7b..ec3d83a 100644
  talos-installer:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
-@@ -62,7 +80,7 @@ talos-metal-rpi5:
+@@ -62,7 +81,7 @@ talos-metal-rpi5:
  		mv ../../../_out/assets/metal-arm64.raw.xz ../../../_out/assets/metal-rpi5-arm64.raw.xz \
  	)
  
@@ -70,7 +70,7 @@ index e590b7b..ec3d83a 100644
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
  		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 6e495b5..e489ad6 100644
+index 067b3d5..cd29c75 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -82,7 +82,7 @@ index 6e495b5..e489ad6 100644
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
-@@ -38,6 +38,32 @@ for profile in $PROFILES; do
+@@ -44,6 +44,32 @@ for profile in $PROFILES; do
    board=""
    overlay_block=""
    case "$profile" in
