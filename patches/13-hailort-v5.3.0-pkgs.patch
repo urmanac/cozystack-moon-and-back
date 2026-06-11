@@ -1,5 +1,5 @@
 diff --git a/hailort/pkg.yaml b/hailort/pkg.yaml
-index 53fb4b9..4e29c79 100644
+index 53fb4b9..3a2e3dc 100644
 --- a/hailort/pkg.yaml
 +++ b/hailort/pkg.yaml
 @@ -12,8 +12,8 @@ steps:
@@ -13,7 +13,7 @@ index 53fb4b9..4e29c79 100644
          sha256: "{{ .hailort_fw_sha256 }}"
          sha512: "{{ .hailort_fw_sha512 }}"
      env:
-@@ -23,17 +23,23 @@ steps:
+@@ -23,17 +23,21 @@ steps:
        - |
          tar xf hailort-driver.tar.gz --strip-components=1
        - |
