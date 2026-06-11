@@ -31,6 +31,13 @@ mkdir pkgs && curl -sSL "https://github.com/siderolabs/pkgs/archive/${PKGS_HASH}
 # Apply surgical patches and edits
 echo "🛠️ Patching pkgs..."
 cd pkgs
+# Update hailort versions in Pkgfile using perl for cross-platform compatibility
+perl -0777 -pi -e 's/hailort_version: 4.23.0/hailort_version: 5.3.0/g' Pkgfile
+perl -0777 -pi -e 's/hailort_sha256: 245c7157746c2fd48b2fab4a990c8fb3b786921dd72c9e5348f5b5619ee05ec3/hailort_sha256: 716043f905d8a525fc6378224241609281f04ba5bafc989bb4633129558bb5a3/g' Pkgfile
+perl -0777 -pi -e 's/hailort_sha512: b5abdf3ca5cb4cbb9d3189ed6bae52d66e52dbce99ed1698ece8ff1f5f32db7560990e66bab740f2f0102e13175eb3fc0ae41162b75ee743684fb64ff845db07/hailort_sha512: ea60ff8f241f451457906db8006370fa2d346fdbc0f086310cce7143f5ca4984324ada54e760279a38df34d65de86f9b8b66568a4d83259b1699dfe8471d4162/g' Pkgfile
+perl -0777 -pi -e 's/hailort_fw_sha256: 1ba9528972091ec17bebc0dc7ea2e6f4449efe70664890f6387ccbc7b60626ee/hailort_fw_sha256: 01f8624d57e6b0a9892e9c8a71c5a2d6c3b4a794fc5848c81d5443e345c3d1db/g' Pkgfile
+perl -0777 -pi -e 's/hailort_fw_sha512: 6280e4bddc120ab6e9a4a4fdac529816ee1f94d343e0e0ef6c36fd474b579f85032e22b24a8f758b23028d429ef5936780fa07ed3c0abc512f5fd72985fc982c/hailort_fw_sha512: 2c19c81bc2e48a0b225e9fd937addb08f6839c0d4f45a5c3a6a8d2214b98c200503f7319c4eb9e14259669609cfae1a481fdc8ef59d4b876a08b84702dbb064d/g' Pkgfile
+
 git init -q
 git config user.email "ci@urmanac.com"
 git config user.name "CozyStack CI"
