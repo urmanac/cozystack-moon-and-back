@@ -3,12 +3,8 @@ set -e
 
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
-# We use a specific kernel-pinned tag as the primary to bust the cache of broken builds
-HAILORT_VERSION="5.3.0-v1.13.3"
-
-# Pinned Sidero Versions for Talos v1.13.3 (Kernel 6.18.33-talos)
-EXT_TAG="v1.13.3"
-PKGS_HASH="8c18616"
+VERSION_BASE="5.3.0"
+TALOS_VERSION="v1.13.3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -19,8 +15,41 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Calculate a content hash of our build logic to ensure idempotency.
+# This includes the patches and this script itself.
+CONTENT_HASH=$(cat "$PATCH_DIR/13-hailort-v5.3.0-pkgs.patch" \
+                   "$PATCH_DIR/12-hailort-v5.3.0-extension.patch" \
+                   "$0" | sha256sum | cut -c1-12)
+
+# This is our unique immutable tag for this specific code state.
+UNIQUE_TAG="${VERSION_BASE}-${TALOS_VERSION}-${CONTENT_HASH}"
+STABLE_TAG="${VERSION_BASE}-${TALOS_VERSION}"
+
 echo "📂 Working in $WORK_DIR"
+echo "🆔 Content Hash: $CONTENT_HASH"
+echo "🎯 Unique Tag:   $UNIQUE_TAG"
+
+# Check if the unique image already exists in registry.
+# If it does, we can safely skip the 1-hour kernel build.
+if skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" &>/dev/null; then
+    echo "✅ Verified image for this content already exists. Skipping build."
+    echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" > "$SCRIPT_DIR/../hailort-build.env"
+    
+    # If we are on main, ensure the stable tags also point to this verified digest.
+    if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+        DIGEST=$(skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" --format '{{.Digest}}')
+        echo "🏷️  Updating stable tags on main..."
+        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$STABLE_TAG"
+        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$VERSION_BASE"
+    fi
+    exit 0
+fi
+
 cd "$WORK_DIR"
+
+# Pinned Sidero Versions for Talos v1.13.3 (Kernel 6.18.33-talos)
+EXT_TAG="v1.13.3"
+PKGS_HASH="8c18616"
 
 # Download source tarballs
 echo "📥 Downloading Sidero extensions $EXT_TAG..."
@@ -32,7 +61,6 @@ mkdir pkgs && curl -sSL "https://github.com/siderolabs/pkgs/archive/${PKGS_HASH}
 # Apply surgical patches and edits
 echo "🛠️ Patching pkgs..."
 cd pkgs
-# Update hailort versions in Pkgfile
 perl -0777 -pi -e 's/hailort_version: 4.23.0/hailort_version: 5.3.0/g' Pkgfile
 perl -0777 -pi -e 's/hailort_sha256: 245c7157746c2fd48b2fab4a990c8fb3b786921dd72c9e5348f5b5619ee05ec3/hailort_sha256: 716043f905d8a525fc6378224241609281f04ba5bafc989bb4633129558bb5a3/g' Pkgfile
 perl -0777 -pi -e 's/hailort_sha512: b5abdf3ca5cb4cbb9d3189ed6bae52d66e52dbce99ed1698ece8ff1f5f32db7560990e66bab740f2f0102e13175eb3fc0ae41162b75ee743684fb64ff845db07/hailort_sha512: ea60ff8f241f451457906db8006370fa2d346fdbc0f086310cce7143f5ca4984324ada54e760279a38df34d65de86f9b8b66568a4d83259b1699dfe8471d4162/g' Pkgfile
@@ -73,32 +101,19 @@ curl -sSL https://github.com/siderolabs/bldr/releases/download/v0.6.0/bldr-${OS}
 chmod +x bldr
 export PATH="$PWD:$PATH"
 
-# Versions
-PKG_VERSION="v1.13.0-23-g${PKGS_HASH}"
-EXT_VERSION="$HAILORT_VERSION"
-EXT_IMAGE="$REGISTRY/$USERNAME/hailort:$EXT_VERSION"
-
-echo "🎯 Target Extension Image: $EXT_IMAGE"
-
-# Check if image exists in registry (using the unique kernel-pinned tag)
-if skopeo inspect "docker://$EXT_IMAGE" &>/dev/null; then
-    echo "✅ Image already exists in registry. Skipping build."
-    echo "HAILORT_IMAGE=$EXT_IMAGE" > "$SCRIPT_DIR/../hailort-build.env"
-    exit 0
-fi
-
 # Detect modern GNU Make
 MAKE_CMD="make"
 if [ "$(uname -s)" = "Darwin" ]; then
     [ -x "$(command -v gmake)" ] && MAKE_CMD="gmake"
 fi
 
-echo "🚀 Starting fresh build for $EXT_VERSION..."
+echo "🚀 Starting fresh build for $UNIQUE_TAG..."
 
 # Build hailort-pkg
 echo "🏗️ Building hailort-pkg..."
 cd pkgs
-$MAKE_CMD hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION" PUSH=true PLATFORM=linux/arm64
+PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
+$MAKE_CMD hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 # Build hailort extension
 echo "🏗️ Building hailort extension..."
@@ -106,16 +121,21 @@ cd ../extensions
 $MAKE_CMD hailort \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
-    TAG="5.3.0" \
-    PKGS="$PKG_VERSION" \
+    TAG="$UNIQUE_TAG" \
+    PKGS="$PKG_VERSION_TAG" \
     PKGS_PREFIX="$REGISTRY/$USERNAME" \
     PUSH=true \
     PLATFORM=linux/arm64
 
-# Tag with the specific kernel version as well
-echo "🏷️ Tagging with kernel-pinned version: $EXT_VERSION"
+# Extract digest for multi-tagging
 DIGEST=$(jq -r '."containerimage.digest"' _out/hailort.metadata.json)
-crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$EXT_VERSION"
 
-echo "✅ Built and pushed: $EXT_IMAGE"
-echo "HAILORT_IMAGE=$EXT_IMAGE" > "$SCRIPT_DIR/../hailort-build.env"
+# Always tag with the kernel-pinned stable version if we are on main
+if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+    echo "🏷️  Tagging official release versions..."
+    crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$STABLE_TAG"
+    crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$VERSION_BASE"
+fi
+
+echo "✅ Built and pushed: $REGISTRY/$USERNAME/hailort:$UNIQUE_TAG"
+echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" > "$SCRIPT_DIR/../hailort-build.env"
