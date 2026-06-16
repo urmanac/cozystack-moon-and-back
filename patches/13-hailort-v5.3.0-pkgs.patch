@@ -29,8 +29,10 @@ index 53fb4b9..3a2e3dc 100644
      install:
        - |
 -        mv hailo8_fw.bin /rootfs/usr/lib/firmware/hailo/hailo8_fw.bin
-+        # We use tar to extract directly into the rootfs to preserve symlinks (e.g. u-boot-default.dtb.signed)
-+        tar xf hailo10h_fw.tar.gz -C /rootfs/usr/lib/firmware/hailo/hailo10h/
++        mkdir -p hailo10h-fw
++        tar xf hailo10h_fw.tar.gz -C hailo10h-fw
++        # Dereference symlinks to real files to avoid Talos imager stat errors
++        cp -RL hailo10h-fw/* /rootfs/usr/lib/firmware/hailo/hailo10h/
 +      - |
          cd linux/pcie
          make -j $(nproc) -C /src M=$(pwd) modules_install INSTALL_MOD_PATH=/rootfs/usr INSTALL_MOD_DIR=kernel/drivers/misc INSTALL_MOD_STRIP=1
