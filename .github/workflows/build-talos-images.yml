@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'patches/**'
+      - 'hack/**'
       - '.github/workflows/**'
       - 'tests/**'
       - 'validate-*.sh'
       - 'crane'
+      - 'VERSION'
       - '!docs/**'
       - '!README.md'
       - '!TODO.md'
@@ -20,11 +22,13 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - 'patches/**' 
+      - 'patches/**'
+      - 'hack/**'
       - '.github/workflows/**'
       - 'tests/**'
       - 'validate-*.sh'
       - 'crane'
+      - 'VERSION'
       - '!docs/**'
       - '!README.md'
       - '!TODO.md'
