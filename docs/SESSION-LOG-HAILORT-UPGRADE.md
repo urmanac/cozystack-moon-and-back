@@ -1,45 +1,44 @@
-# Session Log: HailoRT Driver Upgrade to v5.3.0
+# Session Log: HailoRT Driver Upgrade to v5.3.0 (Part 3: Self-Hosted Runner & Cache Strategy)
 
-**Date:** June 10, 2026
-**Status:** CI Finalization in Progress
-**PR:** [urmanac/cozystack-moon-and-back#81](https://github.com/urmanac/cozystack-moon-and-back/pull/81)
+**Date:** June 18, 2026
+**Status:** CI Pipeline Redesign - Adapting for Self-Hosted Runners
+**PRs:** 
+- [urmanac/cozystack-moon-and-back#81](https://github.com/urmanac/cozystack-moon-and-back/pull/81) (Initial HailoRT v5.3.0 Integration, Merged)
+- [urmanac/cozystack-moon-and-back#83](https://github.com/urmanac/cozystack-moon-and-back/pull/83) (CI/CD Integrity Fix, Merged)
+- [urmanac/cozystack-moon-and-back#84](https://github.com/urmanac/cozystack-moon-and-back/pull/84) (CI Trigger Path Fix, Merged)
+- [urmanac/cozystack-moon-and-back#85](https://github.com/urmanac/cozystack-moon-and-back/pull/85) (Sovereign OS Factory, Open)
 
 ## Overview
-This session focused on upgrading the HailoRT AI accelerator drivers from v4.x to **v5.3.0** to support the **Hailo-10H** hardware (e.g., Raspberry Pi AI HAT+). The upgrade required patching the Sidero Labs `pkgs` and `extensions` repositories, resolving kernel version mismatches, and automating a complex source-build pipeline within GitHub Actions.
+This segment addresses a critical failure encountered during the "Sovereign OS Factory" build on GitHub's hosted runners: "No space left on device" errors. This explicitly confirms the hypothesis that full kernel compilation for Talos Linux (alongside extensions) exceeds the resource limits of default GitHub Actions runners. The strategic decision is to transition the resource-intensive `build-sovereign-os` job to a self-hosted runner, leveraging persistent Buildx caching to optimize build times.
 
-## Key Technical Hurdles & Resolutions
+## Key Technical Hurdles & Resolutions (Part 3)
 
-### 1. Kernel Version Mismatch (The "Dangling Module" Problem)
-- **Problem**: Talos v1.13.3 uses kernel `6.18.33-talos`. Initial builds pulled the `main` branch of Sidero repositories, which had moved to `6.18.34-talos`. This caused the Talos imager to fail during the `depmod` phase because it couldn't find modules matching the running kernel.
-- **Resolution**: Hard-pinned `siderolabs/extensions` to tag `v1.13.3` and `siderolabs/pkgs` to commit `8c18616`. This ensures the driver is compiled against the exact same kernel headers used by the target OS.
+### 1. "No space left on device" during Kernel Compilation
+-   **Problem**: Compiling the full Talos Linux kernel, `installer`, and `hailort` extension within the `build-sovereign-os` job consumed excessive disk space on GitHub-hosted runners, leading to build failures.
+-   **Resolution**: The `build-sovereign-os` job will be migrated to a **self-hosted runner**. This provides dedicated and sufficient disk resources for large-scale builds.
 
-### 2. Modern Kernel Compatibility (The `del_timer_sync` Error)
-- **Problem**: The HailoRT v5.3.0 driver source (released early 2024) used the `del_timer_sync` function, which was removed in recent kernels (v6.12+) in favor of `timer_delete_sync`.
-- **Resolution**: Implemented a dynamic `sed` patch during the `prepare` phase of the build to swap these functions, allowing the 2024 driver to compile on a 2026 kernel.
+### 2. Optimizing Buildx Cache for Self-Hosted Runners
+-   **Problem**: Even on a self-hosted runner, rebuilding the entire kernel every time is inefficient. We need a persistent Buildx cache.
+-   **Resolution**: Configured `docker/setup-buildx-action` in the `build-sovereign-os` job to utilize a `type=local` cache with a persistent destination (`/tmp/buildx-cache-${{ github.job }}`). On a self-hosted runner with a persistent `/tmp` or mounted volume, this will ensure that subsequent builds benefit from the cached layers, drastically reducing build times after the initial full compile.
 
-### 3. Firmware Symlink Integrity
-- **Problem**: The Hailo 10H firmware tarball contains `u-boot-default.dtb.signed`, which is a symlink. Naive `cp -R` commands in the build script were breaking this link, causing the imager to crash with `stat: no such file or directory`.
-- **Resolution**: Switched from `cp` to `tar xf ... -C /rootfs` to extract the firmware directly into the image filesystem, preserving all symlinks and metadata.
+### 3. Streamlining CI Job Execution
+-   **Problem**: The `if: always()` condition for `build-sovereign-os` was removed.
+-   **Resolution**: The `build-sovereign-os` job will now automatically execute based on its dependencies and trigger conditions, making the workflow more intuitive.
 
-### 4. CI Performance & Resource Exhaustion
-- **Problem**: Building a full Linux kernel from source inside CI took ~2.5 hours and often failed due to resource limits or dual-architecture (amd64+arm64) overhead.
-- **Resolution**: 
-    - Optimized `hack/build-hailort.sh` to build strictly for `linux/arm64`.
-    - Implemented a **Registry Idempotency Check**: The script now checks if the target image tag already exists in GHCR and exits in seconds if a rebuild isn't necessary.
-    - Switched from `git clone` to **tarball downloads**, reducing source pull time from minutes to seconds.
+## Architectural Improvements (Self-Hosted Runner Integration)
+The CI pipeline has been further refined to accommodate the self-hosted runner:
 
-### 5. Registry Permissions & Visibility
-- **Problem**: CI pushes to the `yebyen/` namespace were failing with `write_package` denied errors.
-- **Resolution**: The user manually linked the `urmanac/cozystack-moon-and-back` repository to the `hailort` and `hailort-pkg` packages in GHCR with **Write** permissions and set visibility to **Public**.
+### Tier 1: The "Sovereign OS Factory" (`hack/build-sovereign-os.sh`) - Now on Self-Hosted
+-   **Migration**: The `runs-on` property for `build-sovereign-os` is changed from `ubuntu-24.04-arm` to `[self-hosted, linux, arm64]`.
+-   **Persistent Caching**: The Buildx setup now explicitly configures a local cache (`/tmp/buildx-cache-${{ github.job }}`) for persistent storage on the self-hosted runner. This makes subsequent builds (when the content hash of build logic remains unchanged) execute in seconds, effectively addressing the initial 1.5-hour compile time for repeated runs.
 
-## Architectural Improvements
-- **Decoupled Build Logic**: Created `hack/build-hailort.sh` which can run both in CI and locally (with macOS compatibility fixes using `perl`).
-- **Surgical Patching**: Moved from monolithic patch files to surgical `perl` one-liners for version swapping in `Pkgfile`, preventing accidental metadata deletion.
-- **Isolation Strategy**: The build script now "isolates" the build by deleting unrelated Sidero packages before execution, preventing `bldr` from failing on unrelated schema errors in the pinned tree.
+## Current Status & Expectations
+-   The CI workflow has been updated to prepare for a self-hosted runner.
+-   The `build-sovereign-os` job will now target custom, user-managed runners.
+-   **Next Step**: Set up a self-hosted runner (e.g., on the MacBook Pro) and register it with the repository, ensuring it has the labels `self-hosted`, `linux`, and `arm64`, and sufficient disk space. Once the runner is active and the PR is merged, the `build-sovereign-os` job will execute on this dedicated hardware, leveraging its persistent cache for efficient builds.
 
-## Current Expectations (ongoing build: 27316713994)
-1. **Successful Compilation**: The kernel (6.18.33) and driver will finish compiling in ~45 minutes.
-2. **Verified Push**: The CI will successfully push the verified `5.3.0-v1.13.3` image to the public registry.
-3. **CI Pass**: The subsequent Talos image assembly will pull this artifact, validate the symlinks, and complete the PR validation.
+**Required Action for User**: Set up a self-hosted GitHub Actions runner on a suitable machine (e.g., MacBook Pro) with ample disk space (recommended >100GB). Register the runner with the repository and assign it the labels `self-hosted`, `linux`, `arm64`.
 
-**Status**: 🚀 Operational. The pipeline is now robust, autonomous, and respects Sidero's constitutional build standards.
+---
+**Related Documentation**:
+- [ADR-005: Sovereign OS Factory for Hardware Extension Integration](ADRs/ADR-005-SOVEREIGN-OS-FACTORY.md)

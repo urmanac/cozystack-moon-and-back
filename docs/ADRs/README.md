@@ -15,6 +15,7 @@ This directory contains Architecture Decision Records for the ARM64 Kubernetes p
 | [ADR-002](ADR-002-TDG-METHODOLOGY.md) | Test-Driven Generation Methodology | ✅ Accepted | 2025-11-16 |
 | [ADR-003](ADR-003-PATCH-GENERATION.md) | Patch Generation Best Practices | ✅ Accepted | 2025-11-16 |
 | [ADR-004](ADR-004-ROLE-BASED-IMAGES.md) | Role-Based Talos Image Architecture | ✅ Accepted | 2025-11-18 |
+| [ADR-005](ADR-005-SOVEREIGN-OS-FACTORY.md) | Sovereign OS Factory for Hardware Extension Integration | ✅ Accepted | 2026-06-18 |
 
 ## 🏗️ ADR Template
 
@@ -51,6 +52,8 @@ ADR-001 (ARM64 Choice)
 ADR-002 (TDG Methodology)
     ↓  
 ADR-003 (Patch Generation)
+    ↓
+ADR-005 (Sovereign OS Factory)
 ```
 
 ## 📚 Related Documentation
@@ -63,8 +66,7 @@ ADR-003 (Patch Generation)
 
 Potential decisions that may warrant ADRs:
 
-- **ADR-004**: CozyStack Build System Integration (Makefile vs. Custom)
-- **ADR-005**: GitHub Pages Documentation Strategy  
+- **ADR-004**: CozyStack Build System Integration (Makefile vs. Custom) (Superseded by ADR-005)
 - **ADR-006**: Home Lab Hardware Selection Criteria
 - **ADR-007**: Monitoring and Observability Stack
 - **ADR-008**: Security Model for Hybrid Cloud-Lab Setup
