@@ -134,7 +134,8 @@ index af333cc..067b3d5 100755
 @@ -89,6 +116,7 @@ input:
      path: /usr/install/arm64/initramfs.xz
    baseInstaller:
-     imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
+-    imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
++    imageRef: "${INSTALLER_IMAGE:-ghcr.io/siderolabs/installer:${TALOS_VERSION}}"
 +${overlay_block}
    systemExtensions:
      - imageRef: ${AMD_UCODE_IMAGE}

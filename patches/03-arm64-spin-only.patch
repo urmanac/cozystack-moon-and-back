@@ -45,7 +45,8 @@ index bbe932d..08b8ee7 100755
 -    path: /usr/install/amd64/initramfs.xz
 +    path: /usr/install/arm64/initramfs.xz
    baseInstaller:
-     imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
+-    imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
++    imageRef: "${INSTALLER_IMAGE:-ghcr.io/siderolabs/installer:${TALOS_VERSION}}"
    systemExtensions:
 @@ -90,6 +93,8 @@ input:
      - imageRef: ${QLOGIC_FIRMWARE_IMAGE}
