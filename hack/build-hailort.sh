@@ -35,12 +35,11 @@ if skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" &>/dev/null
     echo "✅ Verified image for this content already exists. Skipping build."
     echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" > "$SCRIPT_DIR/../hailort-build.env"
     
-    # If we are on main, ensure the stable tags also point to this verified digest.
+    # If we are on main, ensure the stable tags also point to this verified artifact.
     if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-        DIGEST=$(skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" --format '{{.Digest}}')
         echo "🏷️  Updating stable tags on main..."
-        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$STABLE_TAG"
-        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$VERSION_BASE"
+        crane tag "$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" "$STABLE_TAG"
+        crane tag "$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" "$VERSION_BASE"
     fi
     exit 0
 fi
@@ -121,7 +120,6 @@ cd ../extensions
 $MAKE_CMD hailort \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
-    TAG="$UNIQUE_TAG" \
     PKGS="$PKG_VERSION_TAG" \
     PKGS_PREFIX="$REGISTRY/$USERNAME" \
     PUSH=true \
@@ -129,6 +127,11 @@ $MAKE_CMD hailort \
 
 # Extract digest for multi-tagging
 DIGEST=$(jq -r '."containerimage.digest"' _out/hailort.metadata.json)
+
+# ALWAYS tag the unique immutable tag.
+# Sidero Makefiles ignore the TAG override, so we must add it explicitly.
+echo "🏷️  Tagging unique content-based version: $UNIQUE_TAG"
+crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST" "$UNIQUE_TAG"
 
 # Always tag with the kernel-pinned stable version if we are on main
 if [ "$GITHUB_REF" = "refs/heads/main" ]; then
