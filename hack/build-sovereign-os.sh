@@ -115,7 +115,7 @@ PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
 # Step 1: Compile the Sovereign Kernel (Generates the ephemeral signing key)
 echo "🏗️ Building sovereign kernel..."
 cd pkgs
-$MAKE_CMD kernel hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
+$MAKE_CMD kernel hailort-pkg SOURCE_DATE_EPOCH=1716646524 REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 cd ..
 # Step 1.5: Merge official Sidero Labs amd64 kernel with our custom arm64 kernel into a multi-arch index
@@ -130,9 +130,10 @@ crane index append \
 # Step 2: Compile HailoRT Extension against the sovereign kernel (Gets signed)
 echo "🏗️ Building hailort extension..."
 cd extensions
-$MAKE_CMD hailort \
+$MAKE_CMD hailort SOURCE_DATE_EPOCH=1716646524 \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
+    TAG="$TALOS_VERSION" \
     PKGS="$PKG_VERSION_TAG" \
     PKGS_PREFIX="$REGISTRY/$USERNAME" \
     PUSH=true \
@@ -144,7 +145,7 @@ crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$UNIQUE_TAG"
 # Step 3: Build a custom Talos Installer that wraps our sovereign kernel
 echo "🏗️ Building custom installer..."
 cd ../talos
-$MAKE_CMD installer-base imager installer \
+$MAKE_CMD installer-base imager installer SOURCE_DATE_EPOCH=1716646524 \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
     TAG="$TALOS_VERSION" \
