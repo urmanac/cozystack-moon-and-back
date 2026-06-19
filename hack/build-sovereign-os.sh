@@ -28,8 +28,8 @@ CONTENT_HASH=$(cat "$PATCH_DIR/13-hailort-v5.3.0-pkgs.patch" \
 UNIQUE_TAG="${VERSION_BASE}-${TALOS_VERSION}-${CONTENT_HASH}"
 STABLE_TAG="${VERSION_BASE}-${TALOS_VERSION}"
 
-# Define local Buildx cache parameters to be passed to Sidero Makefiles
-export CI_ARGS="--cache-from=type=local,src=/tmp/buildx-cache/build-sovereign-os --cache-to=type=local,dest=/tmp/buildx-cache/build-sovereign-os-new,mode=max"
+# We rely on the persistent Buildx builder container's internal cache, so CI_ARGS is not needed.
+export CI_ARGS=""
 
 echo "📂 Working in $WORK_DIR"
 echo "🆔 Content Hash: $CONTENT_HASH"
