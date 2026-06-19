@@ -126,7 +126,7 @@ crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$UNIQUE_TAG"
 # Step 3: Build a custom Talos Installer that wraps our sovereign kernel
 echo "🏗️ Building custom installer..."
 cd ../talos
-$MAKE_CMD installer-base installer \
+$MAKE_CMD installer-base imager installer \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
     TAG="$UNIQUE_TAG" \
