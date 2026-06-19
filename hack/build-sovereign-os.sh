@@ -82,6 +82,13 @@ find . -maxdepth 1 -type d ! -name '.' ! -name '.git' ! -name 'drivers' ! -name 
 find drivers -maxdepth 1 -type d ! -name 'drivers' ! -name 'hailort' -exec rm -rf {} +
 
 cd ..
+echo "🛠️ Initializing talos git repository..."
+cd talos
+git init -q && git config user.email "ci@urmanac.com" && git config user.name "CozyStack CI"
+git add . && git commit -m "initial" -q
+git tag "$EXT_TAG"
+cd ..
+
 if [ "$(uname -s)" = "Darwin" ]; then
     perl -pi -e 's/^CI_RELEASE_TAG :=.*/CI_RELEASE_TAG :=/' pkgs/Makefile extensions/Makefile talos/Makefile
 fi
