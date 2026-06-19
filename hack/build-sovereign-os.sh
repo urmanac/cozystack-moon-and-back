@@ -109,9 +109,19 @@ echo "🏗️ Building sovereign kernel..."
 cd pkgs
 $MAKE_CMD kernel REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
+cd ..
+# Step 1.5: Merge official Sidero Labs amd64 kernel with our custom arm64 kernel into a multi-arch index
+echo "🔀 Creating multi-arch manifest list for kernel..."
+AMD64_KERNEL_DIGEST=$(crane digest ghcr.io/siderolabs/kernel:$PKG_VERSION_TAG --platform linux/amd64)
+ARM64_KERNEL_DIGEST=$(crane digest $REGISTRY/$USERNAME/kernel:$PKG_VERSION_TAG)
+crane index append \
+    -m "ghcr.io/siderolabs/kernel@$AMD64_KERNEL_DIGEST" \
+    -m "$REGISTRY/$USERNAME/kernel@$ARM64_KERNEL_DIGEST" \
+    -t "$REGISTRY/$USERNAME/kernel:$PKG_VERSION_TAG"
+
 # Step 2: Compile HailoRT Extension against the sovereign kernel (Gets signed)
 echo "🏗️ Building hailort extension..."
-cd ../extensions
+cd extensions
 $MAKE_CMD hailort \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
