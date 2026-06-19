@@ -115,7 +115,7 @@ PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
 # Step 1: Compile the Sovereign Kernel (Generates the ephemeral signing key)
 echo "🏗️ Building sovereign kernel..."
 cd pkgs
-$MAKE_CMD kernel REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
+$MAKE_CMD kernel hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 cd ..
 # Step 1.5: Merge official Sidero Labs amd64 kernel with our custom arm64 kernel into a multi-arch index
