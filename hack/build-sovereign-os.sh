@@ -147,16 +147,25 @@ cd ../talos
 $MAKE_CMD installer-base imager installer \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
-    TAG="$UNIQUE_TAG" \
+    TAG="$TALOS_VERSION" \
     PKG_KERNEL="$REGISTRY/$USERNAME/kernel:$PKG_VERSION_TAG" \
     PUSH=true \
     PLATFORM=linux/arm64
+
+echo "🏷️  Tagging custom installer images to content-based unique versions..."
+DIGEST_INSTALLER_BASE=$(crane digest "$REGISTRY/$USERNAME/installer-base:$TALOS_VERSION")
+crane tag "$REGISTRY/$USERNAME/installer-base@$DIGEST_INSTALLER_BASE" "$UNIQUE_TAG"
+
+DIGEST_IMAGER=$(crane digest "$REGISTRY/$USERNAME/imager:$TALOS_VERSION")
+crane tag "$REGISTRY/$USERNAME/imager@$DIGEST_IMAGER" "$UNIQUE_TAG"
+
+DIGEST_INSTALLER=$(crane digest "$REGISTRY/$USERNAME/installer:$TALOS_VERSION")
+crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$UNIQUE_TAG"
 
 if [ "$GITHUB_REF" = "refs/heads/main" ]; then
     echo "🏷️  Tagging official release versions..."
     crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$STABLE_TAG"
     crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$VERSION_BASE"
-    DIGEST_INSTALLER=$(skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" --format '{{.Digest}}')
     crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$STABLE_TAG"
     crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$VERSION_BASE"
 fi
