@@ -250,8 +250,8 @@ jobs:
         with:
           driver-opts: network=host
           buildkitd-flags: --debug
-          cache-from: type=local,src=/tmp/buildx-cache-${{ github.job }}
-          cache-to: type=local,dest=/tmp/buildx-cache-${{ github.job }}-new,mode=max
+          cache-from: type=local,src=/tmp/buildx-cache/${{ github.job }}
+          cache-to: type=local,dest=/tmp/buildx-cache/${{ github.job }}-new,mode=max
 
 
 
@@ -270,6 +270,15 @@ jobs:
           source sovereign-os.env
           echo "INSTALLER_IMAGE=$INSTALLER_IMAGE" >> $GITHUB_OUTPUT
           echo "HAILORT_IMAGE=$HAILORT_IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Update local Buildx cache
+        if: always()
+        run: |
+          if [ -d /tmp/buildx-cache/${{ github.job }}-new ]; then
+            echo "🔄 Updating persistent Buildx cache on host..."
+            rm -rf /tmp/buildx-cache/${{ github.job }}
+            mv /tmp/buildx-cache/${{ github.job }}-new /tmp/buildx-cache/${{ github.job }}
+          fi
 
   # Stage 3b: Build Talos/Matchbox variants.
   build-cozystack-upstream:
