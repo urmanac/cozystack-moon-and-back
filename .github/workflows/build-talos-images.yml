@@ -283,7 +283,10 @@ jobs:
   # Stage 3b: Build Talos/Matchbox variants.
   build-cozystack-upstream:
     needs: [build-cozystack-operator, build-sovereign-os]
-    if: always()
+    if: |
+      always() &&
+      (needs.build-sovereign-os.result == 'success') &&
+      (needs.build-cozystack-operator.result == 'success' || needs.build-cozystack-operator.result == 'skipped')
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
