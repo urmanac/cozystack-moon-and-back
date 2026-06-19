@@ -8,7 +8,12 @@ TALOS_VERSION="v1.13.3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
-WORK_DIR="$(mktemp -d)"
+# Create working directory inside the mounted /tmp/buildx-cache volume if available.
+# This prevents Docker-in-Docker volume mount issues (where the host docker daemon
+# cannot see files created in the runner container's ephemeral /tmp filesystem).
+PARENT_TEMP="/tmp"
+[ -d "/tmp/buildx-cache" ] && [ -w "/tmp/buildx-cache" ] && PARENT_TEMP="/tmp/buildx-cache"
+WORK_DIR=$(mktemp -d -p "$PARENT_TEMP")
 
 cleanup() {
     rm -rf "$WORK_DIR"
