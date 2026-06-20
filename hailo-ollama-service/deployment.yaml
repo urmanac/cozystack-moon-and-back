@@ -40,7 +40,9 @@ spec:
             privileged: true
           ports:
             - containerPort: 8000
-              name: http
+              name: http-raw
+            - containerPort: 11434
+              name: http-proxy
           env:
             - name: OLLAMA_HOST
               value: "0.0.0.0"
@@ -71,7 +73,13 @@ spec:
   selector:
     app: hailo-ollama
   ports:
-    - protocol: TCP
+    - name: proxy
+      protocol: TCP
+      port: 11434
+      targetPort: 11434
+      nodePort: 30434
+    - name: raw
+      protocol: TCP
       port: 8000
       targetPort: 8000
       nodePort: 30800

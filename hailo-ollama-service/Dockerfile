@@ -72,6 +72,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     libssl3t64 \
     curl \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the hailo-ollama binary
@@ -83,12 +84,26 @@ COPY --from=hailort-builder /hailort-install/lib/libhailort.so* /usr/local/lib/
 # Copy model manifests so hailo-ollama knows which models are available
 COPY --from=hailo-ollama-builder /hailo-ollama-install/share /usr/local/share/
 
+# Copy the JSON-sanitizing proxy (fixes newline-in-content bug in hailo-ollama v5.3.0)
+COPY proxy.py /usr/local/bin/hailo-ollama-proxy
+
 RUN ldconfig
 
 # Models are stored in /root/.ollama by default; mount a volume for persistence
 VOLUME ["/root/.ollama"]
 
-# Expose Ollama-compatible API port
-EXPOSE 8000
+# Entrypoint script: start hailo-ollama on :8000, proxy on :11434
+RUN printf '#!/bin/sh\n\
+hailo-ollama &\n\
+HAILO_PID=$!\n\
+python3 /usr/local/bin/hailo-ollama-proxy &\n\
+PROXY_PID=$!\n\
+trap "kill $HAILO_PID $PROXY_PID" INT TERM\n\
+wait $HAILO_PID\n' > /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["hailo-ollama"]
+# :8000 = hailo-ollama (raw, Ollama-compatible)
+# :11434 = proxy (JSON-sanitized, use this for claude-code-proxy / Tab Maestro)
+EXPOSE 8000 11434
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
