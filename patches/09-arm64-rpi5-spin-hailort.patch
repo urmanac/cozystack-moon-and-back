@@ -1,5 +1,5 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 034b8271..6a11b4d9 100644
+index 034b8271..f4e16397 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
 @@ -11,12 +11,14 @@ update:
@@ -20,7 +20,7 @@ index 034b8271..6a11b4d9 100644
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
-@@ -28,27 +30,39 @@ image-matchbox:
+@@ -28,29 +30,41 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
@@ -67,7 +67,10 @@ index 034b8271..6a11b4d9 100644
 +build-talos-initramfs build-talos-kernel build-talos-installer build-talos-installer-rpi5 build-talos-iso build-talos-nocloud build-talos-metal build-talos-metal-rpi5:
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
- 		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
+-		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
++		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE:-ghcr.io/siderolabs/imager:$(TALOS_VERSION))" --tar-to-stdout - | \
+ 		tar -C ../../../_out/assets -xzf-
+ 
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
 index 424a4481..b2254b6f 100755
 --- a/packages/core/talos/hack/gen-profiles.sh

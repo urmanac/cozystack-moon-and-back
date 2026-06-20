@@ -40,6 +40,7 @@ if skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" &>/dev/nu
     echo "✅ Verified sovereign images already exist. Skipping build."
     echo "INSTALLER_IMAGE=$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" > "$SCRIPT_DIR/../sovereign-os.env"
     echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+    echo "IMAGER_IMAGE=$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
     
     if [ "$GITHUB_REF" = "refs/heads/main" ]; then
         echo "🏷️  Updating stable tags on main..."
@@ -174,3 +175,4 @@ fi
 echo "✅ Built and pushed sovereign OS artifacts."
 echo "INSTALLER_IMAGE=$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" > "$SCRIPT_DIR/../sovereign-os.env"
 echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+echo "IMAGER_IMAGE=$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"

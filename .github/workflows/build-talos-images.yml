@@ -232,6 +232,7 @@ jobs:
     outputs:
       INSTALLER_IMAGE: ${{ steps.build.outputs.INSTALLER_IMAGE }}
       HAILORT_IMAGE: ${{ steps.build.outputs.HAILORT_IMAGE }}
+      IMAGER_IMAGE: ${{ steps.build.outputs.IMAGER_IMAGE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -271,6 +272,7 @@ jobs:
           source sovereign-os.env
           echo "INSTALLER_IMAGE=$INSTALLER_IMAGE" >> $GITHUB_OUTPUT
           echo "HAILORT_IMAGE=$HAILORT_IMAGE" >> $GITHUB_OUTPUT
+          echo "IMAGER_IMAGE=$IMAGER_IMAGE" >> $GITHUB_OUTPUT
 
 
   # Stage 3b: Build Talos/Matchbox variants.
@@ -341,6 +343,7 @@ jobs:
           if [ "${{ matrix.hardware }}" = "cm5-hailo10h" ]; then
             echo "Injecting Sovereign OS artifacts into build..."
             echo "INSTALLER_IMAGE=${{ needs.build-sovereign-os.outputs.INSTALLER_IMAGE }}" >> $GITHUB_ENV
+            echo "IMAGER_IMAGE=${{ needs.build-sovereign-os.outputs.IMAGER_IMAGE }}" >> $GITHUB_ENV
             if [ "${{ matrix.extension_variant }}" = "spin-hailort" ]; then
               echo "HAILORT_IMAGE=${{ needs.build-sovereign-os.outputs.HAILORT_IMAGE }}" >> $GITHUB_ENV
             fi
