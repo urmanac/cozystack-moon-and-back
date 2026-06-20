@@ -127,10 +127,11 @@ MAKE_CMD="make"
 
 PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
 
-# Step 1: Compile the Sovereign Kernel (Generates the ephemeral signing key)
-echo "🏗️ Building sovereign kernel..."
+# Step 1: Compile the sovereign kernel and all package images consumed by extensions.
+# First-run CI must publish drbd-pkg/zfs-pkg before the extension build can reference them.
+echo "🏗️ Building sovereign kernel and required package images..."
 cd pkgs
-$MAKE_CMD kernel hailort-pkg SOURCE_DATE_EPOCH=1716646524 REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
+$MAKE_CMD kernel hailort-pkg drbd-pkg zfs-pkg SOURCE_DATE_EPOCH=1716646524 REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 cd ..
 # Step 1.5: Merge official Sidero Labs amd64 kernel with our custom arm64 kernel into a multi-arch index
