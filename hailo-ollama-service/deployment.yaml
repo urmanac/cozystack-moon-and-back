@@ -1,23 +1,22 @@
 ---
-# Persistent volume for downloaded .hef model files
+# Dedicated namespace for Hailo workloads — needs privileged pod security
+# because we mount /dev/h1x-0 (hostPath CharDevice) and need privileged=true
+# for the HailoRT PCIe driver to be accessible.
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: Namespace
 metadata:
-  name: hailo-ollama-models
-  namespace: default
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+  name: hailo
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hailo-ollama
-  namespace: default
+  namespace: hailo
   labels:
     app: hailo-ollama
 spec:
@@ -49,7 +48,7 @@ spec:
             # Hailo PCIe device (Hailo-10H)
             - name: dev-hailo
               mountPath: /dev/h1x-0
-            # Persistent model storage (~1.5 GB for qwen2:1.5b .hef)
+            # Model storage — persists on node9's local disk
             - name: model-storage
               mountPath: /root/.ollama
       volumes:
@@ -58,15 +57,16 @@ spec:
             path: /dev/h1x-0
             type: CharDevice
         - name: model-storage
-          persistentVolumeClaim:
-            claimName: hailo-ollama-models
+          hostPath:
+            path: /var/lib/hailo-ollama/models
+            type: DirectoryOrCreate
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: hailo-ollama
-  namespace: default
+  namespace: hailo
 spec:
   selector:
     app: hailo-ollama
