@@ -52,6 +52,20 @@ Over the last two days, we designed and implemented the **Sovereign OS Factory**
     This occurred because Kubelet has a persistent CPU state checkpoint file (`/var/lib/kubelet/cpu_manager_state`) on the node's local storage. When the upgraded kernel booted, only CPU 0 was brought online during early initialization (or Kubelet started before other cores initialized). Detecting a mismatch from `0-3` down to `0`, Kubelet failed, causing Talos to mark the boot as failed and automatically roll back (revert) to the old working partition (which then triggered module signature errors because it ran the old kernel).
 *   **Solution**: Deleting the Kubelet CPU Manager checkpoint state file allows Kubelet to re-detect all available cores on boot.
 
+### 6. Makefile vs Shell Variable Expansion Context Mismatch
+*   **Challenge**: The GHA workflow matrix failed to build standard hardware profiles because `"$(IMAGER_IMAGE:-ghcr.io/siderolabs/imager:$(TALOS_VERSION))"` resolved to `""` in Makefiles. Makefiles interpret `$(VAR)` as Makefile variable expansion, not shell expansion.
+*   **Solution**: Declared `IMAGER_IMAGE ?= ghcr.io/siderolabs/imager:$(TALOS_VERSION)` as a standard Makefile variable with conditional assignment, and updated the docker commands to use the clean `$(IMAGER_IMAGE)` variable.
+
+### 7. DRBD, SPL, and ZFS Kernel Module Signature Mismatch
+*   **Challenge**: While our custom `hailort` driver loaded successfully, CozyStack's ZFS, SPL, and DRBD extensions failed with `key was rejected by service`. Because these extensions are pulled pre-compiled from the official Sidero Labs registry, they are signed with Sidero's private key, which our custom kernel (using our own ephemeral key) rejects.
+*   **Solution**: Currently, ZFS, SPL, and DRBD are excluded/commented out on `node9` (which is running fine as a worker node). For the future, to sign them correctly against our custom kernel:
+    1. Stop deleting `zfs` and `drbd` source directories in [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh#L88-L91).
+    2. Build them alongside `hailort` in the extensions compile step:
+       ```bash
+       $MAKE_CMD hailort zfs drbd ...
+       ```
+    3. Alternative: Maintain a persistent private signing key and certificate (instead of generating a fresh ephemeral key on each kernel compile) and configure Sidero's build to use it (`CONFIG_MODULE_SIG_KEY`), allowing us to sign modules without rebuilding the kernel every time.
+
 ---
 
 ## 🏗️ Architectural Overview
@@ -76,26 +90,16 @@ graph TD
 
 ---
 
-## ✅ Current State of the Code & Next Steps
+## ✅ Current State & Next Steps
 
-All changes are committed and pushed to the remote branch `feat/sovereign-os-factory`.
+All changes are committed, validated, and pushed to the remote branch `feat/sovereign-os-factory`.
 
 > [!IMPORTANT]
-> The next build triggered on the `feat/sovereign-os-factory` branch will hit the persistent cache inside the `sovereign-builder` container, making it extremely fast.
+> **Proof of Life Confirmed**: `node9` (`talos-428fe` at `192.168.2.109`) successfully booted the custom kernel and loaded the signed `hailo1x_pci` driver v5.3.0, creating the `/dev/h1x-0` device node and successfully loading firmware in 1663 ms!
 
-### Recommended Next Steps:
-
-1.  **Monitor the next CI Run**: Run a test commit or trigger the workflow on `feat/sovereign-os-factory` to verify cache hits and image tag synchronization.
-2.  **Delete Kubelet State on Node**: Before/during upgrade of the node, remove the CPU Manager checkpoint file to prevent Kubelet restart loops and Talos fallback rollbacks:
-    ```bash
-    # Run a privileged shell/command to remove the Kubelet checkpoint state:
-    rm -f /var/lib/kubelet/cpu_manager_state
-    ```
-3.  **Upgrade Node**: Run the upgrade:
-    ```bash
-    talm upgrade -f nodes/node9.yaml -i ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort-cm5-hailo10h/talos:v1.13.3-rpi5
-    ```
-4.  **Confirm Driver Loading**: Verify the `hailo1x_pci` driver loads successfully without key rejection logs.
+### Next Steps:
+1.  **AI Model Deployment**: Proceed with setting up an OpenAI API compatible endpoint listening on the cluster and loading an AI model onto the Hailo-10H accelerator.
+2.  **Maintain/Resolve ZFS/DRBD when needed**: If storage extensions are required on the Pi 5 nodes in the future, follow the instructions in Challenge #7 to compile and sign them.
 
 ---
 
@@ -104,3 +108,4 @@ All changes are committed and pushed to the remote branch `feat/sovereign-os-fac
 *   [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh): Added deterministic variables (`SOURCE_DATE_EPOCH`, `TAG`), aligned module signing targets, and implemented Crane retagging.
 *   [.github/workflows/build-talos-images.yml](file:///Users/yebyen/u/c/cozystack-moon-and-back/.github/workflows/build-talos-images.yml): Configured persistent Buildx builder (`sovereign-builder`) with `cleanup: false` and `keep-state: true`.
 *   [docs/SESSION-LOG-HAILORT-UPGRADE.md](file:///Users/yebyen/u/c/cozystack-moon-and-back/docs/SESSION-LOG-HAILORT-UPGRADE.md): Logs historical and active progress.
+*   [patches/09-arm64-rpi5-spin-hailort.patch](file:///Users/yebyen/u/c/cozystack-moon-and-back/patches/09-arm64-rpi5-spin-hailort.patch) & [patches/10-arm64-rpi5-specialized-matchbox.patch](file:///Users/yebyen/u/c/cozystack-moon-and-back/patches/10-arm64-rpi5-specialized-matchbox.patch): Patches regenerated cleanly using `git diff` on clean upstream checkouts to resolve Makefile compilation syntax context mismatches.
