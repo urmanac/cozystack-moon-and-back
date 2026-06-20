@@ -2,7 +2,6 @@
 # Target: linux/arm64 (Raspberry Pi 5 / CM5 with Hailo-10H)
 #
 # Stage 1: Build HailoRT v5.3.0 from source
-# This produces libhailort.so and the cmake config files needed by hailo-ollama.
 FROM ubuntu:24.04 AS hailort-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,13 +17,28 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --branch v5.3.0 --depth 1 https://github.com/hailo-ai/hailort.git /hailort
+
+# Pre-fetch Eigen 3.4.0 (exact commit HailoRT expects) as a tarball.
+# We use the Googlesource mirror since gitlab.com is unreachable from inside
+# Docker Desktop's container network. This avoids FetchContent trying to clone
+# from gitlab.com during cmake configure.
+RUN mkdir -p /eigen-src && \
+    curl -fSL \
+      "https://chromium.googlesource.com/external/gitlab.com/libeigen/eigen/+archive/3147391d946bb4b6c68edd901f2add6ac1f31f8c.tar.gz" \
+      -o /tmp/eigen.tar.gz && \
+    tar -xzf /tmp/eigen.tar.gz -C /eigen-src && \
+    rm /tmp/eigen.tar.gz
+
 WORKDIR /hailort
-# HAILO_BUILD_SERVICE=OFF avoids building the hailort daemon which has extra deps
+# Point cmake at the pre-fetched eigen via FETCHCONTENT_SOURCE_DIR_EIGEN
+# so it doesn't try to git-clone from gitlab.com.
+# HAILO_BUILD_SERVICE=OFF skips the daemon (avoids extra systemd deps).
 RUN cmake -S. -Bbuild \
     -DCMAKE_BUILD_TYPE=Release \
     -DHAILO_BUILD_EXAMPLES=OFF \
     -DHAILO_BUILD_TESTS=OFF \
-    -DHAILO_BUILD_SERVICE=OFF
+    -DHAILO_BUILD_SERVICE=OFF \
+    -DFETCHCONTENT_SOURCE_DIR_EIGEN=/eigen-src
 RUN cmake --build build --config Release -j$(nproc)
 RUN cmake --install build --prefix /hailort-install
 
@@ -67,7 +81,6 @@ COPY --from=hailo-ollama-builder /hailo-ollama-install/bin/hailo-ollama /usr/loc
 COPY --from=hailort-builder /hailort-install/lib/libhailort.so* /usr/local/lib/
 
 # Copy model manifests so hailo-ollama knows which models are available
-# The server fetches actual .hef files on first pull
 COPY --from=hailo-ollama-builder /hailo-ollama-install/share /usr/local/share/
 
 RUN ldconfig
