@@ -89,8 +89,9 @@ COPY proxy.py /usr/local/bin/hailo-ollama-proxy
 
 RUN ldconfig
 
-# Models are stored in /root/.ollama by default; mount a volume for persistence
-VOLUME ["/root/.ollama"]
+# Models are stored under /root/.local/share/hailo-ollama/models in this runtime.
+# Mount a volume there for persistence across restarts.
+VOLUME ["/root/.local/share/hailo-ollama/models"]
 
 # Entrypoint script: start hailo-ollama on :8000, proxy on :11434
 RUN printf '#!/bin/sh\n\

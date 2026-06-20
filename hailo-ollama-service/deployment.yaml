@@ -50,9 +50,9 @@ spec:
             # Hailo PCIe device (Hailo-10H)
             - name: dev-hailo
               mountPath: /dev/h1x-0
-            # Model storage — persists on node9's local disk
+            # Model storage — hailo-ollama writes under ~/.local/share/hailo-ollama/models
             - name: model-storage
-              mountPath: /root/.ollama
+              mountPath: /root/.local/share/hailo-ollama/models
       volumes:
         - name: dev-hailo
           hostPath:

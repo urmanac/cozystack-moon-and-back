@@ -52,8 +52,9 @@ curl -s http://192.168.2.109:30800/api/pull \
 ```
 
 > **Note**: The first pull downloads the Hailo-compiled `.hef` file (~1.5 GB)
-> from Hailo's model registry. It is stored in the `hailo-ollama-models` PVC
-> at `/root/.ollama` so subsequent pod restarts skip the download.
+> from Hailo's model registry. It is stored in the hostPath-backed model volume
+> at `/root/.local/share/hailo-ollama/models` so subsequent pod restarts skip
+> the download.
 
 ## Testing Inference
 
@@ -108,7 +109,7 @@ python3 hailo-ollama-service/test_proxy.py
 
 Model files are persisted through hostPath:
 
-- container path: `/root/.ollama`
+- container path: `/root/.local/share/hailo-ollama/models`
 - node path: `/var/lib/hailo-ollama/models`
 
 Quick validation sequence:
@@ -125,7 +126,7 @@ kubectl -n hailo rollout status deploy/hailo-ollama
 curl -s http://192.168.2.109:30800/hailo/v1/list | jq
 
 # 4) Verify node-side files exist
-kubectl -n hailo exec deploy/hailo-ollama -- ls -lah /root/.ollama
+kubectl -n hailo exec deploy/hailo-ollama -- ls -lah /root/.local/share/hailo-ollama/models
 ```
 
 If a full pull happens after restart, inspect hostPath permissions and ensure
