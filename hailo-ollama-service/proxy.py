@@ -55,7 +55,9 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             body = sanitize_messages(body)
 
         # Forward to upstream hailo-ollama
-        conn = http.client.HTTPConnection(UPSTREAM_HOST, UPSTREAM_PORT, timeout=120)
+        # Long timeout for pull/push (model downloads can be several GB)
+        timeout = 3600 if "/pull" in self.path or "/push" in self.path else 120
+        conn = http.client.HTTPConnection(UPSTREAM_HOST, UPSTREAM_PORT, timeout=timeout)
         headers = {
             k: v for k, v in self.headers.items()
             if k.lower() not in ("host", "content-length", "transfer-encoding")
