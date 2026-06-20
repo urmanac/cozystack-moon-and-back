@@ -27,6 +27,7 @@ CONTENT_HASH=$(cat "$PATCH_DIR/13-hailort-v5.3.0-pkgs.patch" \
 
 UNIQUE_TAG="${VERSION_BASE}-${TALOS_VERSION}-${CONTENT_HASH}"
 STABLE_TAG="${VERSION_BASE}-${TALOS_VERSION}"
+REQUIRED_EXTENSIONS=(hailort drbd zfs)
 
 # We rely on the persistent Buildx builder container's internal cache, so CI_ARGS is not needed.
 export CI_ARGS=""
@@ -35,18 +36,31 @@ echo "📂 Working in $WORK_DIR"
 echo "🆔 Content Hash: $CONTENT_HASH"
 echo "🎯 Unique Tag:   $UNIQUE_TAG"
 
-if skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" &>/dev/null && \
-   skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" &>/dev/null; then
+all_required_present=true
+for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+    if ! skopeo inspect "docker://$REGISTRY/$USERNAME/$extension:$UNIQUE_TAG" &>/dev/null; then
+        all_required_present=false
+        break
+    fi
+done
+
+if [ "$all_required_present" = "true" ] && \
+   skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" &>/dev/null && \
+   skopeo inspect "docker://$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" &>/dev/null; then
     echo "✅ Verified sovereign images already exist. Skipping build."
     echo "INSTALLER_IMAGE=$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" > "$SCRIPT_DIR/../sovereign-os.env"
-    echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+    for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+        echo "${extension^^}_IMAGE=$REGISTRY/$USERNAME/$extension:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+    done
     echo "IMAGER_IMAGE=$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
     
     if [ "$GITHUB_REF" = "refs/heads/main" ]; then
         echo "🏷️  Updating stable tags on main..."
-        DIGEST_HAILORT=$(skopeo inspect "docker://$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" --format '{{.Digest}}')
-        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$STABLE_TAG"
-        crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$VERSION_BASE"
+        for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+            DIGEST_EXTENSION=$(skopeo inspect "docker://$REGISTRY/$USERNAME/$extension:$UNIQUE_TAG" --format '{{.Digest}}')
+            crane tag "$REGISTRY/$USERNAME/$extension@$DIGEST_EXTENSION" "$STABLE_TAG"
+            crane tag "$REGISTRY/$USERNAME/$extension@$DIGEST_EXTENSION" "$VERSION_BASE"
+        done
 
         DIGEST_INSTALLER=$(skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" --format '{{.Digest}}')
         crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$STABLE_TAG"
@@ -85,9 +99,9 @@ git apply "$PATCH_DIR/12-hailort-v5.3.0-extension.patch"
 
 echo "🧹 Isolating targeted build directories..."
 cd ../pkgs
-find . -maxdepth 1 -type d ! -name '.' ! -name '.git' ! -name 'hailort' ! -name 'base' ! -name 'reproducibility' ! -name 'kernel' -exec rm -rf {} +
+find . -maxdepth 1 -type d ! -name '.' ! -name '.git' ! -name 'hailort' ! -name 'drbd' ! -name 'zfs' ! -name 'base' ! -name 'reproducibility' ! -name 'kernel' -exec rm -rf {} +
 cd ../extensions
-find . -maxdepth 1 -type d ! -name '.' ! -name '.git' ! -name 'drivers' ! -name 'hack' ! -name 'reproducibility' ! -name 'internal' ! -name 'container-runtime' -exec rm -rf {} +
+find . -maxdepth 1 -type d ! -name '.' ! -name '.git' ! -name 'drivers' ! -name 'storage' ! -name 'hack' ! -name 'reproducibility' ! -name 'internal' ! -name 'container-runtime' -exec rm -rf {} +
 find drivers -maxdepth 1 -type d ! -name 'drivers' ! -name 'hailort' -exec rm -rf {} +
 
 cd ..
@@ -128,10 +142,10 @@ crane index append \
     -m "$REGISTRY/$USERNAME/kernel@$ARM64_KERNEL_DIGEST" \
     -t "$REGISTRY/$USERNAME/kernel:$PKG_VERSION_TAG"
 
-# Step 2: Compile HailoRT Extension against the sovereign kernel (Gets signed)
-echo "🏗️ Building hailort extension..."
+# Step 2: Compile required extensions against the sovereign kernel (signed with the same key context)
+echo "🏗️ Building required extensions (hailort, drbd, zfs)..."
 cd extensions
-$MAKE_CMD hailort SOURCE_DATE_EPOCH=1716646524 \
+$MAKE_CMD hailort drbd zfs SOURCE_DATE_EPOCH=1716646524 \
     REGISTRY="$REGISTRY" \
     USERNAME="$USERNAME" \
     TAG="$TALOS_VERSION" \
@@ -140,8 +154,16 @@ $MAKE_CMD hailort SOURCE_DATE_EPOCH=1716646524 \
     PUSH=true \
     PLATFORM=linux/arm64
 
-DIGEST_HAILORT=$(jq -r '."containerimage.digest"' _out/hailort.metadata.json)
-crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$UNIQUE_TAG"
+for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+    METADATA_FILE="_out/${extension}.metadata.json"
+    if [ ! -f "$METADATA_FILE" ]; then
+        echo "❌ Missing metadata for extension '$extension' at $METADATA_FILE"
+        exit 1
+    fi
+
+    DIGEST_EXTENSION=$(jq -r '."containerimage.digest"' "$METADATA_FILE")
+    crane tag "$REGISTRY/$USERNAME/$extension@$DIGEST_EXTENSION" "$UNIQUE_TAG"
+done
 
 # Step 3: Build a custom Talos Installer that wraps our sovereign kernel
 echo "🏗️ Building custom installer..."
@@ -166,13 +188,18 @@ crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$UNIQUE_TAG"
 
 if [ "$GITHUB_REF" = "refs/heads/main" ]; then
     echo "🏷️  Tagging official release versions..."
-    crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$STABLE_TAG"
-    crane tag "$REGISTRY/$USERNAME/hailort@$DIGEST_HAILORT" "$VERSION_BASE"
+    for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+        DIGEST_EXTENSION=$(jq -r '."containerimage.digest"' "../extensions/_out/${extension}.metadata.json")
+        crane tag "$REGISTRY/$USERNAME/$extension@$DIGEST_EXTENSION" "$STABLE_TAG"
+        crane tag "$REGISTRY/$USERNAME/$extension@$DIGEST_EXTENSION" "$VERSION_BASE"
+    done
     crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$STABLE_TAG"
     crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$VERSION_BASE"
 fi
 
 echo "✅ Built and pushed sovereign OS artifacts."
 echo "INSTALLER_IMAGE=$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" > "$SCRIPT_DIR/../sovereign-os.env"
-echo "HAILORT_IMAGE=$REGISTRY/$USERNAME/hailort:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+for extension in "${REQUIRED_EXTENSIONS[@]}"; do
+    echo "${extension^^}_IMAGE=$REGISTRY/$USERNAME/$extension:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"
+done
 echo "IMAGER_IMAGE=$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" >> "$SCRIPT_DIR/../sovereign-os.env"

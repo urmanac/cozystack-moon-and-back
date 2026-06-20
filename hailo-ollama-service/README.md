@@ -81,3 +81,52 @@ curl -s http://192.168.2.109:30800/v1/chat/completions \
 - **Model name for Hailo**: Use `qwen2:1.5b` — this maps to the
   `qwen2-1.5b-instruct-function-calling-v1` HEF from hailo.ai/model-explorer.
 - **Port**: Service is exposed on NodePort `30800` on all nodes.
+
+## Proxy JSON Sanitization
+
+The container starts two processes:
+
+- `hailo-ollama` on `:8000` (raw upstream API)
+- `hailo-ollama-proxy` on `:11434` (sanitizing proxy)
+
+Use `:11434` for chat/completions clients. The proxy sanitizes JSON message
+fields before forwarding upstream, working around hailo-ollama v5.3.0 control
+character parsing failures.
+
+Sanitized fields:
+
+- `messages[].content`
+- top-level `system`
+
+Local test command:
+
+```bash
+python3 hailo-ollama-service/test_proxy.py
+```
+
+## Model Persistence Validation (Avoid Re-Pulls)
+
+Model files are persisted through hostPath:
+
+- container path: `/root/.ollama`
+- node path: `/var/lib/hailo-ollama/models`
+
+Quick validation sequence:
+
+```bash
+# 1) Confirm model is present
+curl -s http://192.168.2.109:30800/hailo/v1/list | jq
+
+# 2) Restart pod
+kubectl -n hailo rollout restart deploy/hailo-ollama
+kubectl -n hailo rollout status deploy/hailo-ollama
+
+# 3) Confirm model still present (no full pull)
+curl -s http://192.168.2.109:30800/hailo/v1/list | jq
+
+# 4) Verify node-side files exist
+kubectl -n hailo exec deploy/hailo-ollama -- ls -lah /root/.ollama
+```
+
+If a full pull happens after restart, inspect hostPath permissions and ensure
+the workload stays pinned to the same node that hosts the model directory.

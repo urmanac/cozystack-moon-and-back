@@ -14,7 +14,7 @@ on:
       push_image:
         description: 'Push image to GHCR'
         required: false
-        default: 'true'
+        default: true
         type: boolean
 
 env:
@@ -23,7 +23,7 @@ env:
 
 jobs:
   build-hailo-ollama:
-    name: Build hailo-ollama:${{ env.HAILORT_VERSION }}
+    name: Build hailo-ollama 5.3.0
     # ARM64 self-hosted runner — native build, no emulation needed
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -74,11 +74,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ steps.meta.outputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
-          # Cache layers inside the persistent hailo-ollama-builder volume.
-          # The HailoRT + hailo-ollama C++ compile layers are ~1h cold;
-          # with the persistent builder they rebuild in seconds.
-          cache-from: type=local,src=/tmp/hailo-ollama-cache
-          cache-to: type=local,dest=/tmp/hailo-ollama-cache,mode=max
+          # Cache layers are kept in the persistent named builder
+          # (hailo-ollama-builder with keep-state=true).
 
       - name: Image digest
         if: ${{ steps.meta.outputs.push == 'true' }}

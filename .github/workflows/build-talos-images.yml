@@ -110,8 +110,6 @@ jobs:
         with:
           driver-opts: network=host
           buildkitd-flags: --debug
-          cache-from: type=local,src=/tmp/buildx-cache-${{ github.job }}
-          cache-to: type=local,dest=/tmp/buildx-cache-${{ github.job }}-new,mode=max
 
 
 
@@ -192,8 +190,6 @@ jobs:
         with:
           driver-opts: network=host
           buildkitd-flags: --debug
-          cache-from: type=local,src=/tmp/buildx-cache-${{ github.job }}
-          cache-to: type=local,dest=/tmp/buildx-cache-${{ github.job }}-new,mode=max
 
 
 
@@ -232,6 +228,8 @@ jobs:
     outputs:
       INSTALLER_IMAGE: ${{ steps.build.outputs.INSTALLER_IMAGE }}
       HAILORT_IMAGE: ${{ steps.build.outputs.HAILORT_IMAGE }}
+      DRBD_IMAGE: ${{ steps.build.outputs.DRBD_IMAGE }}
+      ZFS_IMAGE: ${{ steps.build.outputs.ZFS_IMAGE }}
       IMAGER_IMAGE: ${{ steps.build.outputs.IMAGER_IMAGE }}
     steps:
       - name: Checkout repository
@@ -272,6 +270,8 @@ jobs:
           source sovereign-os.env
           echo "INSTALLER_IMAGE=$INSTALLER_IMAGE" >> $GITHUB_OUTPUT
           echo "HAILORT_IMAGE=$HAILORT_IMAGE" >> $GITHUB_OUTPUT
+          echo "DRBD_IMAGE=$DRBD_IMAGE" >> $GITHUB_OUTPUT
+          echo "ZFS_IMAGE=$ZFS_IMAGE" >> $GITHUB_OUTPUT
           echo "IMAGER_IMAGE=$IMAGER_IMAGE" >> $GITHUB_OUTPUT
 
 
@@ -326,8 +326,6 @@ jobs:
         with:
           driver-opts: network=host
           buildkitd-flags: --debug
-          cache-from: type=local,src=/tmp/buildx-cache-${{ github.job }}
-          cache-to: type=local,dest=/tmp/buildx-cache-${{ github.job }}-new,mode=max
 
 
 
@@ -344,10 +342,32 @@ jobs:
             echo "Injecting Sovereign OS artifacts into build..."
             echo "INSTALLER_IMAGE=${{ needs.build-sovereign-os.outputs.INSTALLER_IMAGE }}" >> $GITHUB_ENV
             echo "IMAGER_IMAGE=${{ needs.build-sovereign-os.outputs.IMAGER_IMAGE }}" >> $GITHUB_ENV
+            echo "DRBD_IMAGE=${{ needs.build-sovereign-os.outputs.DRBD_IMAGE }}" >> $GITHUB_ENV
+            echo "ZFS_IMAGE=${{ needs.build-sovereign-os.outputs.ZFS_IMAGE }}" >> $GITHUB_ENV
             if [ "${{ matrix.extension_variant }}" = "spin-hailort" ]; then
               echo "HAILORT_IMAGE=${{ needs.build-sovereign-os.outputs.HAILORT_IMAGE }}" >> $GITHUB_ENV
             fi
           fi
+
+      - name: Validate sovereign image injection
+        run: |
+          if [ "${{ matrix.hardware }}" != "cm5-hailo10h" ]; then
+            exit 0
+          fi
+
+          required=(INSTALLER_IMAGE IMAGER_IMAGE DRBD_IMAGE ZFS_IMAGE)
+          if [ "${{ matrix.extension_variant }}" = "spin-hailort" ]; then
+            required+=(HAILORT_IMAGE)
+          fi
+
+          for key in "${required[@]}"; do
+            value=$(printenv "$key" || true)
+            if [ -z "$value" ]; then
+              echo "::error::Missing required sovereign image reference: $key"
+              exit 1
+            fi
+            echo "✅ $key=$value"
+          done
 
       - name: Update upstream dependencies and build with Makefile targets
         id: build

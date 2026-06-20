@@ -26,18 +26,67 @@ UPSTREAM_PORT = int(os.environ.get("UPSTREAM_PORT", "8000"))
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "11434"))
 
 
+def escape_content(s: str) -> str:
+    """
+    Replace real control characters in a string with their backslash-escape
+    equivalents (two printable chars, e.g. LF → backslash + n).
+
+    WHY THIS IS NEEDED:
+    hailo-ollama v5.3.0 builds prompt_json_strings by naive C++ string
+    concatenation: '"' + role + '":"' + content + '"'. When content contains
+    a real LF (U+000A), the resulting "JSON" is invalid and HailoRT's strict
+    nlohmann::json parser rejects it with HAILO_INTERNAL_FAILURE(8).
+
+    By replacing '\n' with the two-char literal '\\n' before sending,
+    hailo-ollama's C++ string contains backslash+n. When it concatenates that
+    into its JSON, it produces the valid JSON escape sequence \\n, which
+    HailoRT parses correctly and the model receives as a real newline.
+
+    Note: json.loads/json.dumps alone is a no-op here — valid JSON in means
+    valid JSON out, and the bug is inside hailo-ollama after it parses us.
+    """
+    # json.dumps gives us the exact escaping rules JSON strings require
+    # (quotes, backslashes, and all C0 control characters).
+    return json.dumps(s, ensure_ascii=False)[1:-1]
+
+
 def sanitize_messages(body_bytes: bytes) -> bytes:
     """
-    Parse the request body JSON and re-serialize it, which guarantees that
-    all string values (including message content with newlines) are properly
-    JSON-escaped. Returns the sanitized bytes.
+    Parse the request body, escape control characters in all message content
+    strings, then re-serialize. Returns sanitized bytes.
     """
     try:
         data = json.loads(body_bytes)
-        # Re-dump with ensure_ascii=False to preserve unicode but escape control chars
+        sanitized_fields = 0
+
+        def sanitize_string(value: str) -> str:
+            nonlocal sanitized_fields
+            sanitized = escape_content(value)
+            if sanitized != value:
+                sanitized_fields += 1
+            return sanitized
+
+        # Sanitize content in messages list (chat completions format)
+        for msg in data.get("messages") or []:
+            if isinstance(msg.get("content"), str):
+                msg["content"] = sanitize_string(msg["content"])
+        # Also sanitize system field at top level (some clients use this)
+        if isinstance(data.get("system"), str):
+            data["system"] = sanitize_string(data["system"])
+
+        if sanitized_fields > 0:
+            print(
+                f"[proxy] sanitized {sanitized_fields} field(s) in request body ({len(body_bytes)} bytes)",
+                file=sys.stderr,
+            )
+
         return json.dumps(data, ensure_ascii=False).encode("utf-8")
-    except (json.JSONDecodeError, ValueError):
-        # Can't parse — pass through unchanged
+    except (json.JSONDecodeError, ValueError) as exc:
+        # Can't parse — pass through unchanged, but surface reason for troubleshooting.
+        print(
+            f"[proxy] sanitize skipped: {type(exc).__name__}: {exc} (body_bytes={len(body_bytes)})",
+            file=sys.stderr,
+        )
         return body_bytes
 
 
