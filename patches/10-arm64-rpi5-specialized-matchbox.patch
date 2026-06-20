@@ -1,8 +1,8 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index f4e16397..52f0c6e4 100644
+index 44942cf2..cee8f0bf 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -16,28 +16,47 @@ image-talos:
+@@ -18,28 +18,47 @@ image-talos:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
  	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
  
@@ -60,7 +60,7 @@ index f4e16397..52f0c6e4 100644
  talos-installer:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
-@@ -62,7 +81,7 @@ talos-metal-rpi5:
+@@ -64,7 +83,7 @@ talos-metal-rpi5:
  		mv ../../../_out/assets/metal-arm64.raw.xz ../../../_out/assets/metal-rpi5-arm64.raw.xz \
  	)
  
@@ -68,7 +68,7 @@ index f4e16397..52f0c6e4 100644
 +build-talos-initramfs build-talos-kernel build-talos-installer build-talos-installer-rpi5 build-talos-initramfs-rpi5 build-talos-kernel-rpi5 build-talos-iso build-talos-nocloud build-talos-metal build-talos-metal-rpi5:
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
- 		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE:-ghcr.io/siderolabs/imager:$(TALOS_VERSION))" --tar-to-stdout - | \
+ 		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE)" --tar-to-stdout - | \
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
 index b2254b6f..0fe0b13e 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
