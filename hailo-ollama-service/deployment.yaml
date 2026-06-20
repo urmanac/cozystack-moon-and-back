@@ -1,0 +1,78 @@
+---
+# Persistent volume for downloaded .hef model files
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hailo-ollama-models
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hailo-ollama
+  namespace: default
+  labels:
+    app: hailo-ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hailo-ollama
+  template:
+    metadata:
+      labels:
+        app: hailo-ollama
+    spec:
+      # Pin to node9 (talos-428fe) which has the Hailo-10H HAT+
+      nodeSelector:
+        kubernetes.io/hostname: talos-428fe
+      containers:
+        - name: hailo-ollama
+          image: ghcr.io/urmanac/cozystack-assets/yebyen/hailo-ollama:5.3.0
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+          volumeMounts:
+            # Hailo PCIe device (Hailo-10H)
+            - name: dev-hailo
+              mountPath: /dev/h1x-0
+            # Persistent model storage (~1.5 GB for qwen2:1.5b .hef)
+            - name: model-storage
+              mountPath: /root/.ollama
+      volumes:
+        - name: dev-hailo
+          hostPath:
+            path: /dev/h1x-0
+            type: CharDevice
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: hailo-ollama-models
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hailo-ollama
+  namespace: default
+spec:
+  selector:
+    app: hailo-ollama
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30800
+  type: NodePort
