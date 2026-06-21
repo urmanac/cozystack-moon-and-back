@@ -52,6 +52,7 @@ class ProxySanitizerTests(unittest.TestCase):
         safe = proxy.make_hailo_safe(raw)
         self.assertTrue(proxy._is_hailo_embeddable(safe))
         self.assertLessEqual(safe.count("\\"), baseline.count("\\"))
+        self.assertIn('u0022plan', safe)
 
     def test_recursive_sanitization_outputs_hailo_embeddable_strings(self):
         payload = {
@@ -99,8 +100,8 @@ class ProxySanitizerTests(unittest.TestCase):
         desc = sanitized_payload["tools"][0]["function"]["description"]
         nested_desc = sanitized_payload["tools"][0]["function"]["parameters"]["properties"]["plan"]["description"]
         self.assertIn("\\n", desc)
-        self.assertIn('\\"plan\\"', desc)
-        self.assertIn('\\"windowId\\"', nested_desc)
+        self.assertTrue('\\"plan\\"' in desc or 'u0022plan' in desc)
+        self.assertTrue('\\"windowId\\"' in nested_desc or 'u0022windowId' in nested_desc)
 
 
 if __name__ == "__main__":

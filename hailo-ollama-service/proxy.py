@@ -103,7 +103,11 @@ def make_hailo_safe(value: str) -> str:
 
     if candidates:
         # Prefer the least slash-heavy embeddable variant.
-        return min(candidates, key=lambda s: s.count("\\"))
+        best = min(candidates, key=lambda s: s.count("\\"))
+        # Additional defensive pass: quote escapes are the most fragile path in
+        # Hailo's renderer for prompts that contain JSON examples.
+        neutralized = best.replace('\\"', '\\u0022')
+        return neutralized if _is_hailo_embeddable(neutralized) else best
 
     # Fallback for edge cases: canonicalize once more from the sanitized form.
     # This favors correctness/parsability over perfect textual fidelity.

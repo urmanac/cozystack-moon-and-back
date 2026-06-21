@@ -71,14 +71,23 @@ Note on SPL:
 - Sidero v1.13.3 extension index includes `zfs`, `drbd`, `hailort` but no
   standalone `spl` extension image. SPL is expected as part of the zfs module path.
 
-### Phase D: Efficiency Guardrails (Planned)
+### Phase D: Efficiency Guardrails (Completed)
 
-1. Add change-scope mapping so expensive sovereign stages run only when relevant
-   subtree/patches change.
-2. Add fast-fail checks for missing sovereign extension outputs before entering
-   long matrix stages.
-3. Evaluate optional OCI-backed cache export for disaster recovery of persistent
-   builder state.
+Implemented and validated:
+
+1. **Persistent Buildx cache on self-hosted ARM64** for hailo-ollama builds
+  (named builder + `cleanup: false` + `keep-state: true`).
+2. **Removed ineffective registry cache export path** (`cache-to`/`cache-from`)
+  that introduced GHCR permission failures without improving warm-cache reuse.
+3. **Scoped trigger conditions for expensive workflows**:
+  - `build-hailo-ollama.yml` now triggers on service source changes and on its
+    own workflow file edits.
+  - `build-talos-images.yml` now triggers only on artifact-impacting paths
+    (`patches/**`, `hack/**`, `VERSION`, `crane`, and its own workflow file).
+4. **Explicit workflow permission scopes** for hailo build (`contents: read`,
+  `packages: write`) to avoid token-scope ambiguity.
+5. **Warm-build performance confirmation**: repeated hailo-ollama builds now
+  complete in ~24s on cache-hit runs.
 
 ### Phase E: Documentation and Ops Runbooks (In Progress)
 
@@ -98,12 +107,15 @@ Local checks executed:
 
 ## Next Actions (Short Horizon)
 
-1. Run CI pipeline with sovereign stage enabled and confirm drbd/zfs artifacts
-   are produced and tagged under the sovereign namespace.
-2. Verify cm5-hailo10h build receives injected `DRBD_IMAGE` and `ZFS_IMAGE`.
-3. Boot validation on target node and confirm no module signature rejection for
-   required storage/driver set.
-4. Confirm model persistence survives rollout restart without full model re-pull.
+1. Continue resolving remaining `/v1/chat/completions` edge cases for long,
+  schema-heavy prompts (Tab Maestro profile) while preserving successful
+  baseline completions.
+2. Run CI pipeline with sovereign stage enabled and confirm drbd/zfs artifacts
+  are produced and tagged under the sovereign namespace.
+3. Verify cm5-hailo10h build receives injected `DRBD_IMAGE` and `ZFS_IMAGE`.
+4. Boot validation on target node and confirm no module signature rejection for
+  required storage/driver set.
+5. Confirm model persistence survives rollout restart without full model re-pull.
 
 ## Risks and Mitigations
 

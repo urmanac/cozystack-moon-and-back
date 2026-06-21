@@ -96,8 +96,9 @@ character parsing failures.
 
 Sanitized fields:
 
-- `messages[].content`
-- top-level `system`
+- recursively all JSON string values in the payload (including nested tool/schema strings)
+- extra normalization for pre-escaped prompt fragments (for example JSON examples in system prompts)
+- defensive quote-neutralization (`\u0022`) in embeddable prompt fragments
 
 Local test command:
 
