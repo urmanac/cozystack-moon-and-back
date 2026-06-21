@@ -27,6 +27,7 @@ jobs:
     # Self-hosted ARM64 runner keeps buildkit state on disk between runs.
     runs-on: [self-hosted, linux, arm64]
     permissions:
+      contents: read
       packages: write
 
     steps:
