@@ -24,8 +24,8 @@ env:
 jobs:
   build-hailo-ollama:
     name: Build hailo-ollama 5.3.0
-    # ARM64 self-hosted runner — native build, no emulation needed
-    runs-on: ubuntu-24.04-arm
+    # Self-hosted ARM64 runner keeps buildkit state on disk between runs.
+    runs-on: [self-hosted, linux, arm64]
     permissions:
       packages: write
 
