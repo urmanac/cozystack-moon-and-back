@@ -41,6 +41,39 @@ class ProxySanitizerTests(unittest.TestCase):
         raw = b"not-json"
         self.assertEqual(proxy.sanitize_messages(raw), raw)
 
+    def test_sanitize_messages_escapes_nested_tool_schema_strings(self):
+        payload = {
+            "model": "qwen2:1.5b",
+            "messages": [{"role": "user", "content": "organize tabs"}],
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "apply_tab_actions",
+                        "description": "Return JSON only:\n{\n  \"plan\": []\n}",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "plan": {
+                                    "type": "array",
+                                    "description": "Actions with \"windowId\" and \"tabId\"",
+                                }
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+
+        body = json.dumps(payload).encode("utf-8")
+        sanitized_payload = json.loads(proxy.sanitize_messages(body))
+
+        desc = sanitized_payload["tools"][0]["function"]["description"]
+        nested_desc = sanitized_payload["tools"][0]["function"]["parameters"]["properties"]["plan"]["description"]
+        self.assertIn("\\n", desc)
+        self.assertIn('\\"plan\\"', desc)
+        self.assertIn('\\"windowId\\"', nested_desc)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -66,13 +66,19 @@ def sanitize_messages(body_bytes: bytes) -> bytes:
                 sanitized_fields += 1
             return sanitized
 
-        # Sanitize content in messages list (chat completions format)
-        for msg in data.get("messages") or []:
-            if isinstance(msg.get("content"), str):
-                msg["content"] = sanitize_string(msg["content"])
-        # Also sanitize system field at top level (some clients use this)
-        if isinstance(data.get("system"), str):
-            data["system"] = sanitize_string(data["system"])
+        def sanitize_value(value):
+            if isinstance(value, str):
+                return sanitize_string(value)
+            if isinstance(value, list):
+                return [sanitize_value(item) for item in value]
+            if isinstance(value, dict):
+                return {k: sanitize_value(v) for k, v in value.items()}
+            return value
+
+        # HailoRT prompt rendering can break on unescaped characters in any
+        # string field (messages, system, tool schema descriptions, etc.).
+        # Recursively sanitize all string values in the JSON payload.
+        data = sanitize_value(data)
 
         if sanitized_fields > 0:
             print(
