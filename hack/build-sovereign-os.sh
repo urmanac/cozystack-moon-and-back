@@ -4,7 +4,7 @@ set -e
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
 VERSION_BASE="5.3.0"
-TALOS_VERSION="v1.13.3"
+TALOS_VERSION="v1.13.4"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -71,8 +71,8 @@ fi
 
 cd "$WORK_DIR"
 
-EXT_TAG="v1.13.3"
-PKGS_HASH="8c18616"
+EXT_TAG="v1.13.4"
+PKGS_HASH="54ec9fc"
 
 echo "📥 Downloading Sidero source trees..."
 mkdir extensions && curl -sSL "https://github.com/siderolabs/extensions/archive/refs/tags/${EXT_TAG}.tar.gz" | tar xz -C extensions --strip-components=1

@@ -4,7 +4,7 @@ set -e
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
 VERSION_BASE="5.3.0"
-TALOS_VERSION="v1.13.3"
+TALOS_VERSION="v1.13.4"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -46,9 +46,9 @@ fi
 
 cd "$WORK_DIR"
 
-# Pinned Sidero Versions for Talos v1.13.3 (Kernel 6.18.33-talos)
-EXT_TAG="v1.13.3"
-PKGS_HASH="8c18616"
+# Pinned Sidero Versions for Talos v1.13.4 (Kernel 6.18.34-talos)
+EXT_TAG="v1.13.4"
+PKGS_HASH="54ec9fc"
 
 # Download source tarballs
 echo "📥 Downloading Sidero extensions $EXT_TAG..."
