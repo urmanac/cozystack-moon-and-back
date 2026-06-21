@@ -67,9 +67,43 @@ def make_hailo_safe(value: str) -> str:
     Convert an arbitrary string into a form that remains valid when embedded
     into hailo-ollama's internal concatenated JSON.
     """
+    candidates = []
+
     sanitized = escape_content(value)
     if _is_hailo_embeddable(sanitized):
-        return sanitized
+        candidates.append(sanitized)
+
+    # Some clients send already-escaped prompt text (for example, \"plan\").
+    # Decode one escaped level when possible, then re-escape canonically.
+    try:
+        decoded_once = json.loads(f'"{value}"')
+        sanitized_decoded = escape_content(decoded_once)
+        if _is_hailo_embeddable(sanitized_decoded):
+            candidates.append(sanitized_decoded)
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    normalized = value
+    for _ in range(3):
+        collapsed = (
+            normalized
+            .replace("\\\\n", "\\n")
+            .replace("\\\\r", "\\r")
+            .replace("\\\\t", "\\t")
+            .replace("\\\\\"", "\\\"")
+        )
+        if collapsed == normalized:
+            break
+        normalized = collapsed
+
+    if normalized != value:
+        sanitized_normalized = escape_content(normalized)
+        if _is_hailo_embeddable(sanitized_normalized):
+            candidates.append(sanitized_normalized)
+
+    if candidates:
+        # Prefer the least slash-heavy embeddable variant.
+        return min(candidates, key=lambda s: s.count("\\"))
 
     # Fallback for edge cases: canonicalize once more from the sanitized form.
     # This favors correctness/parsability over perfect textual fidelity.

@@ -46,6 +46,13 @@ class ProxySanitizerTests(unittest.TestCase):
         safe = proxy.make_hailo_safe(raw)
         self.assertTrue(proxy._is_hailo_embeddable(safe))
 
+    def test_make_hailo_safe_normalizes_pre_escaped_input(self):
+        raw = 'You must respond with JSON:\\n{\\n  \\\\"plan\\\\": []\\n}'
+        baseline = proxy.escape_content(raw)
+        safe = proxy.make_hailo_safe(raw)
+        self.assertTrue(proxy._is_hailo_embeddable(safe))
+        self.assertLessEqual(safe.count("\\"), baseline.count("\\"))
+
     def test_recursive_sanitization_outputs_hailo_embeddable_strings(self):
         payload = {
             "model": "qwen2:1.5b",
