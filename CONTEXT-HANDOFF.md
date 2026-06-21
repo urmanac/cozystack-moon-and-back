@@ -5,6 +5,60 @@
 
 ---
 
+## Session Update (Late Night, June 21, 2026)
+
+### What Landed Since This Handoff Was Started
+
+1. Sovereign pipeline and extension set work completed and merged to `main`.
+2. Hailo image workflow now uses self-hosted ARM64 persistent Buildx cache and
+    fast warm builds were observed (~24 seconds).
+3. Hailo model persistence is confirmed working (model reloads without re-pull).
+4. Proxy hardening iterations shipped for chat/completions payloads:
+    - recursive string sanitization
+    - pre-escaped normalization attempts
+    - quote-neutralization attempts
+    - context-budget trimming for long message payloads
+
+### Current Runtime State
+
+The failure mode has shifted from JSON parse failures toward context/cache
+saturation behavior under Tab Maestro-sized prompts:
+
+- repeated warning in pod logs:
+  `Conversation context is full. It is advisable to clear context as cache size was reached`
+- resulting HTTP behavior:
+  `/v1/chat/completions` intermittently returns `500` for large tab-state prompts.
+
+This is still substantial progress: boot path, module loading, image build speed,
+and model persistence are all now stable.
+
+### Where `MAX_MESSAGE_CHARS` Is Set
+
+- Code default is in [hailo-ollama-service/proxy.py](hailo-ollama-service/proxy.py):
+  `MAX_MESSAGE_CHARS = int(os.environ.get("MAX_MESSAGE_CHARS", "12000"))`
+- It is **not currently set** in [hailo-ollama-service/deployment.yaml](hailo-ollama-service/deployment.yaml),
+  so runtime uses the default `12000`.
+
+### First Actions for Next Session
+
+1. Add `MAX_MESSAGE_CHARS` explicitly in deployment env (start with `9000` and
+    iterate lower if needed for Tab Maestro payloads).
+2. Re-test Tab Maestro flow and monitor `/v1/chat/completions` status + Hailo
+    context warnings.
+3. If still failing, add temporary bounded diagnostics in proxy (hash + short
+    snippet around failing region only) to isolate exact prompt shape limits.
+4. Decide endpoint policy for heavy prompts:
+    - keep using `/v1/chat/completions` with strict trimming, or
+    - route specific clients to a lighter prompt format endpoint.
+
+### Session Outcome
+
+This session successfully moved the project from platform instability to a
+workable, tunable inference path. Remaining work is primarily prompt-budget
+policy and endpoint tuning, not infrastructure recovery.
+
+---
+
 ## 🚀 Project Goal & Journey Summary
 
 The primary objective is to successfully upgrade the Talos Linux HailoRT extension to **v5.3.0** to support the **Hailo-10H AI accelerator** (Raspberry Pi AI HAT+) within the CozyStack Moon-and-Back project. This requires building custom, cryptographically signed driver modules and upgrading the Raspberry Pi 5 (CM5) nodes without security or boot failures.

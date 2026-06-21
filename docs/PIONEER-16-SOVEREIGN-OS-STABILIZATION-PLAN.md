@@ -117,6 +117,21 @@ Local checks executed:
   required storage/driver set.
 5. Confirm model persistence survives rollout restart without full model re-pull.
 
+## Latest Runtime Notes (End of Session)
+
+1. **Model persistence is confirmed**: model reload occurs without re-pull.
+2. **Build efficiency is confirmed**: repeated hailo-ollama warm builds are now
+  very fast on self-hosted cache-hit runs.
+3. **Remaining blocker is context budget under heavy prompts**:
+  - Tab Maestro-sized payloads trigger Hailo warnings about full conversation
+    context/cache and return `500` on `/v1/chat/completions`.
+4. `MAX_MESSAGE_CHARS` default currently comes from proxy code (`12000`) and is
+  not yet explicitly set in deployment env.
+
+Recommended first move next session: set explicit `MAX_MESSAGE_CHARS` in
+deployment (start `9000`, tune downward if needed), then rerun Tab Maestro
+flows to map stable context-window operating limits.
+
 ## Risks and Mitigations
 
 - Risk: storage path still fails due module/runtime ordering.
