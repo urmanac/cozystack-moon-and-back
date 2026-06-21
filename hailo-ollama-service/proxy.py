@@ -50,6 +50,33 @@ def escape_content(s: str) -> str:
     return json.dumps(s, ensure_ascii=False)[1:-1]
 
 
+def _is_hailo_embeddable(s: str) -> bool:
+    """
+    Validate that a string can survive hailo-ollama's buggy JSON concatenation
+    pattern: '..."content":"' + s + '"...'.
+    """
+    try:
+        json.loads('{"role":"user","content":"' + s + '"}')
+        return True
+    except (json.JSONDecodeError, ValueError):
+        return False
+
+
+def make_hailo_safe(value: str) -> str:
+    """
+    Convert an arbitrary string into a form that remains valid when embedded
+    into hailo-ollama's internal concatenated JSON.
+    """
+    sanitized = escape_content(value)
+    if _is_hailo_embeddable(sanitized):
+        return sanitized
+
+    # Fallback for edge cases: canonicalize once more from the sanitized form.
+    # This favors correctness/parsability over perfect textual fidelity.
+    fallback = escape_content(sanitized)
+    return fallback if _is_hailo_embeddable(fallback) else sanitized
+
+
 def sanitize_messages(body_bytes: bytes) -> bytes:
     """
     Parse the request body, escape control characters in all message content
@@ -61,7 +88,7 @@ def sanitize_messages(body_bytes: bytes) -> bytes:
 
         def sanitize_string(value: str) -> str:
             nonlocal sanitized_fields
-            sanitized = escape_content(value)
+            sanitized = make_hailo_safe(value)
             if sanitized != value:
                 sanitized_fields += 1
             return sanitized

@@ -41,6 +41,27 @@ class ProxySanitizerTests(unittest.TestCase):
         raw = b"not-json"
         self.assertEqual(proxy.sanitize_messages(raw), raw)
 
+    def test_make_hailo_safe_produces_embeddable_json_fragment(self):
+        raw = 'You must respond with JSON:\n{\\n  "plan": ["x"]\\n}\nAnd a quoted token: \\"p'
+        safe = proxy.make_hailo_safe(raw)
+        self.assertTrue(proxy._is_hailo_embeddable(safe))
+
+    def test_recursive_sanitization_outputs_hailo_embeddable_strings(self):
+        payload = {
+            "model": "qwen2:1.5b",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are Tab Maestro. Respond with JSON:\n{\n  \"plan\": []\n}",
+                },
+                {"role": "user", "content": 'Tab state with quoted key: \\"windowId\\"'},
+            ],
+        }
+        out = json.loads(proxy.sanitize_messages(json.dumps(payload).encode("utf-8")))
+        for msg in out["messages"]:
+            if isinstance(msg.get("content"), str):
+                self.assertTrue(proxy._is_hailo_embeddable(msg["content"]))
+
     def test_sanitize_messages_escapes_nested_tool_schema_strings(self):
         payload = {
             "model": "qwen2:1.5b",
