@@ -1,4 +1,4 @@
-# QUASAR-17 (v1.4.4-1.13.4-1) Release Notes
+# QUASAR-17 (v1.4.4-1.13.4-2) Release Notes
 
 ## Overview
 The **QUASAR-17** release upgrades upstream **CozyStack to v1.4.4** (focusing on dashboard stability and `talm` upgrades) and **Talos to v1.13.4** (incorporating Linux kernel 6.18.34).
@@ -17,7 +17,7 @@ This release stabilizes development builds by correcting overly aggressive CI tr
 
 ## Strategy & Validation Summary
 All steps in the upgrade plan have been successfully executed and validated via local check scripts and remote GitHub CI:
-- **Version bump**: Set to `v1.4.4-1.13.4-1` in `VERSION`.
+- **Version bump**: Set to `v1.4.4-1.13.4-2` in `VERSION`.
 - **Sovereign builds**: Patched to point to Talos `v1.13.4` with `PKGS_HASH="54ec9fc"`.
 - **Trigger adjustment**: Standardized both `build-talos-images.yml` and `build-hailo-ollama.yml` push triggers.
 - **Local test suite**: All check patches, syntax, and dependency checks passed cleanly.
@@ -42,9 +42,9 @@ machine:
 - RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:v1.13.4-rpi5`
 
 **Matchbox (Netboot)**
-- Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:talos-v1.13.4-cozy-v1.4.4-1`
-- RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:talos-v1.13.4-cozy-v1.4.4-1-rpi5`
+- Generic (CM4): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:talos-v1.13.4-cozy-v1.4.4`
+- RPi5 (CM5): `ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:talos-v1.13.4-cozy-v1.4.4-rpi5`
 
 ### Flashable Metal Images
-- CM4: `talos-metal-arm64-spin-hailort-talos-v1.13.4-cozy-v1.4.4-1.raw.xz`
-- CM5: `talos-metal-rpi5-arm64-spin-hailort-talos-v1.13.4-cozy-v1.4.4-1.raw.xz`
+- CM4: `talos-metal-arm64-spin-hailort-talos-v1.13.4-cozy-v1.4.4.raw.xz`
+- CM5: `talos-metal-rpi5-arm64-spin-hailort-talos-v1.13.4-cozy-v1.4.4.raw.xz`
