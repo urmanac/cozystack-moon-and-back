@@ -6,37 +6,17 @@ on:
     paths:
       - 'patches/**'
       - 'hack/**'
-      - '.github/workflows/**'
-      - 'tests/**'
-      - 'validate-*.sh'
+      - '.github/workflows/build-talos-images.yml'
       - 'crane'
       - 'VERSION'
-      - '!docs/**'
-      - '!README.md'
-      - '!TODO.md'
-      - '!CONTEXT-HANDOFF.md'
-      - '!**/*.md'
-      - '!index.md'
-      - '!_config.yml'
-      - '!attic/**'
   pull_request:
     branches: [ main ]
     paths:
       - 'patches/**'
       - 'hack/**'
-      - '.github/workflows/**'
-      - 'tests/**'
-      - 'validate-*.sh'
+      - '.github/workflows/build-talos-images.yml'
       - 'crane'
       - 'VERSION'
-      - '!docs/**'
-      - '!README.md'
-      - '!TODO.md'
-      - '!CONTEXT-HANDOFF.md'
-      - '!**/*.md'
-      - '!index.md'
-      - '!_config.yml'
-      - '!attic/**'
   workflow_dispatch:
     inputs:
       cozystack_commit:
