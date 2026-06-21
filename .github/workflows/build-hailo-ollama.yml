@@ -5,10 +5,12 @@ on:
     branches: [ main, feat/sovereign-os-factory ]
     paths:
       - 'hailo-ollama-service/**'
+      - '.github/workflows/build-hailo-ollama.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'hailo-ollama-service/**'
+      - '.github/workflows/build-hailo-ollama.yml'
   workflow_dispatch:
     inputs:
       push_image:
