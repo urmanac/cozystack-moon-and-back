@@ -1,324 +1,111 @@
-# Context Handoff Instructions
+# CONTEXT HAND-OFF: HailoRT v5.3.0 Upgrade & Sovereign OS Factory (Part 2)
 
-## 🎯 Project Overview
-**CozyStack Moon and Back** - ARM64 Talos images with Spin runtime + Tailscale networking for CozySummit Virtual 2025 demo.
-
-**Current Status:** ✅ **COMPLETE** - Successfully implemented full upstream CozyStack build system integration with ARM64 + Spin + Tailscale extensions, following proper Test-Driven Generation (TDG) methodology.
-
-**Current Branch:** `main`
-**Repository:** https://github.com/urmanac/cozystack-moon-and-back
-**GitHub Pages:** https://urmanac.github.io/cozystack-moon-and-back/
-
-## 🚀 Major Accomplishments
-✅ **ARM64 Talos Images:** Working builds with Spin runtime + Tailscale networking
-✅ **Documentation System:** Complete ADR system with professional GitHub Pages site  
-✅ **CI/CD Pipeline:** Full upstream CozyStack Makefile integration, automated builds publishing to GitHub Container Registry
-✅ **GitHub Pages:** Beautiful Jekyll-powered documentation site with fixed navigation and working container commands
-✅ **TDG Methodology:** Proper Test-Driven Generation implementation with comprehensive test suite
-✅ **Upstream Integration:** Complete integration using CozyStack upstream Makefile targets 
-✅ **Container Testing:** Fixed FROM scratch container testing using crane export methodology
-✅ **Visual Polish:** Fixed GitHub Pages navigation header wrapping and container extraction commands
-✅ **AWS Talos Maintenance Mode:** Successfully achieved maintenance mode on AWS using three different user-data approaches
-
-## 🎯 Current Status: PRODUCTION READY + MAINTENANCE MODE BREAKTHROUGH
-**All Core Objectives Achieved:** The project successfully delivers ARM64 Talos images with Spin WebAssembly + Tailscale networking using proper upstream CozyStack build system integration.
-
-**Latest Achievement - AWS Talos Maintenance Mode Success:**
-- ✅ **Three working approaches** for achieving maintenance mode on official Talos AMI
-- ✅ **No user-data approach** (cleanest method) 
-- ✅ **Empty user-data approach** (also clean)
-- ✅ **Invalid YAML approach** (works but generates errors)
-- ✅ **Confirmed ChatGPT insight** that AWS doesn't "nerf" Talos maintenance mode
-- ✅ **Successful Talm discovery** generating proper node configurations
-- ✅ **Registry cache integration** requiring HTTP configuration for mirrors
-
-**Previous Achievement - Matrix Strategy Success:**
-- ✅ **Dual image variants** implemented with parallel matrix builds
-- ✅ **Role-based architecture** with compute vs gateway node separation  
-- ✅ **Clean tagging** resolved (no more duplicate tag issues)
-- ✅ **Distinct repositories** for each variant preventing conflicts
-
-**Working Results:**
-- `ghcr.io/urmanac/talos-cozystack-spin-only/talos:v1.11.5` (compute nodes)
-- `ghcr.io/urmanac/talos-cozystack-spin-tailscale/talos:v1.11.5` (gateway nodes)
-- AWS Talos instances in maintenance mode ready for CozyStack Talm discovery
-
-**AWS Infrastructure Status:**
-- VPC vpc-04af837e642c001c6 with private subnet subnet-07a140ab2b20bf89b
-- Official Talos AMI ami-0d0b5ac770722d15e successfully entering maintenance mode
-- Registry cache on bastion host 10.10.1.100 for private subnet deployments
-- Three test instances confirmed in maintenance mode: 10.10.1.32, 10.10.1.24, 10.10.1.114
-- **IPv6 Networking Required:** CozyStack Talos configs expect IPv6 connectivity for time servers
-- **Current Issue:** Need IPv6-enabled subnet or IPv4-only time server configuration
-
-**What Was Completed:**
-- ✅ Full upstream CozyStack Makefile targets integration (`make image`, `make assets`, `make talos-kernel`, `make talos-initramfs`)
-- ✅ ARM64 + Spin + Tailscale patches working with upstream build system
-- ✅ **Matrix strategy** for parallel variant builds from single git push
-- ✅ **Role-based cluster formation** capability with proper extension isolation
-- ✅ Comprehensive TDG test suite with 4 passing tests validating upstream compatibility
-- ✅ Fixed CI/CD pipeline with proper asset validation and crane-based testing
-- ✅ Professional GitHub Pages site with working navigation and container commands
-- ✅ Complete architectural documentation following proper TDG methodology
-
-## 📋 Current Active Issues (Documented in GitHub)
-
-✅ **Issues Created for Remaining Work:**
-- **[Issue #7](https://github.com/urmanac/cozystack-moon-and-back/issues/7)**: Implement dual ARM64 Talos image variants for role-based cluster architecture
-- **[Issue #8](https://github.com/urmanac/cozystack-moon-and-back/issues/8)**: Optimize CI pipeline to skip builds for documentation-only changes
-- **[Issue #9](https://github.com/urmanac/cozystack-moon-and-back/issues/9)**: Enhance TDG test suite with role-based cluster formation and WASM deployment validation  
-- **[Issue #10](https://github.com/urmanac/cozystack-moon-and-back/issues/10)**: Audit and update outdated documentation for accuracy and current project state
-
-## 📁 Files Moved to Attic (Purpose Fulfilled)
-
-✅ **Completed Setup Documentation:**
-- `GITHUB-PAGES-SETUP.md` → `attic/` (GitHub Pages working)
-- `AWS-INFRASTRUCTURE-HANDOFF.md` → `attic/` (Infrastructure established)  
-- `DEMO-MACHINERY.md` → `attic/` (Build system evolved)
-- `CLAUDE.md` → `attic/` (Context superseded by current docs)
-
-## ✅ Completed Major Milestones
-
-### 1. **Upstream CozyStack Integration** (COMPLETED)
-- **Achievement:** Successfully replaced custom Talos build approach with upstream CozyStack Makefile targets
-- **Implementation:** Full integration using `make image`, `make assets`, `make talos-kernel`, `make talos-initramfs`
-- **Validation:** TDG test suite confirms upstream compatibility with ARM64 + extensions
-- **Result:** Clean, maintainable codebase following upstream patterns
-
-### 2. **Test-Driven Generation (TDG) Methodology** (COMPLETED) 
-- **Achievement:** Proper TDG implementation following Chanwit Kaewkasi's methodology
-- **Implementation:** `tests/custom-image/03-upstream-integration.sh` with 4 comprehensive tests
-- **Key Learning:** Tests validate *intended changes* (ARM64 + extensions) while maintaining upstream structure
-- **Performance:** Optimized from long runtime to ~1 minute with local Docker caching
-
-### 3. **Container Architecture & Testing** (COMPLETED)
-- **Achievement:** Fixed FROM scratch container testing using crane export methodology  
-- **Problem Solved:** docker run fails on scratch containers, needed crane export approach
-- **Implementation:** Updated CI pipeline and LATEST-BUILD.md with proper container commands
-- **Validation:** All assets now properly extractable for deployment
-
-### 4. **GitHub Pages Visual Polish** (COMPLETED)
-- **Achievement:** Professional documentation site with clean navigation and working commands
-- **Fixes Applied:** Navigation header wrapping, Jekyll front matter, container extraction commands
-- **Documentation Added:** ABOUT-LATEST-BUILD.md explaining auto-generated build status file
-- **Result:** Clean, professional presentation suitable for CozySummit Virtual 2025
-
-### 5. **AWS Talos Maintenance Mode Discovery** (BREAKTHROUGH)
-- **Achievement:** Successfully achieved maintenance mode on official AWS Talos AMI using three different approaches
-- **Problem Solved:** Official AMI ami-0d0b5ac770722d15e enters maintenance mode when config fetch fails
-- **Key Discovery:** No user-data (or empty user-data) allows clean maintenance mode entry
-- **Validation:** Console output confirms proper Talos API on port 50000 with certificate fingerprints
-- **Result:** Ready for CozyStack Talm discovery workflow with proper --insecure connections
-
-## 🔧 Technical Architecture
-
-### Core Components
-1. **ARM64 Talos Images:** Custom Talos Linux for ARM64 with Spin WebAssembly runtime + Tailscale networking
-2. **CozyStack Integration:** Kubernetes platform running on our custom Talos
-3. **GitHub Container Registry:** Automated publishing of built images
-4. **GitHub Pages:** Documentation and presentation site
-
-### Key Files (CURRENT STATE)
-- `.github/workflows/build-talos-images.yml` - ✅ **COMPLETE** upstream CozyStack Makefile integration
-- `patches/01-arm64-spin-tailscale.patch` - ✅ Clean Git-generated patch for ARM64 conversion
-- `tests/custom-image/03-upstream-integration.sh` - ✅ TDG test suite with 4 passing tests
-- `docs/ADRs/` - ✅ Complete Architecture Decision Records system
-- `docs/SESSION-LEARNINGS.md` - ✅ Comprehensive architectural learnings and methodology documentation
-- `_config.yml`, `index.md` - ✅ GitHub Pages Jekyll configuration with fixed navigation
-- `docs/LATEST-BUILD.md` - ✅ Auto-updated build status with working container commands
-- `docs/ABOUT-LATEST-BUILD.md` - ✅ Documentation explaining auto-generated build file purpose
-
-### Build Process (IMPLEMENTED)
-```bash
-# Clone upstream CozyStack (now automated in CI)
-git clone https://github.com/cozystack/cozystack.git cozystack-upstream
-
-# Apply our ARM64 + Spin + Tailscale patches (automated)  
-git apply patches/01-arm64-spin-tailscale.patch
-
-# Use upstream Makefile targets (working in production)
-cd cozystack-upstream/packages/core/installer
-make image        # Full build (pre-checks + matchbox + cozystack + talos)
-make assets       # Just Talos assets (kernel + initramfs) 
-make talos-kernel # Just kernel
-make talos-initramfs # Just initramfs
-```
-
-## 📁 File Structure (CURRENT)
-```
-cozystack-moon-and-back/
-├── .github/workflows/
-│   ├── build-talos-images.yml     # ✅ COMPLETE - upstream integration
-│   └── pages.yml                  # ✅ GitHub Pages deployment
-├── docs/
-│   ├── ADRs/                      # ✅ Complete ADR system
-│   │   ├── ADR-001-ARM64-ARCHITECTURE.md
-│   │   ├── ADR-002-TDG-METHODOLOGY.md  
-│   │   ├── ADR-003-PATCH-GENERATION.md
-│   │   └── README.md
-│   ├── LATEST-BUILD.md            # ✅ Auto-updated with working commands
-│   ├── ABOUT-LATEST-BUILD.md      # ✅ Documentation for build file
-│   ├── SESSION-LEARNINGS.md       # ✅ Comprehensive architectural notes
-│   ├── README.md                  # ✅ Complete overview with Jekyll front matter
-│   └── TDG-PLAN.md                # ✅ Technical delivery guide
-├── tests/
-│   └── custom-image/              # ✅ Complete TDG test suite
-│       ├── 01-build-success.sh
-│       ├── 02-extensions-present.sh  
-│       └── 03-upstream-integration.sh  # 4 comprehensive tests
-├── patches/
-│   └── 01-arm64-spin-tailscale.patch # ✅ Clean Git patch for ARM64 conversion
-├── _config.yml                    # ✅ Jekyll configuration with fixed navigation
-├── index.md                       # ✅ GitHub Pages homepage
-└── README.md                      # ✅ Project overview
-```
-
-## 🔧 Upstream Integration Details (IMPLEMENTED)
-
-### CozyStack Makefile Targets (Source: https://github.com/cozystack/cozystack/blob/main/packages/core/installer/Makefile)
-✅ **SUCCESSFULLY INTEGRATED** - All targets working in production CI:
-- `make pre-checks` - Verify build dependencies ✅ Working
-- `make update` - Run gen-profiles.sh to generate Talos profiles ✅ Working  
-- `make image` - Full build (pre-checks + image-matchbox + image-cozystack + image-talos) ✅ Working
-- `make assets` - Build Talos assets (talos-iso + talos-nocloud + talos-metal + talos-kernel + talos-initramfs) ✅ Working
-- `make image-talos` - Build Talos installer image ✅ Working
-- `make image-matchbox` - Build matchbox image ✅ Working
-- `make talos-kernel` - Build ARM64 kernel with extensions ✅ Working
-- `make talos-initramfs` - Build ARM64 initramfs with extensions ✅ Working
-
-### Dependencies (INSTALLED & WORKING)
-```bash
-# Core tools - all working in CI
-sudo apt-get install -y skopeo jq
-
-# Container registry tool - fixed with proper crane installation  
-curl -L https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xz -C /usr/local/bin crane
-
-# YAML processor (mikefarah/yq) - working
-sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
-sudo chmod +x /usr/bin/yq
-
-# Multi-platform Docker builds - working
-docker buildx create --use --name multi-platform
-```
-
-## 📊 TDG Test Suite Results (ALL PASSING)
-
-### `tests/custom-image/03-upstream-integration.sh` 
-✅ **Test 1: Upstream Makefile Integration** - Confirms proper upstream build system usage
-✅ **Test 2: ARM64 Asset Structure** - Validates ARM64 kernel and initramfs with proper extensions
-✅ **Test 3: Build Configurability** - Ensures upstream targets work with our customizations  
-✅ **Test 4: Asset Validation** - Comprehensive checksum and metadata validation
-
-**Performance:** Optimized to ~1 minute runtime with local Docker caching
-**Methodology:** Follows proper TDG principles - tests define requirements, implementation satisfies tests
-
-## 🎨 GitHub Pages Setup (COMPLETE & POLISHED)
-**Status:** ✅ Fully deployed and working with visual fixes applied
-**URL:** https://urmanac.github.io/cozystack-moon-and-back/
-**Theme:** Clean, responsive Jekyll theme with fixed navigation
-
-### Recent Visual Improvements (COMPLETED)
-✅ **Navigation Header:** Fixed wrapping issues with shorter page titles
-✅ **Jekyll Front Matter:** Added proper page titles for all documentation
-✅ **Container Commands:** Fixed broken docker commands in LATEST-BUILD.md  
-✅ **Professional Polish:** Clean presentation suitable for CozySummit Virtual 2025
-
-### Jekyll Configuration (_config.yml)
-```yaml
-title: "CozyStack Moon and Back"
-description: "ARM64 Talos images for CozySummit Virtual 2025"  
-theme: minima
-plugins:
-  - jekyll-feed
-  - jekyll-sitemap
-markdown: kramdown
-highlighter: rouge
-navigation:
-  - title: "Documentation"
-    url: "/docs/"
-  - title: "ADRs" 
-    url: "/docs/ADRs/"
-  - title: "Latest Build"
-    url: "/docs/LATEST-BUILD"
-```
-
-### Navigation Structure (IMPROVED)
-- **Homepage:** Project overview with demo links
-- **Documentation:** Complete technical documentation
-- **ADRs:** Professional architecture decision records
-- **Latest Build:** Auto-updated build status with working commands
-
-## 💡 Key Technical Learnings & Methodology
-
-### 1. **Test-Driven Generation (TDG) Methodology**
-**Critical Learning:** Tests must validate *intended changes* rather than arbitrary divergences
-- ❌ **Wrong Approach:** Testing for custom build patterns that differ from upstream
-- ✅ **Correct Approach:** Testing that ARM64 + extensions work properly with upstream structure
-- **Result:** Clean integration that maintains upstream compatibility
-
-### 3. **Container Architecture & FROM Scratch Testing**
-**Critical Discovery:** FROM scratch containers require different testing approach
-- ❌ **Wrong:** `docker run` (fails on scratch containers)
-- ✅ **Correct:** `docker create → docker cp → docker rm` or `crane export`
-- **Impact:** All asset extraction commands now work correctly
-
-### 4. **AWS Talos Maintenance Mode Achievement**
-**Critical Discovery:** Official Talos AMI enters maintenance mode when config fetch fails
-- ✅ **Method 1 (Best):** Launch with no user-data → clean maintenance mode
-- ✅ **Method 2:** Launch with empty user-data → clean maintenance mode  
-- ✅ **Method 3:** Launch with invalid YAML → eventual maintenance mode after errors
-- **Key Insight:** AWS doesn't "nerf" maintenance mode, it's triggered by config failures
-- **Evidence:** Console output shows proper Talos API ready on port 50000
-- **Console Indicators:**
-  ```
-  [talos] entering maintenance service
-  [talos] this machine is reachable at: 10.10.1.32
-  [talos] server certificate issued
-  [talos] upload configuration using talosctl:
-  [talos]  talosctl apply-config --insecure --nodes 10.10.1.32 --file <config.yaml>
-  ```
-- **Impact:** CozyStack Talm discovery now possible with `talm template -e <IP> -n <IP> --insecure`
-
-### 4. **Upstream Compatibility Strategy** 
-**Philosophy:** Enhance upstream, don't replace it
-- **Patches:** Minimal, targeted changes for ARM64 + extensions
-- **Build System:** Use upstream Makefile targets, don't reinvent
-- **Result:** Maintainable codebase that benefits from upstream improvements
-
-### 5. **AWS Talos Maintenance Mode for CozyStack Talm**
-**Discovery:** Official Talos AMI can enter maintenance mode for CozyStack Talm discovery
-- **Working Approach:** Launch instances without user-data or with empty user-data
-- **Mechanism:** AWS metadata config fetch fails → automatic fallback to maintenance mode
-- **Validation:** Three test instances confirmed working (10.10.1.32, 10.10.1.24, 10.10.1.114)
-- **Requirements:** Security group allowing port 50000 access for Talm discovery
-- **CozyStack Integration:** Enables proper `talm template -e <IP> -n <IP> --insecure` workflow
-
-## 🎯 Current Status: PRODUCTION READY
-
-### ✅ All Success Criteria Met
-- ✅ ARM64 Talos images build successfully with Spin + Tailscale
-- ✅ Using proper upstream CozyStack Makefile targets (no custom approach)  
-- ✅ Documentation is accurate and professionally presented
-- ✅ TDG methodology properly implemented with comprehensive test suite
-- ✅ Clean, maintainable codebase following upstream patterns
-- ✅ GitHub Pages site polished and ready for CozySummit Virtual 2025
-
-### 🚀 Ready for Production Use
-**The CozyStack Moon and Back project successfully delivers:**
-1. **ARM64 Talos images** with Spin WebAssembly runtime and Tailscale networking
-2. **Full upstream compatibility** using proper CozyStack build system integration
-3. **Comprehensive validation** through TDG test methodology
-4. **Professional documentation** suitable for conference presentation
-5. **Automated CI/CD pipeline** with proper asset validation and publishing
-
-### � Next Sprint Enhancement Ideas
-- **CI Optimization:** Add path filtering for docs-only changes to avoid unnecessary rebuilds
-- **Dual Image Strategy:** Role-based images (compute vs gateway nodes) for proper cluster formation  
-- **Enhanced Dashboard:** Build metrics, historical tracking, deployment status integration
-- **Automated Updates:** Dependency update workflow with automated PR generation
+**Date:** June 20, 2026
+**Current Branch:** `feat/sovereign-os-factory`
 
 ---
-**Project Status:** ✅ **COMPLETE & PRODUCTION READY**
 
-All core objectives achieved. The project successfully demonstrates ARM64 Talos images with Spin + Tailscale extensions using proper upstream CozyStack integration, validated through comprehensive TDG methodology, and presented through a polished GitHub Pages site ready for CozySummit Virtual 2025.
+## 🚀 Project Goal & Journey Summary
+
+The primary objective is to successfully upgrade the Talos Linux HailoRT extension to **v5.3.0** to support the **Hailo-10H AI accelerator** (Raspberry Pi AI HAT+) within the CozyStack Moon-and-Back project. This requires building custom, cryptographically signed driver modules and upgrading the Raspberry Pi 5 (CM5) nodes without security or boot failures.
+
+Over the last two days, we designed and implemented the **Sovereign OS Factory** (Tier 1 of the build pipeline) and resolved critical hurdles around version compatibility, build caching, and cryptographic signature alignment.
+
+---
+
+## 🚧 Key Challenges & Solutions Implemented
+
+### 1. Talos Installer Naming & Upgrade Blocker
+*   **Challenge**: Upgrades to the custom-built installer failed with the error:
+    ```
+    Error: pre-flight checks failed: upgrades to version 5.3.0-v1.13.3-3d4c9177e9d4 are not supported
+    ```
+    This occurred because Sidero's Makefiles compile the value of the `TAG` variable directly into the installer binaries. Passing our content-hashed `UNIQUE_TAG` made the binary report a complex version that Talos's upgrade pre-flight checks rejected.
+*   **Solution**: Modified [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh) to compile with `TAG="$TALOS_VERSION"` (i.e., `v1.13.3`). Once pushed to GHCR, the script queries the image digests and uses `crane tag` to explicitly tag them with the content-hashed `UNIQUE_TAG`. This preserves both standard version compliance inside the binaries and immutable caching in the registry.
+
+### 2. Operationalizing Persistent Buildx Caching
+*   **Challenge**: The original local folder cache (`/tmp/buildx-cache/...`) was a cache miss on every run. The Buildx builder container runs as an isolated sibling container on the host Docker daemon, meaning it had no access to the runner container's local `/tmp` directory. Furthermore, the builder container was destroyed at the end of every workflow run.
+*   **Solution**: 
+    1. Named the builder container `sovereign-builder` and configured it with `cleanup: false` and `keep-state: true` in [.github/workflows/build-talos-images.yml](file:///Users/yebyen/u/c/cozystack-moon-and-back/.github/workflows/build-talos-images.yml#L248-L255) to persist it between runs.
+    2. Removed the directory-based `CI_ARGS` cache configurations. Buildx now natively and automatically manages caching internally inside the persistent `sovereign-builder` container volume.
+
+### 3. Non-deterministic Make variables causing Cache Invalidation
+*   **Challenge**: Sidero's Makefiles dynamically set `SOURCE_DATE_EPOCH` and `TAG` using the local git commit timestamp/status. Since the build script dynamically ran `git init` and `git commit` to apply patches on every execution, these variables changed every run, invalidating BuildKit's cache and causing a full 1h 45m kernel compilation.
+*   **Solution**: Passed `SOURCE_DATE_EPOCH=1716646524` and `TAG="$TALOS_VERSION"` explicitly as command-line arguments to all Sidero `make` calls in `build-sovereign-os.sh`. This ensures all build arguments are deterministic, yielding 100% cache hits.
+
+### 4. Cryptographic Module Signing Key Mismatch ("key was rejected by service")
+*   **Challenge**: Talos Linux enforces strict module signing (`module.sig_enforce=1`). The kernel compilation generates a fresh, ephemeral private signing key on every compile. Because we were only building the `kernel` target in Step 1, the `hailort-pkg` target (containing the actual compiled `.ko` driver modules) was being pulled as a stale/unsigned image from the registry. The booted kernel (Key A) rejected the module signed with a mismatched key (Key B), resulting in the boot log error:
+    ```
+    error loading module "hailo1x_pci": load hailo1x_pci failed: key was rejected by service
+    ```
+*   **Solution**: Modified Step 1 of [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh#L118) to build both `kernel` and `hailort-pkg` in the same invocation:
+    ```bash
+    $MAKE_CMD kernel hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
+    ```
+    This guarantees that the driver module is compiled against the newly generated kernel headers and signed with the exact private key matching the booted kernel.
+
+### 5. Kubelet CPU Manager Boot Failure & Talos Fallback Revert
+*   **Challenge**: Upon boot of the upgraded image, Kubelet failed to start with:
+    ```
+    start cpu manager error: current set of available CPUs "0" doesn't match with CPUs in state "0-3"
+    ```
+    This occurred because Kubelet has a persistent CPU state checkpoint file (`/var/lib/kubelet/cpu_manager_state`) on the node's local storage. When the upgraded kernel booted, only CPU 0 was brought online during early initialization (or Kubelet started before other cores initialized). Detecting a mismatch from `0-3` down to `0`, Kubelet failed, causing Talos to mark the boot as failed and automatically roll back (revert) to the old working partition (which then triggered module signature errors because it ran the old kernel).
+*   **Solution**: Deleting the Kubelet CPU Manager checkpoint state file allows Kubelet to re-detect all available cores on boot.
+
+### 6. Makefile vs Shell Variable Expansion Context Mismatch
+*   **Challenge**: The GHA workflow matrix failed to build standard hardware profiles because `"$(IMAGER_IMAGE:-ghcr.io/siderolabs/imager:$(TALOS_VERSION))"` resolved to `""` in Makefiles. Makefiles interpret `$(VAR)` as Makefile variable expansion, not shell expansion.
+*   **Solution**: Declared `IMAGER_IMAGE ?= ghcr.io/siderolabs/imager:$(TALOS_VERSION)` as a standard Makefile variable with conditional assignment, and updated the docker commands to use the clean `$(IMAGER_IMAGE)` variable.
+
+### 7. DRBD, SPL, and ZFS Kernel Module Signature Mismatch
+*   **Challenge**: While our custom `hailort` driver loaded successfully, CozyStack's ZFS, SPL, and DRBD extensions failed with `key was rejected by service`. Because these extensions are pulled pre-compiled from the official Sidero Labs registry, they are signed with Sidero's private key, which our custom kernel (using our own ephemeral key) rejects.
+*   **Solution**: Currently, ZFS, SPL, and DRBD are excluded/commented out on `node9` (which is running fine as a worker node). For the future, to sign them correctly against our custom kernel:
+    1. Stop deleting `zfs` and `drbd` source directories in [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh#L88-L91).
+    2. Build them alongside `hailort` in the extensions compile step:
+       ```bash
+       $MAKE_CMD hailort zfs drbd ...
+       ```
+    3. Alternative: Maintain a persistent private signing key and certificate (instead of generating a fresh ephemeral key on each kernel compile) and configure Sidero's build to use it (`CONFIG_MODULE_SIG_KEY`), allowing us to sign modules without rebuilding the kernel every time.
+
+---
+
+## 🏗️ Architectural Overview
+
+```mermaid
+graph TD
+    subgraph Tier 1: Sovereign OS Factory [Self-Hosted Runner]
+        A[Download Sidero source trees] --> B["make kernel hailort-pkg<br>(Generates Key A & Signs Driver)"]
+        B --> C[Push custom kernel & driver to registry]
+        C --> D["make installer-base imager installer<br>(Wraps custom kernel)"]
+        D --> E[Retag pushed images with UNIQUE_TAG via crane]
+    end
+
+    subgraph Tier 2: Assembly Matrix [GitHub Runner]
+        F[Clone upstream CozyStack] --> G[Apply patches]
+        G --> H["Inject custom INSTALLER_IMAGE & HAILORT_IMAGE<br>(For cm5-hailo10h variant)"]
+        H --> I["Build final Talos installer images<br>(Tag v1.13.3-rpi5)"]
+    end
+    
+    E -->|Injects refs| H
+```
+
+---
+
+## ✅ Current State & Next Steps
+
+All changes are committed, validated, and pushed to the remote branch `feat/sovereign-os-factory`.
+
+> [!IMPORTANT]
+> **Proof of Life Confirmed**: `node9` (`talos-428fe` at `192.168.2.109`) successfully booted the custom kernel and loaded the signed `hailo1x_pci` driver v5.3.0, creating the `/dev/h1x-0` device node and successfully loading firmware in 1663 ms!
+
+### Next Steps:
+1.  **AI Model Deployment**: Proceed with setting up an OpenAI API compatible endpoint listening on the cluster and loading an AI model onto the Hailo-10H accelerator.
+2.  **Maintain/Resolve ZFS/DRBD when needed**: If storage extensions are required on the Pi 5 nodes in the future, follow the instructions in Challenge #7 to compile and sign them.
+
+---
+
+## 📚 Key Files Modified/Created
+
+*   [hack/build-sovereign-os.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/build-sovereign-os.sh): Added deterministic variables (`SOURCE_DATE_EPOCH`, `TAG`), aligned module signing targets, and implemented Crane retagging.
+*   [.github/workflows/build-talos-images.yml](file:///Users/yebyen/u/c/cozystack-moon-and-back/.github/workflows/build-talos-images.yml): Configured persistent Buildx builder (`sovereign-builder`) with `cleanup: false` and `keep-state: true`.
+*   [docs/SESSION-LOG-HAILORT-UPGRADE.md](file:///Users/yebyen/u/c/cozystack-moon-and-back/docs/SESSION-LOG-HAILORT-UPGRADE.md): Logs historical and active progress.
+*   [patches/09-arm64-rpi5-spin-hailort.patch](file:///Users/yebyen/u/c/cozystack-moon-and-back/patches/09-arm64-rpi5-spin-hailort.patch) & [patches/10-arm64-rpi5-specialized-matchbox.patch](file:///Users/yebyen/u/c/cozystack-moon-and-back/patches/10-arm64-rpi5-specialized-matchbox.patch): Patches regenerated cleanly using `git diff` on clean upstream checkouts to resolve Makefile compilation syntax context mismatches.

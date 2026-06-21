@@ -1,8 +1,8 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index e590b7b..357aa47 100644
+index 44942cf2..cee8f0bf 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -16,28 +16,47 @@ image-talos:
+@@ -18,28 +18,47 @@ image-talos:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
  	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
  
@@ -60,7 +60,7 @@ index e590b7b..357aa47 100644
  talos-installer:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
-@@ -62,7 +81,7 @@ talos-metal-rpi5:
+@@ -64,7 +83,7 @@ talos-metal-rpi5:
  		mv ../../../_out/assets/metal-arm64.raw.xz ../../../_out/assets/metal-rpi5-arm64.raw.xz \
  	)
  
@@ -68,9 +68,9 @@ index e590b7b..357aa47 100644
 +build-talos-initramfs build-talos-kernel build-talos-installer build-talos-installer-rpi5 build-talos-initramfs-rpi5 build-talos-kernel-rpi5 build-talos-iso build-talos-nocloud build-talos-metal build-talos-metal-rpi5:
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
- 		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
+ 		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE)" --tar-to-stdout - | \
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 067b3d5..cd29c75 100755
+index b2254b6f..0fe0b13e 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -116,7 +116,7 @@ index 067b3d5..cd29c75 100755
        image_options="{}"
        out_format="raw"
 diff --git a/packages/core/talos/images/matchbox/Dockerfile b/packages/core/talos/images/matchbox/Dockerfile
-index 21b91e5..833a9e1 100644
+index 21b91e50..833a9e1d 100644
 --- a/packages/core/talos/images/matchbox/Dockerfile
 +++ b/packages/core/talos/images/matchbox/Dockerfile
 @@ -1,6 +1,8 @@

@@ -1,0 +1,85 @@
+name: Build hailo-ollama Image
+
+on:
+  push:
+    branches: [ main, feat/sovereign-os-factory ]
+    paths:
+      - 'hailo-ollama-service/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'hailo-ollama-service/**'
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Push image to GHCR'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  IMAGE: ghcr.io/urmanac/cozystack-assets/yebyen/hailo-ollama
+  HAILORT_VERSION: "5.3.0"
+
+jobs:
+  build-hailo-ollama:
+    name: Build hailo-ollama 5.3.0
+    # ARM64 self-hosted runner — native build, no emulation needed
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          # Use a persistent named builder so the HailoRT + hailo-ollama
+          # compile layers are cached between runs (those take ~20 min cold).
+          driver: docker-container
+          driver-opts: network=host
+          name: hailo-ollama-builder
+          use: true
+          cleanup: false
+          keep-state: true
+
+      - name: Determine image tags and whether to push
+        id: meta
+        run: |
+          PUSH=${{ github.event_name != 'pull_request' && (github.event.inputs.push_image != 'false') }}
+          echo "push=${PUSH}" >> $GITHUB_OUTPUT
+          echo "version_tag=${IMAGE}:${HAILORT_VERSION}" >> $GITHUB_OUTPUT
+          echo "latest_tag=${IMAGE}:latest" >> $GITHUB_OUTPUT
+          # On PRs: build only (no push), so we know it still compiles
+          if [ "$PUSH" = "true" ]; then
+            echo "tags=${IMAGE}:${HAILORT_VERSION},${IMAGE}:latest" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${IMAGE}:${HAILORT_VERSION}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build (and push if not PR)
+        uses: docker/build-push-action@v6
+        with:
+          context: hailo-ollama-service/
+          file: hailo-ollama-service/Dockerfile
+          platforms: linux/arm64
+          push: ${{ steps.meta.outputs.push }}
+          tags: ${{ steps.meta.outputs.tags }}
+          # Cache layers are kept in the persistent named builder
+          # (hailo-ollama-builder with keep-state=true and cleanup=false).
+          # Internal layer cache survives between runs without explicit registry cache.
+
+      - name: Image digest
+        if: ${{ steps.meta.outputs.push == 'true' }}
+        run: |
+          echo "Pushed: ${{ steps.meta.outputs.version_tag }}"
+          echo "Pushed: ${{ steps.meta.outputs.latest_tag }}"

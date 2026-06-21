@@ -1,8 +1,16 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 034b827..e590b7b 100644
+index 034b8271..44942cf2 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -11,12 +11,14 @@ update:
+@@ -5,18 +5,22 @@ TALOS_VERSION=$(shell awk '/^version:/ {print $$2}' images/talos/profiles/instal
+ 
+ include ../../../hack/common-envs.mk
+ 
++IMAGER_IMAGE ?= ghcr.io/siderolabs/imager:$(TALOS_VERSION)
++
+ update:
+ 	hack/gen-profiles.sh
+ 
  image: image-matchbox image-talos
  
  image-talos:
@@ -20,7 +28,7 @@ index 034b827..e590b7b 100644
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
  		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
-@@ -28,29 +30,40 @@ image-matchbox:
+@@ -28,29 +32,41 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
@@ -67,11 +75,12 @@ index 034b827..e590b7b 100644
 +build-talos-initramfs build-talos-kernel build-talos-installer build-talos-installer-rpi5 build-talos-iso build-talos-nocloud build-talos-metal build-talos-metal-rpi5:
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
- 		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
+-		docker run --rm -i -v /dev:/dev --privileged "ghcr.io/siderolabs/imager:$(TALOS_VERSION)" --tar-to-stdout - | \
++		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE)" --tar-to-stdout - | \
  		tar -C ../../../_out/assets -xzf-
--
+ 
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index af333cc..067b3d5 100755
+index 424a4481..b2254b6f 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -134,7 +143,7 @@ index af333cc..067b3d5 100755
 @@ -89,6 +116,7 @@ input:
      path: /usr/install/arm64/initramfs.xz
    baseInstaller:
-     imageRef: "ghcr.io/siderolabs/installer:${TALOS_VERSION}"
+     imageRef: "${INSTALLER_IMAGE:-ghcr.io/siderolabs/installer:${TALOS_VERSION}}"
 +${overlay_block}
    systemExtensions:
      - imageRef: ${AMD_UCODE_IMAGE}

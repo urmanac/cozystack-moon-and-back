@@ -1,0 +1,86 @@
+---
+# Dedicated namespace for Hailo workloads — needs privileged pod security
+# because we mount /dev/h1x-0 (hostPath CharDevice) and need privileged=true
+# for the HailoRT PCIe driver to be accessible.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hailo
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hailo-ollama
+  namespace: hailo
+  labels:
+    app: hailo-ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hailo-ollama
+  template:
+    metadata:
+      labels:
+        app: hailo-ollama
+    spec:
+      # Pin to node9 (talos-428fe) which has the Hailo-10H HAT+
+      nodeSelector:
+        kubernetes.io/hostname: talos-428fe
+      containers:
+        - name: hailo-ollama
+          image: ghcr.io/urmanac/cozystack-assets/yebyen/hailo-ollama:5.3.0
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 8000
+              name: http-raw
+            - containerPort: 11434
+              name: http-proxy
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+          volumeMounts:
+            # Hailo PCIe device (Hailo-10H)
+            - name: dev-hailo
+              mountPath: /dev/h1x-0
+            # Model storage — hailo-ollama writes under ~/.local/share/hailo-ollama/models
+            - name: model-storage
+              mountPath: /root/.local/share/hailo-ollama/models
+      volumes:
+        - name: dev-hailo
+          hostPath:
+            path: /dev/h1x-0
+            type: CharDevice
+        - name: model-storage
+          hostPath:
+            path: /var/lib/hailo-ollama/models
+            type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hailo-ollama
+  namespace: hailo
+spec:
+  selector:
+    app: hailo-ollama
+  ports:
+    - name: proxy
+      protocol: TCP
+      port: 11434
+      targetPort: 11434
+      nodePort: 30434
+    - name: raw
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30800
+  type: NodePort
