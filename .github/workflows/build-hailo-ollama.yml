@@ -2,7 +2,7 @@ name: Build hailo-ollama Image
 
 on:
   push:
-    branches: [ main, feat/sovereign-os-factory ]
+    branches: [ main, feat/** ]
     paths:
       - 'hailo-ollama-service/**'
       - '.github/workflows/build-hailo-ollama.yml'
