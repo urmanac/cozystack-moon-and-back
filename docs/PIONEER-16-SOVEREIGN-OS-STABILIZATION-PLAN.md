@@ -115,3 +115,101 @@ Local checks executed:
 
 - Risk: upstream hailo-ollama behavior changes in later versions.
   - Mitigation: keep proxy tests as contract; remove workaround only with upstream proof.
+
+## Appendix: Build Cache Architecture Learnings
+
+### Persistent Builder Caching vs Registry Cache
+
+During Phase D efficiency work, we investigated two distinct caching strategies:
+
+**Initial approach (incorrect):**
+```yaml
+cache-from: type=registry,ref=${{ env.IMAGE }}:latest
+cache-to: type=registry,ref=${{ env.IMAGE }}:latest,mode=min
+```
+
+This treats the registry as a cache backend. On each build:
+1. Pulls cached layers from the latest registry image
+2. Compiles missing layers
+3. **Pushes cache metadata back to the registry** (additional operation)
+
+**Problem:** The cache-to push attempt failed with `permission_denied: write_package` because
+cache metadata export requires additional registry write permissions outside the normal
+image push flow. This is a separate operation that can fail even if the final image
+push succeeds.
+
+**Correct approach (proven in sovereign-os):**
+```yaml
+set-up-docker-buildx-action:
+  name: sovereign-builder
+  driver: docker-container
+  cleanup: false
+  keep-state: true
+```
+
+This uses the persistent buildkit daemon's **internal layer cache**, which survives
+between CI runs because:
+
+- `cleanup: false` — the named builder container is not destroyed after the build
+- `keep-state: true` — buildkit's internal state (layer graph, compiled artifacts)
+  persists on the self-hosted runner's local storage
+
+**Why it's faster:**
+- First build: Full HailoRT + hailo-ollama compilation (~20 min for hailo-ollama, longer
+  for kernel)
+- Subsequent builds: Buildkit reuses cached layers from its internal database (~1-2 min
+  for hailo-ollama, ~3-5 min for kernel) without any extra push/pull cycle
+
+### Volume Mount Pattern for `/tmp/buildx-cache`
+
+In `hack/build-sovereign-os.sh`:
+
+```bash
+PARENT_TEMP="/tmp"
+[ -d "/tmp/buildx-cache" ] && [ -w "/tmp/buildx-cache" ] && PARENT_TEMP="/tmp/buildx-cache"
+WORK_DIR=$(mktemp -d -p "$PARENT_TEMP")
+```
+
+This pattern leverages a persistent buildx cache volume if available:
+
+- **On self-hosted runners:** A volume `/tmp/buildx-cache` can be mounted by the
+  buildx builder to provide fast scratch space for intermediate build artifacts.
+- **Why it matters:** Docker-in-Docker can have volume mount visibility issues
+  where files created in the container's ephemeral `/tmp` aren't visible to the
+  host Docker daemon. By using a pre-mounted persistent volume, build artifacts
+  are guaranteed visible for cross-stage access.
+- **Fallback:** If the volume doesn't exist or isn't writable, the script safely
+  uses the container's own `/tmp`, trading some performance for robustness.
+
+### Migration of hailo-ollama Build
+
+**Before:** attempted registry cache-to → permission error
+**After:** uses persistent builder with keep-state=true
+
+```yaml
+# Correct approach (mirroring sovereign-os pattern)
+build-hailo-ollama:
+  ...
+  - name: Set up Docker Buildx
+    uses: docker/setup-buildx-action@v4
+    with:
+      name: hailo-ollama-builder
+      driver: docker-container
+      cleanup: false
+      keep-state: true
+      # No cache-from/cache-to; internal buildkit cache persists between runs
+```
+
+This change:
+1. Eliminates the extra registry cache push operation
+2. Removes the permission error risk
+3. Retains full layer caching efficiency
+4. Matches the proven sovereign-os approach
+
+### Key Takeaway
+
+**Registry cache-from/cache-to is not the primary speedup mechanism.** The real
+efficiency comes from the persistent buildkit daemon and its internal layer graph,
+enabled by `keep-state: true` on the named builder. Registry-based caching is
+useful for distributing builds across different runners or machines, but on a
+single persistent self-hosted runner, the internal cache is simpler and faster.
