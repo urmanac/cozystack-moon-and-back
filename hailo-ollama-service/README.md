@@ -99,6 +99,8 @@ Sanitized fields:
 - recursively all JSON string values in the payload (including nested tool/schema strings)
 - extra normalization for pre-escaped prompt fragments (for example JSON examples in system prompts)
 - defensive quote-neutralization (`\u0022`) in embeddable prompt fragments
+- context-budget trimming for `messages[]` on `/v1/chat/completions` to avoid
+  HailoRT cache saturation (`MAX_MESSAGE_CHARS`, default `12000`)
 
 Local test command:
 

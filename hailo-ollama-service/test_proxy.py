@@ -70,6 +70,28 @@ class ProxySanitizerTests(unittest.TestCase):
             if isinstance(msg.get("content"), str):
                 self.assertTrue(proxy._is_hailo_embeddable(msg["content"]))
 
+    def test_context_budget_trims_messages_to_recent_subset(self):
+        original = proxy.MAX_MESSAGE_CHARS
+        proxy.MAX_MESSAGE_CHARS = 120
+        try:
+            payload = {
+                "model": "qwen2:1.5b",
+                "messages": [
+                    {"role": "system", "content": "S" * 90},
+                    {"role": "user", "content": "U1" * 60},
+                    {"role": "assistant", "content": "A1" * 40},
+                    {"role": "user", "content": "U2" * 20},
+                ],
+            }
+            out = json.loads(proxy.sanitize_messages(json.dumps(payload).encode("utf-8")))
+            self.assertGreaterEqual(len(out["messages"]), 2)
+            self.assertEqual(out["messages"][-1]["role"], "user")
+            self.assertIn("U2", out["messages"][-1]["content"])
+            total = sum(len(m.get("content", "")) for m in out["messages"] if isinstance(m.get("content"), str))
+            self.assertLessEqual(total, 180)
+        finally:
+            proxy.MAX_MESSAGE_CHARS = original
+
     def test_sanitize_messages_escapes_nested_tool_schema_strings(self):
         payload = {
             "model": "qwen2:1.5b",

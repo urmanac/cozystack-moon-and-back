@@ -24,6 +24,7 @@ import os
 UPSTREAM_HOST = os.environ.get("UPSTREAM_HOST", "127.0.0.1")
 UPSTREAM_PORT = int(os.environ.get("UPSTREAM_PORT", "8000"))
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "11434"))
+MAX_MESSAGE_CHARS = int(os.environ.get("MAX_MESSAGE_CHARS", "12000"))
 
 
 def escape_content(s: str) -> str:
@@ -140,10 +141,75 @@ def sanitize_messages(body_bytes: bytes) -> bytes:
                 return {k: sanitize_value(v) for k, v in value.items()}
             return value
 
+        def trim_messages_for_budget(payload):
+            messages = payload.get("messages")
+            if not isinstance(messages, list):
+                return
+
+            # Count message content chars as a pragmatic proxy for token budget.
+            total = sum(
+                len(m.get("content", ""))
+                for m in messages
+                if isinstance(m, dict) and isinstance(m.get("content"), str)
+            )
+            if total <= MAX_MESSAGE_CHARS:
+                return
+
+            system_msgs = []
+            for m in messages:
+                if isinstance(m, dict) and m.get("role") == "system":
+                    system_msgs.append(m)
+                else:
+                    break
+
+            tail_source = messages[len(system_msgs):]
+            kept_tail = []
+            used = 0
+            for msg in reversed(tail_source):
+                if not isinstance(msg, dict):
+                    continue
+                content = msg.get("content")
+                size = len(content) if isinstance(content, str) else 0
+                if kept_tail and used + size > MAX_MESSAGE_CHARS:
+                    continue
+                kept_tail.append(msg)
+                used += size
+
+            kept_tail.reverse()
+
+            new_messages = []
+            if system_msgs:
+                sys_msg = dict(system_msgs[0])
+                if isinstance(sys_msg.get("content"), str):
+                    # Reserve room for non-system recent messages.
+                    allowed_sys = max(0, MAX_MESSAGE_CHARS - used)
+                    if len(sys_msg["content"]) > allowed_sys:
+                        suffix = "\n[system prompt truncated for context budget]"
+                        if allowed_sys <= len(suffix):
+                            sys_msg["content"] = sys_msg["content"][:allowed_sys]
+                        else:
+                            head = allowed_sys - len(suffix)
+                            sys_msg["content"] = sys_msg["content"][:head] + suffix
+                new_messages.append(sys_msg)
+
+            new_messages.extend(kept_tail)
+            payload["messages"] = new_messages
+
+            trimmed_total = sum(
+                len(m.get("content", ""))
+                for m in new_messages
+                if isinstance(m, dict) and isinstance(m.get("content"), str)
+            )
+            print(
+                f"[proxy] trimmed messages for context budget: {total} -> {trimmed_total} chars (limit={MAX_MESSAGE_CHARS})",
+                file=sys.stderr,
+            )
+
         # HailoRT prompt rendering can break on unescaped characters in any
         # string field (messages, system, tool schema descriptions, etc.).
         # Recursively sanitize all string values in the JSON payload.
         data = sanitize_value(data)
+        trim_messages_for_budget(data)
 
         if sanitized_fields > 0:
             print(
