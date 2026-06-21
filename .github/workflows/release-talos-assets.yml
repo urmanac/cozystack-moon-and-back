@@ -212,6 +212,13 @@ jobs:
             TALOS_VER="$UPSTREAM_TALOS_VERSION"
           fi
           
+          # Inject custom signed sovereign OS images from registry
+          export INSTALLER_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/installer:5.3.0-${TALOS_VER}"
+          export IMAGER_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/imager:5.3.0-${TALOS_VER}"
+          export DRBD_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/drbd:5.3.0-${TALOS_VER}"
+          export ZFS_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/zfs:5.3.0-${TALOS_VER}"
+          export HAILORT_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/hailort:5.3.0-${TALOS_VER}"
+
           bash hack/gen-profiles.sh "$TALOS_VER"
           VARIANT_REGISTRY="${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}"
 
@@ -265,6 +272,13 @@ jobs:
             TALOS_VER="$UPSTREAM_TALOS_VERSION"
           fi
           
+          # Inject custom signed sovereign OS images from registry
+          export INSTALLER_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/installer:5.3.0-${TALOS_VER}"
+          export IMAGER_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/imager:5.3.0-${TALOS_VER}"
+          export DRBD_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/drbd:5.3.0-${TALOS_VER}"
+          export ZFS_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/zfs:5.3.0-${TALOS_VER}"
+          export HAILORT_IMAGE="ghcr.io/urmanac/cozystack-assets/yebyen/hailort:5.3.0-${TALOS_VER}"
+
           bash hack/gen-profiles.sh "$TALOS_VER"
           echo "TALOS_VERSION=$(awk '/^version:/ {print $2; exit}' images/talos/profiles/metal.yaml)" >> $GITHUB_ENV
           make assets
