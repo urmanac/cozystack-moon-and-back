@@ -74,8 +74,12 @@ jobs:
           platforms: linux/arm64
           push: ${{ steps.meta.outputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
-          # Cache layers are kept in the persistent named builder
-          # (hailo-ollama-builder with keep-state=true).
+          # Persist HailoRT/hailo-ollama compile layers across builds via registry cache.
+          # First build: compiles and pushes cache. Subsequent builds reuse cached stages.
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE }}:latest
+          cache-to: |
+            type=registry,ref=${{ env.IMAGE }}:latest,mode=min
 
       - name: Image digest
         if: ${{ steps.meta.outputs.push == 'true' }}
