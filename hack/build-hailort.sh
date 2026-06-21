@@ -111,7 +111,7 @@ echo "🚀 Starting fresh build for $UNIQUE_TAG..."
 # Build hailort-pkg
 echo "🏗️ Building hailort-pkg..."
 cd pkgs
-PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
+PKG_VERSION_TAG="v1.13.0-28-g${PKGS_HASH}"
 $MAKE_CMD hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 # Build hailort extension

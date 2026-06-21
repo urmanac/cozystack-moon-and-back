@@ -125,7 +125,7 @@ export PATH="$PWD:$PATH"
 MAKE_CMD="make"
 [ "$(uname -s)" = "Darwin" ] && [ -x "$(command -v gmake)" ] && MAKE_CMD="gmake"
 
-PKG_VERSION_TAG="v1.13.0-23-g${PKGS_HASH}"
+PKG_VERSION_TAG="v1.13.0-28-g${PKGS_HASH}"
 
 # Step 1: Compile the sovereign kernel and all package images consumed by extensions.
 # First-run CI must publish drbd-pkg/zfs-pkg before the extension build can reference them.
