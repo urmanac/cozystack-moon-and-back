@@ -2,7 +2,7 @@ name: Build CozyStack ARM64 Images (Upstream Integration)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/** ]
     paths:
       - 'patches/**'
       - 'hack/**'

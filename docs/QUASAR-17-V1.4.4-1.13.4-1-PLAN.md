@@ -29,13 +29,25 @@ We need to sync our custom CozyStack Moon-and-Back images and the Sovereign OS F
    - Merge the feature branch into `main`.
    - The merge will automatically trigger the Git tagging step and spawn the `release-talos-assets.yml` workflow, producing the flashable metal images.
 
+## Workflow Trigger Stabilization
+
+During testing of this sync plan, it was discovered that pushes to the feature branch `feat/quasar-upgrade-v1.4.4-1.13.4` did not trigger any CI runs. Research revealed:
+- `build-talos-images.yml` push triggers were restricted exclusively to `main`.
+- `build-hailo-ollama.yml` push triggers were restricted to `main` and a specific prior branch name (`feat/sovereign-os-factory`).
+- While pull requests targeting `main` do trigger CI builds, development push testing was blocked.
+
+To resolve this and support systematic feature-branch development:
+- The push branch lists for both workflows were updated to `[ main, feat/** ]`.
+- Path filters remain narrowed/restricted to ensure we only build when code under the relevant directories actually changes.
+
 ## Execution Checklist
 
-- [ ] Create local feature branch `feat/quasar-upgrade-v1.4.4-1.13.4`.
-- [ ] Update [VERSION](file:///VERSION) to `v1.4.4-1.13.4-1`.
-- [ ] Update default inputs in [.github/workflows/build-talos-images.yml](file:///.github/workflows/build-talos-images.yml).
-- [ ] Update version variables and `PKGS_HASH` in [hack/build-sovereign-os.sh](file:///hack/build-sovereign-os.sh).
-- [ ] Update version variables and `PKGS_HASH` in [hack/build-hailort.sh](file:///hack/build-hailort.sh).
-- [ ] Run `./validate-complete.sh` to check patch compliance.
+- [x] Create local feature branch `feat/quasar-upgrade-v1.4.4-1.13.4`.
+- [x] Update [VERSION](file:///VERSION) to `v1.4.4-1.13.4-1`.
+- [x] Update default inputs in [.github/workflows/build-talos-images.yml](file:///.github/workflows/build-talos-images.yml).
+- [x] Update version variables and `PKGS_HASH` in [hack/build-sovereign-os.sh](file:///hack/build-sovereign-os.sh).
+- [x] Update version variables and `PKGS_HASH` in [hack/build-hailort.sh](file:///hack/build-hailort.sh).
+- [x] Generalize CI workflow push triggers to support `feat/**` branches.
+- [x] Run `./validate-complete.sh` (excluding git cleanliness step) to check patch compliance.
 - [ ] Commit changes, push to branch, and monitor CI.
 - [ ] Merge to `main` and watch release tagging.
