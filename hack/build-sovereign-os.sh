@@ -65,6 +65,10 @@ if [ "$all_required_present" = "true" ] && \
         DIGEST_INSTALLER=$(skopeo inspect "docker://$REGISTRY/$USERNAME/installer:$UNIQUE_TAG" --format '{{.Digest}}')
         crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$STABLE_TAG"
         crane tag "$REGISTRY/$USERNAME/installer@$DIGEST_INSTALLER" "$VERSION_BASE"
+
+        DIGEST_IMAGER=$(skopeo inspect "docker://$REGISTRY/$USERNAME/imager:$UNIQUE_TAG" --format '{{.Digest}}')
+        crane tag "$REGISTRY/$USERNAME/imager@$DIGEST_IMAGER" "$STABLE_TAG"
+        crane tag "$REGISTRY/$USERNAME/imager@$DIGEST_IMAGER" "$VERSION_BASE"
     fi
     exit 0
 fi
