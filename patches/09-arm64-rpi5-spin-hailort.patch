@@ -69,7 +69,7 @@ index 0f8c8c6..137b7ed 100644
  		tar -C ../../../_out/assets -xzf-
  
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 424a448..1172313 100755
+index 424a448..b2254b6 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -81,3 +81,59 @@ index 424a448..1172313 100755
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
+@@ -42,6 +42,7 @@ done
+ for profile in $PROFILES; do
+   echo "writing profile images/talos/profiles/$profile.yaml"
+   board=""
++  overlay_block=""
+   case "$profile" in
+     initramfs|kernel|iso)
+       image_options="{}"
+@@ -55,6 +56,19 @@ for profile in $PROFILES; do
+       platform="metal"
+       kind="installer"
+       ;;
++    installer-rpi5)
++      image_options="{}"
++      out_format="raw"
++      platform="metal"
++      kind="installer"
++      board="rpi_generic"
++      overlay_block=$(cat <<EOF
++  overlay:
++    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
++    name: rpi_5
++EOF
++)
++      ;;
+     metal)
+       image_options="{ diskSize: 1306525696, diskFormat: raw }"
+       out_format=".xz"
+@@ -62,6 +76,19 @@ for profile in $PROFILES; do
+       kind="image"
+       board="rpi_generic"
+       ;;
++    metal-rpi5)
++      image_options="{ diskSize: 1306525696, diskFormat: raw }"
++      out_format=".xz"
++      platform="metal"
++      kind="image"
++      board="rpi_generic"
++      overlay_block=$(cat <<EOF
++  overlay:
++    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
++    name: rpi_5
++EOF
++)
++      ;;
+     nocloud)
+       image_options="{ diskSize: 1306525696, diskFormat: raw }"
+       out_format=".xz"
+@@ -89,6 +116,7 @@ input:
+     path: /usr/install/arm64/initramfs.xz
+   baseInstaller:
+     imageRef: "${INSTALLER_IMAGE:-ghcr.io/siderolabs/installer:${TALOS_VERSION}}"
++${overlay_block}
+   systemExtensions:
+     - imageRef: ${AMD_UCODE_IMAGE}
+     - imageRef: ${AMDGPU_IMAGE}

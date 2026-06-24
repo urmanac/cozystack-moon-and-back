@@ -67,7 +67,7 @@ index 137b7ed..5b70049 100644
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
  		docker run --rm -i -v /dev:/dev --privileged "$(IMAGER_IMAGE)" --tar-to-stdout - | \
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 1172313..bbbf923 100755
+index b2254b6..1fb654f 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
