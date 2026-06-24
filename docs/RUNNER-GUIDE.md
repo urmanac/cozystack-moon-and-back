@@ -2,6 +2,11 @@
 
 This document describes how to configure, start, and manage the self-hosted GitHub Actions runner used for compiling the custom signed kernel and extensions (Sovereign OS Factory).
 
+## Naming History & Context
+The runner container is named `github-runner-stopgap` because of its deployment history:
+*   **Original Plan:** The runner was intended to run permanently on the dedicated Mac mini that operates the television.
+*   **Current State ("Stopgap"):** Since that setup was deferred, the runner is currently hosted on the user's primary laptop/workstation. It runs as a temporary stopgap container using OrbStack Docker, allowing compilation utilizing the laptop's resources.
+
 ## Why We Need a Self-Hosted Runner
 Compiling the full Linux kernel and related Talos extensions (like `zfs`, `drbd`, and `hailort`) requires substantial memory, CPU, and **disk space** (often exceeding 40 GB during intermediate BuildKit compilation). Default GitHub-hosted runners fail with "No space left on device" errors. 
 
