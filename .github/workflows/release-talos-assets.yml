@@ -13,6 +13,9 @@ on:
 
 env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
+  TAG: ${{ github.ref_name }}
+  PUBLISH_VERSIONED: '1'
+  PUBLISH_FLOATING: '1'
 
 jobs:
   validate-patches:
