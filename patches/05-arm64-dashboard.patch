@@ -1,0 +1,22 @@
+diff --git a/packages/system/dashboard/Makefile b/packages/system/dashboard/Makefile
+index 06c9603..48b6406 100644
+--- a/packages/system/dashboard/Makefile
++++ b/packages/system/dashboard/Makefile
+@@ -32,7 +32,7 @@ build-console:
+ 		--file .tmp-cozystack-ui/Containerfile \
+ 		--provenance false \
+ 		--builder=$(BUILDER) \
+-		--platform=linux/amd64 \
++		--platform=$(PLATFORM) \
+ 		$(call image-tags,cozystack-ui,v$(COZYSTACK_VERSION)) \
+ 		$(call cache-args,cozystack-ui) \
+ 		--metadata-file images/console.json \
+@@ -52,7 +52,7 @@ image-token-proxy:
+ 	docker buildx build images/token-proxy \
+ 		--provenance false \
+ 		--builder=$(BUILDER) \
+-		--platform=linux/amd64 \
++		--platform=$(PLATFORM) \
+ 		$(call image-tags,token-proxy,v$(COZYSTACK_VERSION)) \
+ 		$(call cache-args,token-proxy) \
+ 		--metadata-file images/token-proxy.json \

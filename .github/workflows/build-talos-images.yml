@@ -109,6 +109,7 @@ jobs:
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 
@@ -189,6 +190,7 @@ jobs:
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 
