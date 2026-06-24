@@ -1,22 +1,17 @@
 diff --git a/hack/common-envs.mk b/hack/common-envs.mk
-index 9b8db5d..2684398 100644
+index d8d879b..fc708ad 100644
 --- a/hack/common-envs.mk
 +++ b/hack/common-envs.mk
-@@ -10,7 +10,7 @@ TAG = $(shell git describe --tags --exact-match --match 'v*' 2>/dev/null || echo
- PUSH := 1
- LOAD := 0
- BUILDER ?=
--PLATFORM ?= 
-+PLATFORM ?= linux/arm64
- BUILDX_EXTRA_ARGS ?=
- COZYSTACK_VERSION = $(patsubst v%,%,$(shell git describe --tags --match 'v*'))
+@@ -74,6 +74,12 @@ endef
+ comma := ,
+ cache-args = --cache-from type=registry,ref=$(CACHE_REGISTRY)/$(1):$(if $(2),$(2),buildcache)$(if $(filter 1,$(WRITE_CACHE)), --cache-to type=registry$(comma)ref=$(CACHE_REGISTRY)/$(1):$(if $(2),$(2),buildcache)$(comma)mode=max$(comma)oci-mediatypes=true$(comma)image-manifest=true)
  
-@@ -22,7 +22,7 @@ BUILDX_ARGS := --provenance=false --push=$(PUSH) --load=$(LOAD) \
- 
- # Returns 'latest' if the git tag is not assigned, otherwise returns the provided value
- define settag
--$(if $(filter $(TAG),latest),latest,$(1))
++
++# Returns 'latest' if the git tag is not assigned, otherwise returns the provided value
++define settag
 +$(if $(filter latest,$(TAG)),$(1),$(TAG))
- endef
- 
++endef
++
  ifeq ($(COZYSTACK_VERSION),)
+     $(shell git remote add upstream https://github.com/cozystack/cozystack.git || true)
+     $(shell git fetch upstream --tags)

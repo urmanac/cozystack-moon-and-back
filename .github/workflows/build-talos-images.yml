@@ -112,6 +112,7 @@ jobs:
           git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
+          git apply ../patches/11-fix-tagging-logic.patch
 
       - name: Build parallel package group
         run: |
@@ -193,6 +194,7 @@ jobs:
           git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
+          git apply ../patches/11-fix-tagging-logic.patch
 
       - name: Build operator and manifests
         run: |
