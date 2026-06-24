@@ -46,3 +46,8 @@ machine:
 ### Flashable Metal Images
 - CM4: `talos-metal-arm64-spin-hailort-talos-v1.13.5-cozy-v1.5.0.raw.xz`
 - CM5: `talos-metal-rpi5-arm64-spin-hailort-talos-v1.13.5-cozy-v1.5.0.raw.xz`
+
+## Future Roadmap & Plans
+1. **CozyStack Dashboard ARM64 Support**: The upstream dashboard currently lacks native ARM64 support (which is why it is patched out of our active build groups via [07-arm64-skip-amd64-only-builds.patch](file:///Users/yebyen/u/c/cozystack-moon-and-back/patches/07-arm64-skip-amd64-only-builds.patch)). Due to high interest in running the dashboard natively on ARM64, we plan to implement custom image compiling for the dashboard in a future release.
+2. **Upgrade to Spin v0.25+ / Spin v4.0.0 Support**: We aim to integrate the latest Spin container runtime shim updates (e.g. `v0.25.1` or later) once the upstream project supports it. This will allow for testing and running Spin v4 WebAssembly workloads on our sovereign Talos clusters.
+
