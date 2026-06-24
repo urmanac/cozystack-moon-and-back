@@ -9,16 +9,17 @@ index 0000000..c645ddd
 +--- a/build.gradle
 ++++ b/build.gradle
 +@@ -580,7 +580,7 @@ tasks.register('unzipProtoc', Copy) {
++     from zipTree(zipFile)
 +     dependsOn(downloadProtoc)
 + 
 +-    def zipFile = file("tools/protoc-" + protobufVersion + '-linux-x86_64.zip')
-+++    def zipFile = file("tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
+++    def zipFile = file("tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
 +     def outputDir = file("tools/protoc-" + protobufVersion)
 + 
 +     from zipTree(zipFile)
 +@@ -594,7 +594,7 @@ tasks.register('downloadProtoc') {
 +-    def protozip = new File("${projectDir}/tools/protoc-" + protobufVersion + '-linux-x86_64.zip')
-+++    def protozip = new File("${projectDir}/tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
+++    def protozip = new File("${projectDir}/tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
 +     outputs.file protozip
 + 
 +     doLast {
@@ -27,7 +28,7 @@ index 0000000..c645ddd
 +             println "downloading protoc..."
 +             new URL('https://github.com/google/protobuf/releases/download/v'
 +-                    + protobufVersion + '/protoc-' + protobufVersion + '-linux-x86_64.zip')
-+++                    + protobufVersion + '/protoc-' + protobufVersion + '-linux-aarch_64.zip')
+++                    + protobufVersion + '/protoc-' + protobufVersion + '-linux-aarch_64.zip')
 +                     .withInputStream { i -> protozip.withOutputStream { it << i } }
 +         }
 +     }
