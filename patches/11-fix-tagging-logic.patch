@@ -1,7 +1,16 @@
 diff --git a/hack/common-envs.mk b/hack/common-envs.mk
-index d8d879b..fc708ad 100644
+index d8d879b..a956915 100644
 --- a/hack/common-envs.mk
 +++ b/hack/common-envs.mk
+@@ -19,7 +19,7 @@ CACHE_REGISTRY ?= $(REGISTRY)
+ #   * pull-requests.yaml -> pr-<N>-<sha>
+ #   * tags.yaml          -> <ref_name>           (e.g. v1.5.0)
+ #   * local              -> dev                  (with PUSH=0 by default)
+-IMAGE_TAG ?= dev
++IMAGE_TAG ?= $(if $(TAG),$(TAG),dev)
+ 
+ # Opt-in extra tags. Workflows set these explicitly; defaults are off so a
+ # local `make build` never races with CI or accidentally moves :latest.
 @@ -74,6 +74,12 @@ endef
  comma := ,
  cache-args = --cache-from type=registry,ref=$(CACHE_REGISTRY)/$(1):$(if $(2),$(2),buildcache)$(if $(filter 1,$(WRITE_CACHE)), --cache-to type=registry$(comma)ref=$(CACHE_REGISTRY)/$(1):$(if $(2),$(2),buildcache)$(comma)mode=max$(comma)oci-mediatypes=true$(comma)image-manifest=true)
