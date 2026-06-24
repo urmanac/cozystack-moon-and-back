@@ -22,11 +22,11 @@ on:
       cozystack_commit:
         description: 'Cozystack upstream ref or commit'
         required: false
-        default: 'v1.4.4'
+        default: 'v1.5.0'
       talos_version:
         description: 'Talos version to build'
         required: false
-        default: 'v1.13.4'
+        default: 'v1.13.5'
       extension_variant:
         description: 'Extension variant to build'
         required: false
@@ -109,6 +109,7 @@ jobs:
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 
@@ -189,6 +190,7 @@ jobs:
         run: |
           cd cozystack-upstream
           git apply ../patches/04-arm64-default-platform.patch
+          git apply ../patches/05-arm64-dashboard.patch
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
 

@@ -1,21 +1,17 @@
 diff --git a/Makefile b/Makefile
-index 842a3e7..f49c917 100644
+index 514c3d9..b440867 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -21,12 +21,9 @@ build: build-deps
- 	make -C packages/system/backupstrategy-controller image
+@@ -22,8 +22,6 @@ build: build-deps
  	make -C packages/system/lineage-controller-webhook image
+ 	make -C packages/system/flux-shard-operator image
  	make -C packages/system/cilium image
 -	make -C packages/system/linstor image
 -	make -C packages/system/linstor-gui image
  	make -C packages/system/kubeovn image
  	make -C packages/system/kubeovn-webhook image
  	make -C packages/system/kubeovn-plunger image
--	make -C packages/system/dashboard image
- 	make -C packages/system/metallb image
- 	make -C packages/system/kamaji image
- 	make -C packages/system/multus image
-@@ -34,7 +31,6 @@ build: build-deps
+@@ -35,7 +33,6 @@ build: build-deps
  	make -C packages/system/objectstorage-controller image
  	make -C packages/system/grafana-operator image
  	make -C packages/core/testing image

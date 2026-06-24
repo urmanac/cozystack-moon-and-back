@@ -1,15 +1,19 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index e06793b9..034b8271 100644
+index 5b33f91..0f8c8c6 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -11,12 +11,12 @@ update:
+@@ -11,16 +11,16 @@ update:
  image: image-matchbox image-talos
  
  image-talos:
 -	test -f ../../../_out/assets/installer-amd64.tar || make talos-installer
--	skopeo copy docker-archive:../../../_out/assets/installer-amd64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
 +	test -f ../../../_out/assets/installer-arm64.tar || make talos-installer
-+	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
+ 	set -e; \
+-	SRC=docker-archive:../../../_out/assets/installer-amd64.tar; \
++	SRC=docker-archive:../../../_out/assets/installer-arm64.tar; \
+ 	skopeo copy "$$SRC" docker://$(REGISTRY)/talos:$(IMAGE_TAG); \
+ 	if [ "$(PUBLISH_VERSIONED)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:$(TALOS_VERSION); fi; \
+ 	if [ "$(PUBLISH_FLOATING)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:latest; fi
  
  image-matchbox:
 -	test -f ../../../_out/assets/kernel-amd64 || make talos-kernel
@@ -17,10 +21,39 @@ index e06793b9..034b8271 100644
 +	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
 +	test -f ../../../_out/assets/initramfs-metal-arm64.xz || make talos-initramfs
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
- 		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
- 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
+ 		$(call image-tags,matchbox,$(TALOS_VERSION)) \
+ 		$(call cache-args,matchbox) \
+@@ -33,22 +33,22 @@ image-matchbox:
+ assets: talos-iso talos-nocloud talos-metal talos-kernel talos-initramfs
+ 
+ talos-initramfs:
+-	test -f ../../../_out/assets/initramfs-metal-amd64.xz || $(MAKE) build-talos-initramfs
++	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
+ 
+ talos-kernel:
+-	test -f ../../../_out/assets/kernel-amd64 || $(MAKE) build-talos-kernel
++	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) build-talos-kernel
+ 
+ talos-installer:
+-	test -f ../../../_out/assets/installer-amd64.tar || $(MAKE) build-talos-installer
++	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
+ 
+ talos-iso:
+-	test -f ../../../_out/assets/metal-amd64.iso || $(MAKE) build-talos-iso
++	test -f ../../../_out/assets/metal-arm64.iso || $(MAKE) build-talos-iso
+ 
+ talos-nocloud:
+-	test -f ../../../_out/assets/nocloud-amd64.raw.xz || $(MAKE) build-talos-nocloud
++	test -f ../../../_out/assets/nocloud-arm64.raw.xz || $(MAKE) build-talos-nocloud
+ 
+ talos-metal:
+-	test -f ../../../_out/assets/metal-amd64.raw.xz || $(MAKE) build-talos-metal
++	test -f ../../../_out/assets/metal-arm64.raw.xz || $(MAKE) build-talos-metal
+ 
+ build-talos-initramfs build-talos-kernel build-talos-installer build-talos-iso build-talos-nocloud build-talos-metal:
+ 	mkdir -p ../../../_out/assets
 diff --git a/packages/core/talos/images/matchbox/Dockerfile b/packages/core/talos/images/matchbox/Dockerfile
-index fbb6f3bf..21b91e50 100644
+index fbb6f3b..21b91e5 100644
 --- a/packages/core/talos/images/matchbox/Dockerfile
 +++ b/packages/core/talos/images/matchbox/Dockerfile
 @@ -1,6 +1,6 @@

@@ -4,7 +4,7 @@ set -e
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
 VERSION_BASE="5.3.0"
-TALOS_VERSION="v1.13.4"
+TALOS_VERSION="v1.13.5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -46,9 +46,9 @@ fi
 
 cd "$WORK_DIR"
 
-# Pinned Sidero Versions for Talos v1.13.4 (Kernel 6.18.34-talos)
-EXT_TAG="v1.13.4"
-PKGS_HASH="54ec9fc"
+# Pinned Sidero Versions for Talos v1.13.5 (Kernel 6.18.36-talos)
+EXT_TAG="v1.13.5"
+PKGS_HASH="6b315f7"
 
 # Download source tarballs
 echo "📥 Downloading Sidero extensions $EXT_TAG..."
@@ -111,7 +111,7 @@ echo "🚀 Starting fresh build for $UNIQUE_TAG..."
 # Build hailort-pkg
 echo "🏗️ Building hailort-pkg..."
 cd pkgs
-PKG_VERSION_TAG="v1.13.0-28-g${PKGS_HASH}"
+PKG_VERSION_TAG="v1.13.0-36-g${PKGS_HASH}"
 $MAKE_CMD hailort-pkg REGISTRY="$REGISTRY" USERNAME="$USERNAME" TAG="$PKG_VERSION_TAG" PUSH=true PLATFORM=linux/arm64
 
 # Build hailort extension

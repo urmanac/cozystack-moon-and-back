@@ -175,6 +175,8 @@ yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
 
 - 📄 **[About Latest Build](ABOUT-LATEST-BUILD.md)** - Understanding auto-generated build status
 - 🏷️ **[Package Naming Cleanup](PACKAGE-NAMING-CLEANUP.md)** - Package naming conventions
+- 🔍 **[Package Audit and Release Mapping](PACKAGE-AUDIT-AND-RELEASE-MAPPING.md)** - Audit of GHCR package organization and tagging lifecycle
+- 🏷️ **[ROSEMARY-18 Release Notes (v1.5.0-1.13.5-1)](ROSEMARY-18-V1.5.0-1.13.5-1-RELEASE.md)** - Release plan and upgrade notes
 
 ---
 

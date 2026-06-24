@@ -4,7 +4,7 @@ set -e
 REGISTRY=${REGISTRY:-ghcr.io/urmanac/cozystack-assets}
 USERNAME=${USERNAME:-yebyen}
 VERSION_BASE="5.3.0"
-TALOS_VERSION="v1.13.4"
+TALOS_VERSION="v1.13.5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="$(cd "$SCRIPT_DIR/../patches" && pwd)"
@@ -75,8 +75,8 @@ fi
 
 cd "$WORK_DIR"
 
-EXT_TAG="v1.13.4"
-PKGS_HASH="54ec9fc"
+EXT_TAG="v1.13.5"
+PKGS_HASH="6b315f7"
 
 echo "📥 Downloading Sidero source trees..."
 mkdir extensions && curl -sSL "https://github.com/siderolabs/extensions/archive/refs/tags/${EXT_TAG}.tar.gz" | tar xz -C extensions --strip-components=1
@@ -129,7 +129,7 @@ export PATH="$PWD:$PATH"
 MAKE_CMD="make"
 [ "$(uname -s)" = "Darwin" ] && [ -x "$(command -v gmake)" ] && MAKE_CMD="gmake"
 
-PKG_VERSION_TAG="v1.13.0-28-g${PKGS_HASH}"
+PKG_VERSION_TAG="v1.13.0-36-g${PKGS_HASH}"
 
 # Step 1: Compile the sovereign kernel and all package images consumed by extensions.
 # First-run CI must publish drbd-pkg/zfs-pkg before the extension build can reference them.
