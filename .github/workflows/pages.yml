@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # For workflow_run, build from latest main so docs updates from update-docs are included.
           ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
