@@ -69,6 +69,7 @@ jobs:
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
           git apply ../patches/11-fix-tagging-logic.patch
+          git apply ../patches/14-arm64-linstor.patch
 
       - name: Build parallel package group
         run: |
@@ -78,9 +79,9 @@ jobs:
           export TAG="${{ github.ref_name }}"
           
           if [ "$GROUP" = "apps" ]; then
-            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes"
+            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes packages/system/dashboard"
           elif [ "$GROUP" = "system-base" ]; then
-            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook"
+            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui"
           elif [ "$GROUP" = "system-net" ]; then
             DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
@@ -147,6 +148,7 @@ jobs:
           git apply ../patches/06-kubeovn-manifest-list-retag.patch
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
           git apply ../patches/11-fix-tagging-logic.patch
+          git apply ../patches/14-arm64-linstor.patch
 
       - name: Build operator and manifests
         run: |
@@ -339,6 +341,7 @@ jobs:
             "monitoring" "cozystack-api" "cozystack-controller" "backup-controller" "backupstrategy-controller" "lineage-controller-webhook"
             "cilium" "kubeovn" "kubeovn-webhook" "kubeovn-plunger"
             "cozystack-ui" "token-proxy"
+            "piraeus-server" "linstor-csi" "linstor-gui"
             "metallb" "kamaji" "multus" "bucket" "objectstorage-controller" "grafana-operator" "testing" "platform"
           )
           for PKG in "${PACKAGES[@]}"; do

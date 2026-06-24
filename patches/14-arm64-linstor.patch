@@ -1,0 +1,34 @@
+diff --git a/packages/system/linstor/images/piraeus-server/patches/arm64-protoc.diff b/packages/system/linstor/images/piraeus-server/patches/arm64-protoc.diff
+new file mode 100644
+index 0000000..c645ddd
+--- /dev/null
++++ b/packages/system/linstor/images/piraeus-server/patches/arm64-protoc.diff
+@@ -0,0 +1,28 @@
++diff --git a/build.gradle b/build.gradle
++index e16793b..f34d70b 100644
++--- a/build.gradle
+++++ b/build.gradle
++@@ -580,7 +580,7 @@ tasks.register('unzipProtoc', Copy) {
++     dependsOn(downloadProtoc)
++ 
++-    def zipFile = file("tools/protoc-" + protobufVersion + '-linux-x86_64.zip')
++++    def zipFile = file("tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
++     def outputDir = file("tools/protoc-" + protobufVersion)
++ 
++     from zipTree(zipFile)
++@@ -594,7 +594,7 @@ tasks.register('downloadProtoc') {
++-    def protozip = new File("${projectDir}/tools/protoc-" + protobufVersion + '-linux-x86_64.zip')
++++    def protozip = new File("${projectDir}/tools/protoc-" + protobufVersion + '-linux-aarch_64.zip')
++     outputs.file protozip
++ 
++     doLast {
++         if (!protozip.exists()) {
++             mkdir "tools"
++             println "downloading protoc..."
++             new URL('https://github.com/google/protobuf/releases/download/v'
++-                    + protobufVersion + '/protoc-' + protobufVersion + '-linux-x86_64.zip')
++++                    + protobufVersion + '/protoc-' + protobufVersion + '-linux-aarch_64.zip')
++                     .withInputStream { i -> protozip.withOutputStream { it << i } }
++         }
++     }
++ }

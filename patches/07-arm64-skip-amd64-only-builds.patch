@@ -2,15 +2,6 @@ diff --git a/Makefile b/Makefile
 index 514c3d9..b440867 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -22,8 +22,6 @@ build: build-deps
- 	make -C packages/system/lineage-controller-webhook image
- 	make -C packages/system/flux-shard-operator image
- 	make -C packages/system/cilium image
--	make -C packages/system/linstor image
--	make -C packages/system/linstor-gui image
- 	make -C packages/system/kubeovn image
- 	make -C packages/system/kubeovn-webhook image
- 	make -C packages/system/kubeovn-plunger image
 @@ -35,7 +33,6 @@ build: build-deps
  	make -C packages/system/objectstorage-controller image
  	make -C packages/system/grafana-operator image
