@@ -1,12 +1,12 @@
 diff --git a/hack/common-envs.mk b/hack/common-envs.mk
-index 9b8db5d..8ba4aaf 100644
+index 684e0e4..d8d879b 100644
 --- a/hack/common-envs.mk
 +++ b/hack/common-envs.mk
-@@ -10,7 +10,7 @@ TAG = $(shell git describe --tags --exact-match --match 'v*' 2>/dev/null || echo
+@@ -37,7 +37,7 @@ WRITE_CACHE ?= 0
  PUSH := 1
  LOAD := 0
  BUILDER ?=
--PLATFORM ?= 
+-PLATFORM ?=
 +PLATFORM ?= linux/arm64
  BUILDX_EXTRA_ARGS ?=
  COZYSTACK_VERSION = $(patsubst v%,%,$(shell git describe --tags --match 'v*'))

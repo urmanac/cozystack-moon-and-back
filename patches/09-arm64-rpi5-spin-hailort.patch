@@ -1,24 +1,24 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 034b8271..44942cf2 100644
+index 0f8c8c6..137b7ed 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -5,18 +5,22 @@ TALOS_VERSION=$(shell awk '/^version:/ {print $$2}' images/talos/profiles/instal
- 
- include ../../../hack/common-envs.mk
- 
-+IMAGER_IMAGE ?= ghcr.io/siderolabs/imager:$(TALOS_VERSION)
-+
- update:
- 	hack/gen-profiles.sh
- 
+@@ -11,7 +11,13 @@ update:
  image: image-matchbox image-talos
  
  image-talos:
 -	test -f ../../../_out/assets/installer-arm64.tar || make talos-installer
 +	test -f ../../../_out/assets/installer-rpi5-arm64.tar || $(MAKE) talos-installer-rpi5
-+	skopeo copy docker-archive:../../../_out/assets/installer-rpi5-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))-rpi5
++	set -e; \
++	SRC_RPI5=docker-archive:../../../_out/assets/installer-rpi5-arm64.tar; \
++	skopeo copy "$$SRC_RPI5" docker://$(REGISTRY)/talos:$(IMAGE_TAG)-rpi5; \
++	if [ "$(PUBLISH_VERSIONED)" = "1" ]; then skopeo copy "$$SRC_RPI5" docker://$(REGISTRY)/talos:$(TALOS_VERSION)-rpi5; fi; \
++	if [ "$(PUBLISH_FLOATING)" = "1" ]; then skopeo copy "$$SRC_RPI5" docker://$(REGISTRY)/talos:latest-rpi5; fi
 +	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) talos-installer
- 	skopeo copy docker-archive:../../../_out/assets/installer-arm64.tar docker://$(REGISTRY)/talos:$(call settag,$(TALOS_VERSION))
+ 	set -e; \
+ 	SRC=docker-archive:../../../_out/assets/installer-arm64.tar; \
+ 	skopeo copy "$$SRC" docker://$(REGISTRY)/talos:$(IMAGE_TAG); \
+@@ -19,8 +25,8 @@ image-talos:
+ 	if [ "$(PUBLISH_FLOATING)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:latest; fi
  
  image-matchbox:
 -	test -f ../../../_out/assets/kernel-arm64 || make talos-kernel
@@ -26,9 +26,9 @@ index 034b8271..44942cf2 100644
 +	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) talos-kernel
 +	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) talos-initramfs
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
- 		--tag $(REGISTRY)/matchbox:$(call settag,$(TAG)) \
- 		--tag $(REGISTRY)/matchbox:$(call settag,$(TALOS_VERSION)-$(TAG)) \
-@@ -28,29 +32,41 @@ image-matchbox:
+ 		$(call image-tags,matchbox,$(TALOS_VERSION)) \
+ 		$(call cache-args,matchbox) \
+@@ -30,7 +36,7 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
@@ -36,42 +36,31 @@ index 034b8271..44942cf2 100644
 +assets: talos-iso talos-nocloud talos-metal-rpi5 talos-metal talos-kernel talos-initramfs
  
  talos-initramfs:
--	test -f ../../../_out/assets/initramfs-metal-amd64.xz || $(MAKE) build-talos-initramfs
-+	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
- 
- talos-kernel:
--	test -f ../../../_out/assets/kernel-amd64 || $(MAKE) build-talos-kernel
-+	test -f ../../../_out/assets/kernel-arm64 || $(MAKE) build-talos-kernel
- 
+ 	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
+@@ -41,6 +47,12 @@ talos-kernel:
  talos-installer:
--	test -f ../../../_out/assets/installer-amd64.tar || $(MAKE) build-talos-installer
-+	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
-+
+ 	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
+ 
 +talos-installer-rpi5:
 +	test -f ../../../_out/assets/installer-rpi5-arm64.tar || ( \
 +		$(MAKE) build-talos-installer-rpi5 && \
 +		mv ../../../_out/assets/installer-arm64.tar ../../../_out/assets/installer-rpi5-arm64.tar \
 +	)
- 
- talos-iso:
--	test -f ../../../_out/assets/metal-amd64.iso || $(MAKE) build-talos-iso
-+	test -f ../../../_out/assets/metal-arm64.iso || $(MAKE) build-talos-iso
- 
- talos-nocloud:
--	test -f ../../../_out/assets/nocloud-amd64.raw.xz || $(MAKE) build-talos-nocloud
-+	test -f ../../../_out/assets/nocloud-arm64.raw.xz || $(MAKE) build-talos-nocloud
- 
- talos-metal:
--	test -f ../../../_out/assets/metal-amd64.raw.xz || $(MAKE) build-talos-metal
-+	test -f ../../../_out/assets/metal-arm64.raw.xz || $(MAKE) build-talos-metal
 +
+ talos-iso:
+ 	test -f ../../../_out/assets/metal-arm64.iso || $(MAKE) build-talos-iso
+ 
+@@ -50,9 +62,15 @@ talos-nocloud:
+ talos-metal:
+ 	test -f ../../../_out/assets/metal-arm64.raw.xz || $(MAKE) build-talos-metal
+ 
+-build-talos-initramfs build-talos-kernel build-talos-installer build-talos-iso build-talos-nocloud build-talos-metal:
 +talos-metal-rpi5:
 +	test -f ../../../_out/assets/metal-rpi5-arm64.raw.xz || ( \
 +		$(MAKE) build-talos-metal-rpi5 && \
 +		mv ../../../_out/assets/metal-arm64.raw.xz ../../../_out/assets/metal-rpi5-arm64.raw.xz \
 +	)
- 
--build-talos-initramfs build-talos-kernel build-talos-installer build-talos-iso build-talos-nocloud build-talos-metal:
++
 +build-talos-initramfs build-talos-kernel build-talos-installer build-talos-installer-rpi5 build-talos-iso build-talos-nocloud build-talos-metal build-talos-metal-rpi5:
  	mkdir -p ../../../_out/assets
  	cat images/talos/profiles/$(subst build-talos-,,$@).yaml | \
@@ -80,7 +69,7 @@ index 034b8271..44942cf2 100644
  		tar -C ../../../_out/assets -xzf-
  
 diff --git a/packages/core/talos/hack/gen-profiles.sh b/packages/core/talos/hack/gen-profiles.sh
-index 424a4481..b2254b6f 100755
+index 424a448..1172313 100755
 --- a/packages/core/talos/hack/gen-profiles.sh
 +++ b/packages/core/talos/hack/gen-profiles.sh
 @@ -3,7 +3,7 @@ set -e
@@ -92,59 +81,3 @@ index 424a4481..b2254b6f 100755
  FIRMWARES="amd-ucode amdgpu bnx2-bnx2x i915 intel-ice-firmware intel-ucode qlogic-firmware"
  EXTENSIONS="drbd zfs spin hailort vc4"
  
-@@ -42,6 +42,7 @@ done
- for profile in $PROFILES; do
-   echo "writing profile images/talos/profiles/$profile.yaml"
-   board=""
-+  overlay_block=""
-   case "$profile" in
-     initramfs|kernel|iso)
-       image_options="{}"
-@@ -55,6 +56,19 @@ for profile in $PROFILES; do
-       platform="metal"
-       kind="installer"
-       ;;
-+    installer-rpi5)
-+      image_options="{}"
-+      out_format="raw"
-+      platform="metal"
-+      kind="installer"
-+      board="rpi_generic"
-+      overlay_block=$(cat <<EOF
-+  overlay:
-+    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
-+    name: rpi_5
-+EOF
-+)
-+      ;;
-     metal)
-       image_options="{ diskSize: 1306525696, diskFormat: raw }"
-       out_format=".xz"
-@@ -62,6 +76,19 @@ for profile in $PROFILES; do
-       kind="image"
-       board="rpi_generic"
-       ;;
-+    metal-rpi5)
-+      image_options="{ diskSize: 1306525696, diskFormat: raw }"
-+      out_format=".xz"
-+      platform="metal"
-+      kind="image"
-+      board="rpi_generic"
-+      overlay_block=$(cat <<EOF
-+  overlay:
-+    imageRef: ghcr.io/siderolabs/sbc-raspberrypi:v0.1.8
-+    name: rpi_5
-+EOF
-+)
-+      ;;
-     nocloud)
-       image_options="{ diskSize: 1306525696, diskFormat: raw }"
-       out_format=".xz"
-@@ -89,6 +116,7 @@ input:
-     path: /usr/install/arm64/initramfs.xz
-   baseInstaller:
-     imageRef: "${INSTALLER_IMAGE:-ghcr.io/siderolabs/installer:${TALOS_VERSION}}"
-+${overlay_block}
-   systemExtensions:
-     - imageRef: ${AMD_UCODE_IMAGE}
-     - imageRef: ${AMDGPU_IMAGE}
