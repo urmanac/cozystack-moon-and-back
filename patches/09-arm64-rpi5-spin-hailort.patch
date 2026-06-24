@@ -1,8 +1,17 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 0f8c8c6..137b7ed 100644
+index 0f8c8c6..b78a9a2 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -11,7 +11,13 @@ update:
+@@ -3,6 +3,8 @@ NAMESPACE=cozy-system
+ 
+ TALOS_VERSION=$(shell awk '/^version:/ {print $$2}' images/talos/profiles/installer.yaml)
+ 
++IMAGER_IMAGE ?= ghcr.io/siderolabs/imager:$(TALOS_VERSION)
++
+ include ../../../hack/common-envs.mk
+ 
+ update:
+@@ -11,7 +13,13 @@ update:
  image: image-matchbox image-talos
  
  image-talos:
@@ -17,7 +26,7 @@ index 0f8c8c6..137b7ed 100644
  	set -e; \
  	SRC=docker-archive:../../../_out/assets/installer-arm64.tar; \
  	skopeo copy "$$SRC" docker://$(REGISTRY)/talos:$(IMAGE_TAG); \
-@@ -19,8 +25,8 @@ image-talos:
+@@ -19,8 +27,8 @@ image-talos:
  	if [ "$(PUBLISH_FLOATING)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:latest; fi
  
  image-matchbox:
@@ -28,7 +37,7 @@ index 0f8c8c6..137b7ed 100644
  	docker buildx build -f images/matchbox/Dockerfile ../../.. \
  		$(call image-tags,matchbox,$(TALOS_VERSION)) \
  		$(call cache-args,matchbox) \
-@@ -30,7 +36,7 @@ image-matchbox:
+@@ -30,7 +38,7 @@ image-matchbox:
  		> ../../extra/bootbox/images/matchbox.tag
  	rm -f images/matchbox.json
  
@@ -37,7 +46,7 @@ index 0f8c8c6..137b7ed 100644
  
  talos-initramfs:
  	test -f ../../../_out/assets/initramfs-metal-arm64.xz || $(MAKE) build-talos-initramfs
-@@ -41,6 +47,12 @@ talos-kernel:
+@@ -41,6 +49,12 @@ talos-kernel:
  talos-installer:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
@@ -50,7 +59,7 @@ index 0f8c8c6..137b7ed 100644
  talos-iso:
  	test -f ../../../_out/assets/metal-arm64.iso || $(MAKE) build-talos-iso
  
-@@ -50,9 +62,15 @@ talos-nocloud:
+@@ -50,9 +64,15 @@ talos-nocloud:
  talos-metal:
  	test -f ../../../_out/assets/metal-arm64.raw.xz || $(MAKE) build-talos-metal
  

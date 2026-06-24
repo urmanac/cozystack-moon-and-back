@@ -1,8 +1,8 @@
 diff --git a/packages/core/talos/Makefile b/packages/core/talos/Makefile
-index 137b7ed..5b70049 100644
+index b78a9a2..1f8dad5 100644
 --- a/packages/core/talos/Makefile
 +++ b/packages/core/talos/Makefile
-@@ -24,26 +24,45 @@ image-talos:
+@@ -26,26 +26,45 @@ image-talos:
  	if [ "$(PUBLISH_VERSIONED)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:$(TALOS_VERSION); fi; \
  	if [ "$(PUBLISH_FLOATING)" = "1" ]; then skopeo copy "$$SRC" docker://$(REGISTRY)/talos:latest; fi
  
@@ -57,7 +57,7 @@ index 137b7ed..5b70049 100644
  talos-installer:
  	test -f ../../../_out/assets/installer-arm64.tar || $(MAKE) build-talos-installer
  
-@@ -68,7 +87,7 @@ talos-metal-rpi5:
+@@ -70,7 +89,7 @@ talos-metal-rpi5:
  		mv ../../../_out/assets/metal-arm64.raw.xz ../../../_out/assets/metal-rpi5-arm64.raw.xz \
  	)
  
