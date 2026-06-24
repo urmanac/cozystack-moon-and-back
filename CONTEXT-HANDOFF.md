@@ -5,6 +5,30 @@
 
 ---
 
+## Session Update (Morning, June 24, 2026)
+
+### What Landed & Was Resolved:
+1. **Linstor Patch Truncation & Syntax Validation**:
+   - Identified that `patches/14-arm64-linstor.patch` was truncated because the parent patch hunk header was manually set to `28` lines but actually contained `31` lines.
+   - Corrected the patch file by generating it cleanly using the Git-based patch generation workflow from a clean upstream clone (`temp-upstream/cozystack-v1.5.0`).
+   - Implemented [hack/validate-upstream-patches.py](file:///Users/yebyen/u/c/cozystack-moon-and-back/hack/validate-upstream-patches.py) to clone upstream target codebases (e.g. `linstor-server`) and run `git apply --check` against the modified nested patches during fail-fast checks. Integrated it into [validate-patch.sh](file:///Users/yebyen/u/c/cozystack-moon-and-back/validate-patch.sh).
+   - Merged the fix via PR #93.
+2. **Upstream Release Tagging Fix**:
+   - Identified that CozyStack v1.5.0 introduced new build variables (`PUBLISH_VERSIONED`, `PUBLISH_FLOATING`, and `TAG`) that default to off, resulting in the release workflow pushing images to `dev` and `dev-rpi5` instead of `v1.13.5` or `v1.5.0-1.13.5-1`.
+   - Created [PR #94](https://github.com/urmanac/cozystack-moon-and-back/pull/94) to add these variables to the global `env` block of the release workflow, ensuring that future runs tag release OCI images correctly. PR #94 has been merged to `main`.
+3. **Release Executed**:
+   - Force-pushed the tag `v1.5.0-1.13.5-1` from local (to bypass GitHub loop prevention on automated actions pushes).
+   - This successfully triggered GHA Run `28103701971` (Release Talos Metal Image), which completed successfully, ran the Release Provenance Rubric, and published the release on GitHub.
+
+### Current Runtime & Package State:
+- Because the PR #94 fix was merged *after* the release tag `v1.5.0-1.13.5-1` was triggered/built, the OCI images in GHCR for the `v1.5.0-1.13.5-1` release currently only have the `dev` and `dev-rpi5` tags (and did not get versioned as `v1.13.5` or `v1.5.0-1.13.5-1`).
+- The user chose to skip rebuilding the release today, as users can install using the `dev` tag, but the tag machinery is now fully fixed for all future releases.
+- The flashable metal images (raw disk images) are successfully built and available in the GitHub Release page.
+
+### Loose Ends / First Actions for Next Session:
+1. **Re-trigger the Release Tag (Optional)**: If you eventually want the OCI packages in GHCR to be properly versioned with `v1.13.5`, delete the `v1.5.0-1.13.5-1` tag on the remote and push it again from local to run the fixed release workflow.
+2. **Tab Maestro Payload Limits**: The hailo-ollama-service proxy limits are still default. Continue with tuning `MAX_MESSAGE_CHARS` and prompt-budget limits as needed for tab-state prompts.
+
 ## Session Update (Late Night, June 21, 2026)
 
 ### What Landed Since This Handoff Was Started
