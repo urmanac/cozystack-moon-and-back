@@ -206,7 +206,7 @@ jobs:
 
   # Stage 3a: Sovereign OS Factory
   build-sovereign-os:
-    runs-on: [self-hosted, linux, arm64]
+    runs-on: ${{ github.ref == 'refs/heads/main' && 'ubuntu-24.04-arm' || fromJSON('["self-hosted", "linux", "arm64"]') }}
     permissions:
       packages: write
     outputs:
