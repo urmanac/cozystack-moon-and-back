@@ -4,6 +4,8 @@ set -e
 echo "=== PATCH VALIDATION SCRIPT ==="
 echo "Testing patch application without full build..."
 
+WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Clean up any previous test
 rm -rf /tmp/cozystack-patch-test
 mkdir -p /tmp/cozystack-patch-test
@@ -27,17 +29,20 @@ grep -n "arch:" packages/core/talos/hack/gen-profiles.sh
 echo ""
 echo "gen-versions.sh EXTENSIONS line:"
 grep -n "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh
-
 echo ""
 echo "=== 3. APPLYING ALL PATCHES ==="
 # Find all patches in our patches directory
-PATCH_DIR="/Users/yebyen/u/c/cozystack-moon-and-back/patches"
+PATCH_DIR="$WORKSPACE_DIR/patches"
 PATCHES=($(find "$PATCH_DIR" -name "*.patch" | sort))
 
 echo "Found ${#PATCHES[@]} patches to validate:"
 for patch in "${PATCHES[@]}"; do
     echo "  - $(basename "$patch")"
 done
+
+echo ""
+echo "=== 3x. VALIDATING PARENT PATCH SYNTAX ==="
+python3 "$WORKSPACE_DIR/hack/validate-patch-syntax.py" "$PATCH_DIR"
 
 echo ""
 echo "=== 3a. DRY RUN: Checking all patches... ==="
@@ -87,6 +92,20 @@ for patch in "${PATCHES[@]}"; do
     fi
     echo ""
 done
+
+echo ""
+echo "=== 3c. VALIDATING NESTED PATCH SYNTAX ==="
+if ! python3 "$WORKSPACE_DIR/hack/validate-patch-syntax.py" .; then
+    echo "❌ Malformed/corrupt generated nested patch detected!"
+    exit 1
+fi
+
+echo ""
+echo "=== 3d. VALIDATING NESTED PATCH APPLICATION AGAINST UPSTREAM ==="
+if ! python3 "$WORKSPACE_DIR/hack/validate-upstream-patches.py" . "$WORKSPACE_DIR"; then
+    echo "❌ Nested patch failed to apply to upstream codebase!"
+    exit 1
+fi
 
 echo "=== PATCH APPLICATION SUMMARY ==="
 echo "✅ Applied successfully: ${#APPLIED_PATCHES[@]} patches"

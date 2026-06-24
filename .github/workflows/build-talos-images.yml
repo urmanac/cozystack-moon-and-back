@@ -54,8 +54,20 @@ env:
   DEFAULT_TALOS_VERSION: v1.13.4
 
 jobs:
+  validate-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run patch validation suite
+        run: |
+          chmod +x validate-patch.sh
+          ./validate-patch.sh
+
   # Stage 1: Build packages in parallel to seed the registry cache.
   build-cozystack-packages:
+    needs: [validate-patches]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -212,6 +224,7 @@ jobs:
 
   # Stage 3a: Sovereign OS Factory
   build-sovereign-os:
+    needs: [validate-patches]
     runs-on: ${{ github.ref == 'refs/heads/main' && 'ubuntu-24.04-arm' || fromJSON('["self-hosted", "linux", "arm64"]') }}
     permissions:
       packages: write
