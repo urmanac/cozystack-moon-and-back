@@ -135,6 +135,8 @@ jobs:
             echo "Building $d..."
             make -C "$d" image REGISTRY="${{ env.REGISTRY }}"
           done
+        env:
+          WRITE_CACHE: '1'
 
   # Stage 2: Finalize the operator (depends on Stage 1).
   build-cozystack-operator:
@@ -203,6 +205,8 @@ jobs:
           # Here we just run the final packaging step.
           make -C packages/core/installer image REGISTRY="${{ env.REGISTRY }}" PUSH=1 TAG=latest
           make manifests
+        env:
+          WRITE_CACHE: '1'
 
   # Stage 3a: Sovereign OS Factory
   build-sovereign-os:
@@ -357,6 +361,7 @@ jobs:
         id: build
         env:
           REGISTRY: ${{ env.REGISTRY }}/talos/cozystack-${{ matrix.extension_variant }}-${{ matrix.hardware }}
+          WRITE_CACHE: ${{ github.ref == 'refs/heads/main' && '1' || '0' }}
         run: |
           cd cozystack-upstream
           cd packages/core/talos
