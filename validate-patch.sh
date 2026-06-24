@@ -100,6 +100,13 @@ if ! python3 "$WORKSPACE_DIR/hack/validate-patch-syntax.py" .; then
     exit 1
 fi
 
+echo ""
+echo "=== 3d. VALIDATING NESTED PATCH APPLICATION AGAINST UPSTREAM ==="
+if ! python3 "$WORKSPACE_DIR/hack/validate-upstream-patches.py" . "$WORKSPACE_DIR"; then
+    echo "❌ Nested patch failed to apply to upstream codebase!"
+    exit 1
+fi
+
 echo "=== PATCH APPLICATION SUMMARY ==="
 echo "✅ Applied successfully: ${#APPLIED_PATCHES[@]} patches"
 for patch in "${APPLIED_PATCHES[@]}"; do
