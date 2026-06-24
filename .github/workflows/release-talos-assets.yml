@@ -15,8 +15,20 @@ env:
   REGISTRY: ghcr.io/urmanac/cozystack-assets
 
 jobs:
+  validate-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run patch validation suite
+        run: |
+          chmod +x validate-patch.sh
+          ./validate-patch.sh
+
   # Stage 1: Build general Cozystack packages in parallel to seed the registry cache.
   build-cozystack-packages:
+    needs: [validate-patches]
     runs-on: ubuntu-24.04-arm
     permissions:
       packages: write
