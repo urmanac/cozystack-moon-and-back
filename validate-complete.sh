@@ -158,6 +158,16 @@ else
 fi
 
 echo ""
+echo "=== TEST 5b: PACKAGE CATALOG VALIDATION ==="
+echo "Verifying GHA workflows match upstream package catalog..."
+if python3 "$SCRIPT_DIR/hack/validate-package-catalog.py" "$TEMP_DIR/upstream-test" "$SCRIPT_DIR"; then
+    echo "✓ Package catalog is fully synchronized"
+else
+    echo "✗ Package catalog mismatch detected"
+    exit 1
+fi
+
+echo ""
 echo "=== TEST 6: GIT REPOSITORY STATE ==="
 echo "Checking repository is clean and ready..."
 
