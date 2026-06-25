@@ -16,65 +16,13 @@ trap cleanup EXIT
 mkdir -p "$TEMP_DIR"
 
 echo ""
-echo "=== TEST 1: PATCH VALIDATION ==="
-echo "Testing patch applies cleanly to upstream..."
+echo "=== TEST 1: PATCH AND CATALOG VALIDATION ==="
+echo "Running patch and catalog validation script..."
 
-cd "$TEMP_DIR"
-git clone https://github.com/cozystack/cozystack.git upstream-test
-cd upstream-test
-
-echo "Testing patch application..."
-if git apply --check "$SCRIPT_DIR/patches/01-arm64-spin-tailscale.patch"; then
-    echo "✓ Patch format is valid"
+if "$SCRIPT_DIR/validate-patch.sh"; then
+    echo "✓ Patch and catalog validation passed"
 else
-    echo "✗ Patch format is invalid"
-    exit 1
-fi
-
-echo "Applying patch..."
-git apply "$SCRIPT_DIR/patches/01-arm64-spin-tailscale.patch"
-
-echo "Verifying expected changes..."
-EXTENSIONS_PROFILES=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-profiles.sh)
-EXTENSIONS_VERSIONS=$(grep "EXTENSIONS=" packages/core/talos/hack/gen-versions.sh)
-ARCH_LINE=$(grep "arch:" packages/core/talos/hack/gen-profiles.sh)
-
-if [[ "$EXTENSIONS_PROFILES" == *"spin"* ]]; then
-    echo "✓ gen-profiles.sh has spin extension"
-else
-    echo "✗ gen-profiles.sh missing spin extension"
-    echo "  Found: $EXTENSIONS_PROFILES"
-    exit 1
-fi
-
-if [[ "$EXTENSIONS_PROFILES" == *"vc4"* ]]; then
-    echo "✓ gen-profiles.sh has vc4 extension"
-else
-    echo "✗ gen-profiles.sh missing vc4 extension"
-    echo "  Found: $EXTENSIONS_PROFILES"
-    exit 1
-fi
-
-if grep -q "board=\"rpi_generic\"" packages/core/talos/hack/gen-profiles.sh; then
-    echo "✓ gen-profiles.sh has board: rpi_generic"
-else
-    echo "✗ gen-profiles.sh missing rpi_generic board"
-    exit 1
-fi
-
-if [[ "$ARCH_LINE" == *"arm64"* ]]; then
-    echo "✓ Architecture set to arm64"
-else
-    echo "✗ Architecture not set to arm64"
-    echo "  Found: $ARCH_LINE"
-    exit 1
-fi
-
-# Check for SPIN image ref
-if grep -q "SPIN_IMAGE" packages/core/talos/hack/gen-profiles.sh; then
-    echo "✓ SPIN_IMAGE reference added"
-else
-    echo "✗ Missing SPIN_IMAGE reference"
+    echo "✗ Patch and catalog validation failed"
     exit 1
 fi
 
@@ -157,15 +105,7 @@ else
     exit 1
 fi
 
-echo ""
-echo "=== TEST 5b: PACKAGE CATALOG VALIDATION ==="
-echo "Verifying GHA workflows match upstream package catalog..."
-if python3 "$SCRIPT_DIR/hack/validate-package-catalog.py" "$TEMP_DIR/upstream-test" "$SCRIPT_DIR"; then
-    echo "✓ Package catalog is fully synchronized"
-else
-    echo "✗ Package catalog mismatch detected"
-    exit 1
-fi
+# Package catalog validation is already performed as part of validate-patch.sh in TEST 1.
 
 echo ""
 echo "=== TEST 6: GIT REPOSITORY STATE ==="

@@ -138,7 +138,7 @@ jobs:
           elif [ "$GROUP" = "system-base" ]; then
             DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui packages/system/flux-shard-operator"
           elif [ "$GROUP" = "system-net" ]; then
-            DIRS="packages/system/cilium packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
+            DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
             DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
           fi
@@ -159,7 +159,7 @@ jobs:
           elif [ "$GROUP" = "system-base" ]; then
             DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui packages/system/flux-shard-operator"
           elif [ "$GROUP" = "system-net" ]; then
-            DIRS="packages/system/cilium packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
+            DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
             DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
           fi

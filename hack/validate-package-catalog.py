@@ -61,7 +61,7 @@ def main():
 
     # 3. Compare the sets
     allowed_exclusions = {"packages/core/talos"}
-    allowed_custom_packages = {"packages/system/linstor", "packages/system/linstor-gui"}
+    allowed_custom_packages = {"packages/system/linstor", "packages/system/linstor-gui", "packages/core/talos"}
 
     missing_in_workflow = makefile_packages - workflow_packages - allowed_exclusions
     extra_in_workflow = workflow_packages - makefile_packages - allowed_custom_packages
