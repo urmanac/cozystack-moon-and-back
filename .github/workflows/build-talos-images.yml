@@ -22,7 +22,7 @@ on:
       cozystack_commit:
         description: 'Cozystack upstream ref or commit'
         required: false
-        default: 'v1.5.0'
+        default: 'v1.5.1'
       talos_version:
         description: 'Talos version to build'
         required: false
@@ -126,7 +126,6 @@ jobs:
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
           git apply ../patches/11-fix-tagging-logic.patch
           git apply ../patches/14-arm64-linstor.patch
-
       - name: Build parallel package group
         run: |
           cd cozystack-upstream
@@ -137,9 +136,9 @@ jobs:
           if [ "$GROUP" = "apps" ]; then
             DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes packages/system/dashboard"
           elif [ "$GROUP" = "system-base" ]; then
-            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui"
+            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui packages/system/flux-shard-operator"
           elif [ "$GROUP" = "system-net" ]; then
-            DIRS="packages/system/cilium packages/system/kubeovn packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
+            DIRS="packages/system/cilium packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
           elif [ "$GROUP" = "system-cloud" ]; then
             DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
           fi
@@ -150,6 +149,32 @@ jobs:
           done
         env:
           WRITE_CACHE: '1'
+
+      - name: Archive modified values.yaml files
+        run: |
+          mkdir -p ../values-archive
+          GROUP="${{ matrix.group }}"
+          if [ "$GROUP" = "apps" ]; then
+            DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes packages/system/dashboard"
+          elif [ "$GROUP" = "system-base" ]; then
+            DIRS="packages/system/monitoring packages/system/cozystack-api packages/system/cozystack-controller packages/system/backup-controller packages/system/backupstrategy-controller packages/system/lineage-controller-webhook packages/system/linstor packages/system/linstor-gui packages/system/flux-shard-operator"
+          elif [ "$GROUP" = "system-net" ]; then
+            DIRS="packages/system/cilium packages/system/kubeovn-webhook packages/system/kubeovn-plunger"
+          elif [ "$GROUP" = "system-cloud" ]; then
+            DIRS="packages/system/metallb packages/system/kamaji packages/system/multus packages/system/bucket packages/system/objectstorage-controller packages/system/grafana-operator packages/core/testing packages/core/platform"
+          fi
+          for d in $DIRS; do
+            if [ -f "cozystack-upstream/$d/values.yaml" ]; then
+              mkdir -p "../values-archive/$d"
+              cp "cozystack-upstream/$d/values.yaml" "../values-archive/$d/values.yaml"
+            fi
+          done
+
+      - name: Upload values.yaml artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: values-${{ matrix.group }}
+          path: values-archive/
 
   # Stage 2: Finalize the operator (depends on Stage 1).
   build-cozystack-operator:
@@ -211,6 +236,19 @@ jobs:
           git apply ../patches/07-arm64-skip-amd64-only-builds.patch
           git apply ../patches/11-fix-tagging-logic.patch
           git apply ../patches/14-arm64-linstor.patch
+
+      - name: Download values.yaml artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: values-archive-download/
+          pattern: values-*
+          merge-multiple: true
+
+      - name: Overwrite values.yaml files
+        run: |
+          if [ -d "values-archive-download" ]; then
+            cp -r values-archive-download/* cozystack-upstream/packages/ || true
+          fi
 
       - name: Build operator and manifests
         run: |
