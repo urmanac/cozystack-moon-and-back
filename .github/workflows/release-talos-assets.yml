@@ -202,8 +202,9 @@ jobs:
       - name: Overwrite values.yaml files
         run: |
           if [ -d "values-archive-download" ]; then
-            cp -r values-archive-download/* cozystack-upstream/packages/ || true
+            cp -r values-archive-download/* cozystack-upstream/ || true
           fi
+
 
       - name: Build operator and manifests
         run: |
@@ -455,30 +456,86 @@ jobs:
           
           MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${COZY_VER}"
           
+          echo "Logging into GHCR with crane..."
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io -u "${{ github.actor }}" --password-stdin
+          
+          echo "Resolving digests..."
+          COZYSTACK_PACKAGES_DIGEST=$(crane digest "${{ env.REGISTRY }}/cozystack-packages:${FULL_TAG}" 2>/dev/null || echo "unknown")
+          COZYSTACK_OPERATOR_DIGEST=$(crane digest "${{ env.REGISTRY }}/cozystack-operator:${FULL_TAG}" 2>/dev/null || echo "unknown")
+          
+          # Hailort digests
+          TALOS_HAILORT_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          TALOS_HAILORT_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+          MATCHBOX_HAILORT_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-hailort/matchbox:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          MATCHBOX_HAILORT_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-hailort/matchbox:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+          
+          # Tailscale digests
+          TALOS_TAILSCALE_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/talos:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          TALOS_TAILSCALE_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/talos:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+          MATCHBOX_TAILSCALE_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/matchbox:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          MATCHBOX_TAILSCALE_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-tailscale/matchbox:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+          
+          # Spin-only digests
+          TALOS_ONLY_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          TALOS_ONLY_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-only/talos:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+          MATCHBOX_ONLY_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-only/matchbox:${TALOS_VERSION}" 2>/dev/null || echo "unknown")
+          MATCHBOX_ONLY_RPI5_DIGEST=$(crane digest "${{ env.REGISTRY }}/talos/cozystack-spin-only/matchbox:${TALOS_VERSION}-rpi5" 2>/dev/null || echo "unknown")
+
           cat > release_notes.md <<EOF
           ## CozyStack ARM64 Talos Release ${FULL_TAG}
           **CozyStack upstream:** \`${COZY_VER}\`
           **Talos version:** \`${TALOS_VERSION}\`
           **Architecture:** ARM64 (Raspberry Pi CM4, CM5 and compatible boards)
           
-          ### OCI Images
-          #### Talos Installer (Upgrades)
-          - **Generic (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}\`
-          - **RPi5 (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos:${TALOS_VERSION}-rpi5\`
+          ### Upgrade / Install Instructions
+          To install or upgrade CozyStack to this release version, run the following Helm command:
           
-          #### Matchbox (Netboot)
-          - **Generic (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}\`
-          - **RPi5 (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox:${MATCHBOX_TAG}-rpi5\`
+          \`\`\`bash
+          # Upgrade CozyStack and point the operator to our custom ARM64 registry and package collection
+          helm upgrade --install cozystack oci://ghcr.io/cozystack/cozystack/cozy-installer \\
+            --version ${COZY_VER} \\
+            --namespace cozy-system \\
+            --create-namespace \\
+            --set cozystackOperator.image=ghcr.io/urmanac/cozystack-assets/cozystack-operator@${COZYSTACK_OPERATOR_DIGEST} \\
+            --set cozystackOperator.platformSourceUrl=oci://ghcr.io/urmanac/cozystack-assets/cozystack-packages \\
+            --set cozystackOperator.platformSourceRef=digest=${COZYSTACK_PACKAGES_DIGEST}
+          \`\`\`
+
+          > [!IMPORTANT]
+          > The above installer parameters are locked to the specific cryptographic OCI digests of this release. This guarantees that your installation pulls verified and architecture-compatible packages.
+
+          ---
+
+          ### OCI Images (Digest-Locked)
+          #### Operator & Packages
+          - **Operator:** \`ghcr.io/urmanac/cozystack-assets/cozystack-operator@${COZYSTACK_OPERATOR_DIGEST}\`
+          - **Packages Collection:** \`ghcr.io/urmanac/cozystack-assets/cozystack-packages@${COZYSTACK_PACKAGES_DIGEST}\`
           
-          #### Packages
-          - **Operator:** \`ghcr.io/urmanac/cozystack-assets/cozystack-operator:${COZY_VER}\`
-          - All system packages are tagged with \`${COZY_VER}\` and \`latest\`.
+          #### Variant: spin-hailort (Raspberry Pi AI HAT+)
+          - **Talos Installer (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos@${TALOS_HAILORT_DIGEST}\`
+          - **Talos Installer (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/talos@${TALOS_HAILORT_RPI5_DIGEST}\`
+          - **Matchbox (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox@${MATCHBOX_HAILORT_DIGEST}\`
+          - **Matchbox (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-hailort/matchbox@${MATCHBOX_HAILORT_RPI5_DIGEST}\`
           
-          ### Flashable Metal Images
+          #### Variant: spin-tailscale (Tailscale Integration)
+          - **Talos Installer (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos@${TALOS_TAILSCALE_DIGEST}\`
+          - **Talos Installer (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/talos@${TALOS_TAILSCALE_RPI5_DIGEST}\`
+          - **Matchbox (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox@${MATCHBOX_TAILSCALE_DIGEST}\`
+          - **Matchbox (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-tailscale/matchbox@${MATCHBOX_TAILSCALE_RPI5_DIGEST}\`
+          
+          #### Variant: spin-only (Base OS)
+          - **Talos Installer (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos@${TALOS_ONLY_DIGEST}\`
+          - **Talos Installer (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/talos@${TALOS_ONLY_RPI5_DIGEST}\`
+          - **Matchbox (CM4):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox@${MATCHBOX_ONLY_DIGEST}\`
+          - **Matchbox (CM5):** \`ghcr.io/urmanac/cozystack-assets/talos/cozystack-spin-only/matchbox@${MATCHBOX_ONLY_RPI5_DIGEST}\`
+
+          ---
+
+          ### Flashable Metal Images (spin-hailort variant)
           - **CM4:** \`talos-metal-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz\`
           - **CM5:** \`talos-metal-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.raw.xz\`
           
-          ### Specialized RPi5 Netboot Assets
+          ### Specialized RPi5 Netboot Assets (spin-hailort variant)
           - **Kernel:** \`talos-kernel-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}\`
           - **Initramfs:** \`talos-initramfs-rpi5-arm64-spin-hailort-${MATCHBOX_TAG}.xz\`
           

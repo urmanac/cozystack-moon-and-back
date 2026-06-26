@@ -248,8 +248,9 @@ jobs:
       - name: Overwrite values.yaml files
         run: |
           if [ -d "values-archive-download" ]; then
-            cp -r values-archive-download/* cozystack-upstream/packages/ || true
+            cp -r values-archive-download/* cozystack-upstream/ || true
           fi
+
 
       - name: Build operator and manifests
         run: |

@@ -46,25 +46,28 @@ cp -r . /tmp/cozystack-patch-test/patched-packages-tree/
 echo ""
 echo "=== 3. VALIDATING TALOS OS VARIANTS ==="
 
-echo "Testing variant: spin-only (04, 03, 02)..."
+echo "Testing variant: spin-only (04, 11, 03, 02)..."
 reset_cozystack
 git apply "$PATCH_DIR/04-arm64-default-platform.patch"
+git apply "$PATCH_DIR/11-fix-tagging-logic.patch"
 git apply "$PATCH_DIR/03-arm64-spin-only.patch"
 git apply "$PATCH_DIR/02-makefile-architecture-variables.patch"
 echo "✅ Variant spin-only applied cleanly!"
 
-echo "Testing variant: spin-hailort (04, 08, 02, 09, 10)..."
+echo "Testing variant: spin-hailort (04, 11, 08, 02, 09, 10)..."
 reset_cozystack
 git apply "$PATCH_DIR/04-arm64-default-platform.patch"
+git apply "$PATCH_DIR/11-fix-tagging-logic.patch"
 git apply "$PATCH_DIR/08-arm64-spin-hailort.patch"
 git apply "$PATCH_DIR/02-makefile-architecture-variables.patch"
 git apply "$PATCH_DIR/09-arm64-rpi5-spin-hailort.patch"
 git apply "$PATCH_DIR/10-arm64-rpi5-specialized-matchbox.patch"
 echo "✅ Variant spin-hailort applied cleanly!"
 
-echo "Testing variant: spin-tailscale (04, 01, 02)..."
+echo "Testing variant: spin-tailscale (04, 11, 01, 02)..."
 reset_cozystack
 git apply "$PATCH_DIR/04-arm64-default-platform.patch"
+git apply "$PATCH_DIR/11-fix-tagging-logic.patch"
 git apply "$PATCH_DIR/01-arm64-spin-tailscale.patch"
 git apply "$PATCH_DIR/02-makefile-architecture-variables.patch"
 echo "✅ Variant spin-tailscale applied cleanly!"

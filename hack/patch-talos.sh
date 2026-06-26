@@ -11,6 +11,7 @@ echo "🛠️ Applying patches for variant: $VARIANT"
 
 # Common ARM64 base patches
 git apply "$PATCH_DIR/04-arm64-default-platform.patch"
+git apply "$PATCH_DIR/11-fix-tagging-logic.patch"
 
 # Variant-specific patches
 if [ "$VARIANT" = "spin-only" ]; then
