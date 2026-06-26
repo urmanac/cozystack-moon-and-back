@@ -177,6 +177,7 @@ yq eval '.jobs' .github/workflows/build-talos-images.yml  # Workflow syntax
 - 🏷️ **[Package Naming Cleanup](PACKAGE-NAMING-CLEANUP.md)** - Package naming conventions
 - 🔍 **[Package Audit and Release Mapping](PACKAGE-AUDIT-AND-RELEASE-MAPPING.md)** - Audit of GHCR package organization and tagging lifecycle
 - 🏷️ **[ROSEMARY-18 Release Notes (v1.5.0-1.13.5-1)](ROSEMARY-18-V1.5.0-1.13.5-1-RELEASE.md)** - Release plan and upgrade notes
+- 🏷️ **[SAGE-19 Release Notes (v1.5.1-1.13.5-2)](SAGE-19-V1.5.1-1.13.5-2-RELEASE.md)** - Release plan and upgrade notes
 
 ---
 
