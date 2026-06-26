@@ -25,7 +25,7 @@ To install or upgrade CozyStack to this release version, run the following Helm 
 ```bash
 # Upgrade CozyStack and point the operator to our custom ARM64 registry and package collection
 helm upgrade --install cozystack oci://ghcr.io/cozystack/cozystack/cozy-installer \
-  --version v1.5.1 \
+  --version 1.5.1 \
   --namespace cozy-system \
   --create-namespace \
   --set cozystackOperator.image=ghcr.io/urmanac/cozystack-assets/cozystack-operator@sha256:73047678e4e8e2ac021fa91b7e99a3496c6559b94578470e16d713870c978255 \
