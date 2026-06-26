@@ -454,6 +454,7 @@ jobs:
             TALOS_BASE_VER="v1.13.2"
           fi
           
+          HELM_COZY_VER="${COZY_VER#v}"
           MATCHBOX_TAG="talos-${TALOS_VERSION}-cozy-${COZY_VER}"
           
           echo "Logging into GHCR with crane..."
@@ -493,7 +494,7 @@ jobs:
           \`\`\`bash
           # Upgrade CozyStack and point the operator to our custom ARM64 registry and package collection
           helm upgrade --install cozystack oci://ghcr.io/cozystack/cozystack/cozy-installer \\
-            --version ${COZY_VER} \\
+            --version ${HELM_COZY_VER} \\
             --namespace cozy-system \\
             --create-namespace \\
             --set cozystackOperator.image=ghcr.io/urmanac/cozystack-assets/cozystack-operator@${COZYSTACK_OPERATOR_DIGEST} \\
