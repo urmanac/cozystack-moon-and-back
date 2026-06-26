@@ -1,7 +1,35 @@
-# CONTEXT HAND-OFF: HailoRT v5.3.0 Upgrade & Sovereign OS Factory (Part 2)
+# CONTEXT HAND-OFF: CozyStack v1.5.1-1.13.5-1 Upgrade & Image Overrides
 
-**Date:** June 20, 2026
-**Current Branch:** `feat/sovereign-os-factory`
+**Date:** June 25, 2026
+**Current Branch:** `main` (released)
+
+---
+
+## Session Update (Evening, June 25, 2026)
+
+### What Landed & Was Resolved:
+1. **CozyStack v1.5.1 & Talos v1.13.5 Version Bump**:
+   - Bumped version in `VERSION` to `v1.5.1-1.13.5-1` and updated GHA workflow files to target `v1.5.1`.
+   - Regenerated `patches/04-arm64-default-platform.patch` to enforce `PLATFORM ?= linux/arm64` default globally.
+2. **Fixed Operator Exec Format Errors**:
+   - Tracked down the operator `exec format error` (caused by pulling upstream `amd64` fallback images when custom charts were compiled from scratch in Stage 2).
+   - Added an archiving step in GHA package compilation (`build-cozystack-packages` job) to zip and share the generated `values.yaml` registry overrides across stages.
+   - Stage 2 (`build-cozystack-operator` / `installer`) now downloads and overwrites its chart `values.yaml` files before packaging, ensuring that local ARM64 registries are always selected.
+3. **Restored `kubeovn` Build Target**:
+   - Restored `packages/system/kubeovn` to the matrix `system-net` DIRS list in the workflow files.
+   - Patch `06-kubeovn-manifest-list-retag.patch` overrides the parent `Makefile` to retag the `kubeovn` container image. Leaving it out of the matrix caused the catalog synchronization script to fail.
+4. **Enhanced and Corrected Validation Suite**:
+   - Refactored `validate-patch.sh` to validate patches inside their proper target contexts (mutually exclusive Talos variants: `spin-only`, `spin-hailort`, `spin-tailscale`, and external Sidero repositories) and throw hard failures (exit with `1`) if any patch fails.
+   - Refactored `validate-complete.sh` to delegate checks to `validate-patch.sh` directly, removing duplicate logic.
+5. **Successful Release**:
+   - Merged PR #95 to `main`.
+   - Deleted and re-pushed the tag `v1.5.1-1.13.5-1` locally to bypass GHA token loop-prevention.
+   - The release pipeline successfully completed all jobs (seeding packages, operator, variants, and raw metal images).
+   - Verified that the GitHub release is published with all flashable metal raw assets, kernel, and initramfs variants for both CM4 and CM5.
+
+### Current Runtime & Package State:
+- All 31+ OCI packages and final flashable metal images are compiled, versioned, and published.
+- The next releases will naturally build on this solid, validated template.
 
 ---
 

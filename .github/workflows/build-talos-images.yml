@@ -152,7 +152,7 @@ jobs:
 
       - name: Archive modified values.yaml files
         run: |
-          mkdir -p ../values-archive
+          mkdir -p values-archive
           GROUP="${{ matrix.group }}"
           if [ "$GROUP" = "apps" ]; then
             DIRS="packages/apps/http-cache packages/apps/mariadb packages/apps/clickhouse packages/apps/kubernetes packages/system/dashboard"
@@ -165,10 +165,11 @@ jobs:
           fi
           for d in $DIRS; do
             if [ -f "cozystack-upstream/$d/values.yaml" ]; then
-              mkdir -p "../values-archive/$d"
-              cp "cozystack-upstream/$d/values.yaml" "../values-archive/$d/values.yaml"
+              mkdir -p "values-archive/$d"
+              cp "cozystack-upstream/$d/values.yaml" "values-archive/$d/values.yaml"
             fi
           done
+
 
       - name: Upload values.yaml artifact
         uses: actions/upload-artifact@v4
