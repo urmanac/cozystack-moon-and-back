@@ -108,7 +108,7 @@ jobs:
             make -C "$d" image REGISTRY="${{ env.REGISTRY }}"
           done
 
-      - name: Archive modified values.yaml files
+      - name: Archive modified values.yaml and tag files
         run: |
           mkdir -p values-archive
           GROUP="${{ matrix.group }}"
@@ -125,6 +125,10 @@ jobs:
             if [ -f "cozystack-upstream/$d/values.yaml" ]; then
               mkdir -p "values-archive/$d"
               cp "cozystack-upstream/$d/values.yaml" "values-archive/$d/values.yaml"
+            fi
+            if [ -d "cozystack-upstream/$d/images" ]; then
+              mkdir -p "values-archive/$d/images"
+              cp -r cozystack-upstream/$d/images/* "values-archive/$d/images/" 2>/dev/null || true
             fi
           done
 
@@ -192,14 +196,14 @@ jobs:
           git apply ../patches/11-fix-tagging-logic.patch
           git apply ../patches/14-arm64-linstor.patch
 
-      - name: Download values.yaml artifacts
+      - name: Download values.yaml and tag artifacts
         uses: actions/download-artifact@v4
         with:
           path: values-archive-download/
           pattern: values-*
           merge-multiple: true
 
-      - name: Overwrite values.yaml files
+      - name: Overwrite values.yaml and tag files
         run: |
           if [ -d "values-archive-download" ]; then
             cp -r values-archive-download/* cozystack-upstream/ || true
