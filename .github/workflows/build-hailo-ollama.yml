@@ -70,7 +70,7 @@ jobs:
           fi
 
       - name: Build (and push if not PR)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: hailo-ollama-service/
           file: hailo-ollama-service/Dockerfile
